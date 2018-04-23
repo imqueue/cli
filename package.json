@@ -1,7 +1,7 @@
 {
   "name": "imq-cli",
   "version": "1.0.0-dev",
-  "description": "RPC-like client-service implementation over messaging queue",
+  "description": "Command Line Interface for IMQ",
   "scripts": {
     "prepublish": "./node_modules/.bin/tsc",
     "test": "./node_modules/.bin/tsc && ./node_modules/.bin/nyc mocha && /usr/bin/env node -e \"require('opn')('file://`pwd`/coverage/index.html');process.exit(0)\"",
