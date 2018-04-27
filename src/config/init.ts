@@ -1,6 +1,5 @@
-#!/usr/bin/env node
 /*!
- * I Message Queue Command Line Interface
+ * IMQ-CLI command: config init
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -16,13 +15,19 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import * as yargs from 'yargs';
+import { Argv } from 'yargs';
 
-yargs
-    .completion()
-    .version(require(`${__dirname}/package.json`).version)
-    .commandDir('src')
-    .demandCommand()
-    .help()
-    .argv
-;
+// noinspection JSUnusedGlobalSymbols
+export const { command, describe, builder, handler } = {
+    command: 'init [path]',
+    describe: 'Interactively initializes IMQ CLI configuration file',
+
+    builder(yargs: Argv) {
+        return yargs
+            .default('path', '~/.imq');
+    },
+
+    handler(argv: Argv) {
+        // TODO: implement
+    }
+};

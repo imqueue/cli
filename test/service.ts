@@ -1,6 +1,5 @@
-#!/usr/bin/env node
 /*!
- * I Message Queue Command Line Interface
+ * IMQ-CLI Unit Tests: service
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -16,13 +15,16 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import * as yargs from 'yargs';
+import './mocks';
+import { expect } from 'chai';
+import * as client from '../src/service';
 
-yargs
-    .completion()
-    .version(require(`${__dirname}/package.json`).version)
-    .commandDir('src')
-    .demandCommand()
-    .help()
-    .argv
-;
+describe('client', () => {
+    it('should be a valid command definition', () => {
+        expect(typeof client.command).equals('string');
+        expect(client.command).contains('service');
+        expect(typeof client.describe).equals('string');
+        expect(client.describe).not.to.be.empty;
+        expect(typeof client.builder).equals('function');
+    });
+});

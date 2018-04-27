@@ -1,6 +1,5 @@
-#!/usr/bin/env node
 /*!
- * I Message Queue Command Line Interface
+ * IMQ-CLI command: client generate
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -16,13 +15,24 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import * as yargs from 'yargs';
+import { Argv } from 'yargs';
 
-yargs
-    .completion()
-    .version(require(`${__dirname}/package.json`).version)
-    .commandDir('src')
-    .demandCommand()
-    .help()
-    .argv
-;
+// noinspection JSUnusedGlobalSymbols
+export const { command, describe, builder, handler } = {
+    command: 'generate <name> [path]',
+    describe: 'Generates IMQ-RPC client for a specified service',
+
+    builder(yargs: Argv) {
+        return yargs
+            .option('o', {
+                alias: 'overwrite',
+                describe: 'Overwrite existing client without prompt',
+                boolean: true
+            })
+            .default('path', '.');
+    },
+
+    handler(argv: Argv) {
+        // TODO: implement
+    }
+};

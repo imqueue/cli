@@ -1,6 +1,5 @@
-#!/usr/bin/env node
 /*!
- * I Message Queue Command Line Interface
+ * IMQ-CLI command: client patch
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -16,13 +15,18 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import * as yargs from 'yargs';
+import { Argv } from 'yargs';
 
-yargs
-    .completion()
-    .version(require(`${__dirname}/package.json`).version)
-    .commandDir('src')
-    .demandCommand()
-    .help()
-    .argv
-;
+// noinspection JSUnusedGlobalSymbols
+export const { command, describe, builder, handler } = {
+    command: 'patch <name> [path]',
+    describe: 'Patches given IMQ-RPC client',
+
+    builder(yargs: Argv) {
+        return yargs.default('path', '.');
+    },
+
+    handler(argv: Argv) {
+        // TODO: implement
+    }
+};

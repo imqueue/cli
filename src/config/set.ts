@@ -1,6 +1,5 @@
-#!/usr/bin/env node
 /*!
- * I Message Queue Command Line Interface
+ * IMQ-CLI command: config set
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -16,13 +15,14 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import * as yargs from 'yargs';
+import { Argv } from 'yargs';
 
-yargs
-    .completion()
-    .version(require(`${__dirname}/package.json`).version)
-    .commandDir('src')
-    .demandCommand()
-    .help()
-    .argv
-;
+// noinspection JSUnusedGlobalSymbols
+export const { command, describe, handler } = {
+    command: 'set <option> <value>',
+    describe: 'Updates given config option with given value',
+
+    handler(argv: Argv) {
+        // TODO: implement
+    }
+};

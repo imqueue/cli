@@ -1,5 +1,5 @@
 /*!
- * CLI Unit Tests
+ * IMQ-CLI command: service
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,12 +15,17 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import './mocks';
-import { expect } from 'chai';
-import { CLI } from '..';
+import { Argv } from 'yargs';
 
-describe('CLI', () => {
-    it('should be a class', () => {
-        expect(typeof CLI).to.be.equal('function');
-    });
-});
+// noinspection JSUnusedGlobalSymbols
+export const { command, describe, builder } = {
+    command: 'service',
+    describe: 'Manage IMQ service',
+
+    builder(yargs: Argv) {
+        return yargs
+            .commandDir('service')
+            .demandCommand()
+            .help();
+    }
+};

@@ -1,4 +1,6 @@
 /*!
+ * IMQ-CLI Unit Tests: client patch
+ *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -13,4 +15,16 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-export * from './CLI';
+import '../mocks';
+import { expect } from 'chai';
+import * as client from '../../src/client/patch';
+
+describe('client', () => {
+    it('should be a valid command definition', () => {
+        expect(typeof client.command).equals('string');
+        expect(client.command).contains('patch');
+        expect(typeof client.describe).equals('string');
+        expect(client.describe).not.to.be.empty;
+        expect(typeof client.handler).equals('function');
+    });
+});

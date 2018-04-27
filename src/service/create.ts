@@ -1,6 +1,5 @@
-#!/usr/bin/env node
 /*!
- * I Message Queue Command Line Interface
+ * IMQ-CLI command: service create
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -16,13 +15,22 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import * as yargs from 'yargs';
+import * as path from 'path';
+import { Argv } from 'yargs';
 
-yargs
-    .completion()
-    .version(require(`${__dirname}/package.json`).version)
-    .commandDir('src')
-    .demandCommand()
-    .help()
-    .argv
-;
+// noinspection JSUnusedGlobalSymbols
+export const { command, describe, builder, handler } = {
+    command: 'create [name] [path]',
+    describe: 'Creates new service package with the given service name ' +
+              'under given path.',
+
+    builder(yargs: Argv) {
+        return yargs
+            .default('name', `./${path.basename(process.cwd())}`)
+            .default('path', '.');
+    },
+
+    handler(argv: Argv) {
+        // TODO: implement
+    }
+};

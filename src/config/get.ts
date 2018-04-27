@@ -1,5 +1,5 @@
 /*!
- * I Message Queue CLI implementation
+ * IMQ-CLI command: config get
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,10 +15,20 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-export class CLI {
+import { Argv } from 'yargs';
 
-    public static run() {
+// noinspection JSUnusedGlobalSymbols
+export const { command, describe, builder, handler } = {
+    command: 'get [option]',
+    describe: 'Prints value for given option from config. If option is ' +
+              'not provided, will list all config options',
 
+    builder(yargs: Argv) {
+        return yargs
+            .default('option', '');
+    },
+
+    handler(argv: Argv) {
+        // TODO: implement
     }
-
-}
+};
