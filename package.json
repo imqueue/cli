@@ -7,6 +7,7 @@
     "rpc-client",
     "rpc-service",
     "rpc",
+    "rad",
     "message-queue",
     "redis-queue"
   ],

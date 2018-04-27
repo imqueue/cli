@@ -1,3 +1,3 @@
-# IMQ CLI
+# I Message Queue Command Line Interface
 
 Coming soon...
