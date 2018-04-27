@@ -39,6 +39,7 @@
     "imq-rpc": "^1.1.1",
     "yargs": "^11.0.0"
   },
+  "preferGlobal": true,
   "devDependencies": {
     "@types/yargs": "^11.0.0",
     "@types/chai": "^4.1.2",
