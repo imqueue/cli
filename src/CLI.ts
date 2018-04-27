@@ -1,6 +1,5 @@
-#!/usr/bin/env node
 /*!
- * I Message Queue CLI exports
+ * I Message Queue CLI implementation
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -16,7 +15,10 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-export * from './src';
-import { CLI } from './src';
+export class CLI {
 
-CLI.run();
+    public static run() {
+
+    }
+
+}
