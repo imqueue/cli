@@ -19,7 +19,7 @@ import '../mocks';
 import { expect } from 'chai';
 import * as client from '../../src/service/create';
 
-describe('client', () => {
+describe('service create', () => {
     it('should be a valid command definition', () => {
         expect(typeof client.command).equals('string');
         expect(client.command).contains('create');

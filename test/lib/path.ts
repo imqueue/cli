@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: client generate
+ * IMQ-CLI Unit Tests: path
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -17,14 +17,24 @@
  */
 import '../mocks';
 import { expect } from 'chai';
-import * as client from '../../src/client/generate';
+import { resolve } from '../../lib/path';
+import * as p from 'path';
 
-describe('client generate', () => {
-    it('should be a valid command definition', () => {
-        expect(typeof client.command).equals('string');
-        expect(client.command).contains('generate');
-        expect(typeof client.describe).equals('string');
-        expect(client.describe).not.to.be.empty;
-        expect(typeof client.handler).equals('function');
+const HOME: string = process.env['HOME'] ||
+    p.resolve('/home', String(process.env['USER']));
+
+describe('path', () => {
+    describe('resolve()', () => {
+        it('should be a function', () => {
+            expect(typeof resolve).equals('function');
+        });
+
+        it('should properly resolve home directory', () => {
+            expect(resolve('~')).equals(HOME);
+        });
+
+        it('should normalize given path', () => {
+            expect(resolve(`${HOME}/..`)).equals(p.dirname(HOME));
+        });
     });
 });

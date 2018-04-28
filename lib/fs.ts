@@ -34,6 +34,7 @@ export function mkdirp(path: string): void {
             return mkdirp(path);
         }
 
+        // istanbul ignore if
         if (!fs.statSync(path).isDirectory()) {
             throw err;
         }
@@ -46,7 +47,11 @@ export function mkdirp(path: string): void {
  * @param {string} path
  * @param {string} content
  */
-export function touch(path: string, content: string = ''): void {
+export function touch(
+    path: string,
+    // istanbul ignore next
+    content: string = ''
+): void {
     if (!fs.existsSync(path)) {
         mkdirp(p.dirname(path));
         fs.writeFileSync(path, content);
