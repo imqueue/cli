@@ -37,16 +37,18 @@
   "license": "ISC",
   "dependencies": {
     "imq-rpc": "^1.1.2",
+    "inquirer": "^5.2.0",
     "yargs": "^11.0.0"
   },
   "preferGlobal": true,
   "devDependencies": {
-    "@types/yargs": "^11.0.0",
     "@types/chai": "^4.1.2",
+    "@types/inquirer": "0.0.41",
     "@types/mocha": "^2.2.48",
     "@types/mock-require": "^2.0.0",
     "@types/node": "^9.4.6",
     "@types/sinon": "^4.3.0",
+    "@types/yargs": "^11.0.0",
     "chai": "^4.1.2",
     "coveralls": "^3.0.0",
     "mocha": "^5.0.1",

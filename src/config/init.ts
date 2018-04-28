@@ -16,6 +16,12 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import { Argv } from 'yargs';
+import * as inquirer from 'inquirer';
+import * as fs from 'fs';
+import { resolve } from '../../lib/path';
+import { touch } from '../../lib/fs';
+
+const CONFIG_FILENAME = 'config.json';
 
 // noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
@@ -23,11 +29,28 @@ export const { command, describe, builder, handler } = {
     describe: 'Interactively initializes IMQ CLI configuration file',
 
     builder(yargs: Argv) {
-        return yargs
-            .default('path', '~/.imq');
+        return yargs.default('path', '~/.imq');
     },
 
-    handler(argv: Argv) {
-        // TODO: implement
+    async handler(argv: any) {
+        const configPath = `${resolve(argv.path)}/${CONFIG_FILENAME}`;
+
+        if (fs.existsSync(configPath)) {
+            console.log('Config already initialized, path:', configPath);
+
+            const answer: any = await inquirer.prompt([{
+                type: 'confirm',
+                name: 'reInit',
+                message: 'Do you want to re-init?',
+                default: false
+            }]);
+
+            if (!answer.reInit) {
+                return;
+            }
+        }
+
+        // TODO: implement user questions and save
+        touch(configPath, '{}');
     }
 };
