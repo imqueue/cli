@@ -15,7 +15,10 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { Argv } from 'yargs';
+import { Argv, Arguments } from 'yargs';
+import { IMQClient } from 'imq-rpc';
+import * as fs from 'fs';
+import * as inquirer from 'inquirer';
 
 // noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
@@ -27,12 +30,34 @@ export const { command, describe, builder, handler } = {
             .option('o', {
                 alias: 'overwrite',
                 describe: 'Overwrite existing client without prompt',
-                boolean: true
+                boolean: true,
             })
             .default('path', '.');
     },
 
-    handler(argv: Argv) {
-        // TODO: implement
+    async handler(argv: Arguments) {
+        const { path, name } = argv;
+        const filePath = `${path}/${name}.ts`;
+        
+        const notExists = await new Promise(resolve =>
+            fs.access(filePath, resolve));
+
+        if (!argv.o && !notExists) {
+			const write = (await inquirer.prompt<{overwrite: boolean}>([{
+                type: 'confirm',
+                name: 'overwrite',
+                default: false,
+                message: `File "${filePath}" already exists. Overwrite it?`
+			}])).overwrite;
+			if (!write) {
+                process.exit(0);
+            }
+        }
+
+        await IMQClient.create(name, {
+            compile: false,
+            path,
+        });
+        console.log('Successfully created. Path:', filePath);
     }
 };
