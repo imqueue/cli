@@ -15,7 +15,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { Argv } from 'yargs';
+import { Arguments, Argv } from 'yargs';
 import * as inquirer from 'inquirer';
 import * as fs from 'fs';
 import { resolve } from '../../lib/path';
@@ -32,13 +32,13 @@ export const { command, describe, builder, handler } = {
         return yargs.default('path', '~/.imq');
     },
 
-    async handler(argv: any) {
+    async handler(argv: Arguments) {
         const configPath = `${resolve(argv.path)}/${CONFIG_FILENAME}`;
 
         if (fs.existsSync(configPath)) {
             console.log('Config already initialized, path:', configPath);
 
-            const answer: any = await inquirer.prompt([{
+            const answer: any = await inquirer.prompt<{ reInit: boolean }>([{
                 type: 'confirm',
                 name: 'reInit',
                 message: 'Do you want to re-init?',
