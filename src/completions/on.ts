@@ -26,21 +26,31 @@ import chalk from 'chalk';
 
 let PROGRAM: string = '';
 
-// noinspection JSUnusedGlobalSymbols
-export const { command, describe, builder, handler } = {
-    command: 'on',
-    describe: 'Enables completions for this program in your shell',
+// istanbul ignore next
+/**
+ * Prints add script success message to user
+ *
+ * @access private
+ * @param {string} rcFilename - path to shell rc file modified
+ */
+function printAdded(rcFilename: string) {
+    process.stdout.write(
+        chalk.green(`Completion script added to `) +
+        chalk.cyan(rcFilename) + '\n' +
+        'To have these changes to take effect, please, run:\n\n' +
+        '  $ ' + chalk.cyan(`source ${rcFilename}`) + '\n\n'
+    );
+}
 
-    builder(yargs: Argv) {
-        PROGRAM = yargs.argv.$0;
-    },
-
-    handler() {
-        try {
-            const zshScript = Object.keys(process.env)
-                .some(key => /^ZSH/.test(key)) ?
-                    'autoload bashcompinit\nbashcompinit' : '';
-            const script = `
+// istanbul ignore next
+/**
+ * Returns completions script for user's shell
+ *
+ * @param {string} zshScript - zsh based script part
+ * @return {string}
+ */
+function getScript(zshScript: string) {
+        return `
 ###-begin-${PROGRAM}-completions-###
 ${zshScript}
 _yargs_completions() {
@@ -56,6 +66,40 @@ _yargs_completions() {
 }
 complete -F _yargs_completions ${PROGRAM}
 ###-end-${PROGRAM}-completions-###\n`;
+}
+
+// istanbul ignore next
+/**
+ * Prints script exists message to the user
+ *
+ * @param {string} rcFilename - path to shell rc file containing script
+ */
+function printExists(rcFilename: string) {
+    process.stdout.write(
+        chalk.yellow.bold(
+            `Completion script already exists in your ${
+                rcFilename}.`) + '\n' +
+        'If it does not work, please try one of:\n\n' +
+        chalk.cyan('  1. Reload your shell\n') +
+        chalk.cyan(`  2. Run source ${rcFilename}\n\n`)
+    );
+}
+
+// noinspection JSUnusedGlobalSymbols
+export const { command, describe, builder, handler } = {
+    command: 'on',
+    describe: 'Enables completions for this program in your shell',
+
+    builder(yargs: Argv) {
+        PROGRAM = yargs.argv.$0;
+    },
+
+    handler() {
+        try {
+            const zshScript = Object.keys(process.env)
+                .some(key => /^ZSH/.test(key)) ?
+                'autoload bashcompinit\nbashcompinit' : '';
+            const script = getScript(zshScript);
             const rcFilename = zshScript ? '~/.zshrc' : '~/.bashrc';
             const rcFile = resolve(rcFilename);
             const rcText = read(rcFile, { encoding: 'utf8' });
@@ -64,23 +108,11 @@ complete -F _yargs_completions ${PROGRAM}
 
             if (!rxExist.test(rcText)) {
                 modify(rcFile, script);
-                process.stdout.write(
-                    chalk.green(`Completion script added to `) +
-                    chalk.cyan(rcFilename) + '\n' +
-                    'To have these changes to take effect, please, run:\n\n' +
-                    '  $ ' + chalk.cyan(`source ${rcFilename}`) + '\n\n'
-                );
+                printAdded(rcFilename);
             }
 
             else {
-                process.stdout.write(
-                    chalk.yellow.bold(
-                        `Completion script already exists in your ${
-                            rcFilename}.`) + '\n' +
-                    'If it does not work, please try one of:\n\n' +
-                    chalk.cyan('  1. Reload your shell\n') +
-                    chalk.cyan(`  2. Run source ${rcFilename}\n\n`)
-                );
+                printExists(rcFilename);
             }
         }
 
