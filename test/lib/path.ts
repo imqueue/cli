@@ -17,7 +17,7 @@
  */
 import '../mocks';
 import { expect } from 'chai';
-import { resolve } from '../../lib/path';
+import { resolve } from '../../lib';
 import * as p from 'path';
 
 const HOME: string = process.env['HOME'] ||
