@@ -82,3 +82,7 @@ imq completions off
 ~~~
 
 Currently it supports both `zsh` and `bash` shells.
+
+## License
+
+[ISC](https://github.com/imqueue/imq-rpc/blob/master/LICENSE)
