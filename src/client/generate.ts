@@ -24,7 +24,7 @@ import chalk from 'chalk';
 import { printError } from '../../lib';
 
 // noinspection JSUnusedGlobalSymbols
-export const { command, describe, builder, handler } = {
+export const { command, describe, builder, handler, promptOverride } = {
     command: 'generate <name> [path]',
     describe: 'Generates IMQ-RPC client for a specified service',
 
@@ -38,6 +38,22 @@ export const { command, describe, builder, handler } = {
             .default('path', '.');
     },
 
+    async promptOverride(filePath: string) {
+        const write = (await inquirer.prompt<{ overwrite: boolean }>([{
+            type: 'confirm',
+            name: 'overwrite',
+            default: false,
+            message: `File "${filePath}" already exists. Overwrite it?`
+        }])).overwrite;
+
+        if (!write) {
+            process.stdout.write(
+                chalk.yellow('File exists, overwrite disabled, exit...')
+            );
+            process.exit(0);
+        }
+    },
+
     async handler(argv: Arguments) {
         try {
             const { path, name } = argv;
@@ -45,19 +61,7 @@ export const { command, describe, builder, handler } = {
             const exists = fs.existsSync(filePath);
 
             if (!argv.o && exists) {
-                const write = (await inquirer.prompt<{ overwrite: boolean }>([{
-                    type: 'confirm',
-                    name: 'overwrite',
-                    default: false,
-                    message: `File "${filePath}" already exists. Overwrite it?`
-                }])).overwrite;
-
-                if (!write) {
-                    process.stdout.write(
-                        chalk.yellow('File exists, overwrite disabled, exit...')
-                    );
-                    process.exit(0);
-                }
+                await this.promptOverride(filePath);
             }
 
             await IMQClient.create(name, {
