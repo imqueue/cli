@@ -1,5 +1,5 @@
 /*!
- * IMQ Unit Test Mocks: redis
+ * IMQ-CLI Unit Test Mocks: redis
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *

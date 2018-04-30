@@ -17,6 +17,7 @@
  */
 import * as path from 'path';
 import { Argv, Arguments } from 'yargs';
+import { printError } from '../../lib';
 
 // noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
@@ -31,6 +32,12 @@ export const { command, describe, builder, handler } = {
     },
 
     handler(argv: Arguments) {
-        // TODO: implement
+        try {
+            // TODO: implement
+        }
+
+        catch (err) {
+            printError(err);
+        }
     }
 };

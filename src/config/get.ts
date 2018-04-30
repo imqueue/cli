@@ -16,6 +16,10 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import { Argv, Arguments } from 'yargs';
+import chalk from 'chalk';
+import { printError, loadConfig } from '../../lib';
+
+let PROGRAM: string = '';
 
 // noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
@@ -24,10 +28,56 @@ export const { command, describe, builder, handler } = {
               'not provided, will list all config options',
 
     builder(yargs: Argv) {
-        return yargs.default('option', '');
+        PROGRAM = yargs.argv.$0;
+        return yargs
+            .option('j', {
+                alias: 'json',
+                boolean: true,
+                default: false,
+                describe: 'Prints config in JSON format (only if ' +
+                          'option is not passed)'
+            })
+            .default('option', '');
     },
 
     handler(argv: Arguments) {
-        // TODO: implement
+        try {
+            const config = loadConfig();
+            const options = config && Object.keys(config) || [];
+
+            if (!options.length) {
+                return process.stdout.write(
+                    chalk.bold.yellow(
+                        'Config is empty. Try to init if first by running:') +
+                    '\n\n  $ ' +
+                    chalk.cyan(`${PROGRAM} config init`) + '\n\n'
+                );
+            }
+
+            if (argv.option) {
+                return process.stdout.write(
+                    JSON.stringify(config[argv.option])
+                );
+            }
+
+            process.stdout.write(chalk.bold.green('IMQ CLI Config:') + '\n');
+
+            if (argv.json) {
+                return process.stdout.write(
+                    chalk.cyan(JSON.stringify(config, null, 2)) + '\n'
+                );
+            }
+
+            for (let option of options) {
+                process.stdout.write(
+                    chalk.yellow(`${option}`) + ' = ' +
+                    chalk.cyan(JSON.stringify(config[option])) + '\n'
+                );
+            }
+        }
+
+        catch (err) {
+            printError(err);
+        }
     }
 };

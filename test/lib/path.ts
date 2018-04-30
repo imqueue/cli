@@ -17,11 +17,8 @@
  */
 import '../mocks';
 import { expect } from 'chai';
-import { resolve } from '../../lib';
 import * as p from 'path';
-
-const HOME: string = process.env['HOME'] ||
-    p.resolve('/home', String(process.env['USER']));
+import { resolve, OS_HOME } from '../../lib';
 
 describe('path', () => {
     describe('resolve()', () => {
@@ -30,11 +27,11 @@ describe('path', () => {
         });
 
         it('should properly resolve home directory', () => {
-            expect(resolve('~')).equals(HOME);
+            expect(resolve('~')).equals(OS_HOME);
         });
 
         it('should normalize given path', () => {
-            expect(resolve(`${HOME}/..`)).equals(p.dirname(HOME));
+            expect(resolve(`${OS_HOME}/..`)).equals(p.dirname(OS_HOME));
         });
     });
 });

@@ -21,6 +21,7 @@ import * as fs from 'fs';
 import * as p from 'path';
 import * as inquirer from 'inquirer';
 import chalk from 'chalk';
+import { printError } from '../../lib';
 
 // noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
@@ -38,27 +39,27 @@ export const { command, describe, builder, handler } = {
     },
 
     async handler(argv: Arguments) {
-        const { path, name } = argv;
-        const filePath = p.resolve(path, `${name}.ts`);
-        const exists = fs.existsSync(filePath);
-
-        if (!argv.o && exists) {
-			const write = (await inquirer.prompt<{ overwrite: boolean }>([{
-                type: 'confirm',
-                name: 'overwrite',
-                default: false,
-                message: `File "${filePath}" already exists. Overwrite it?`
-			}])).overwrite;
-
-			if (!write) {
-			    process.stdout.write(
-			        chalk.yellow('File exists, overwrite disabled, exit...')
-                );
-                process.exit(0);
-            }
-        }
-
         try {
+            const { path, name } = argv;
+            const filePath = p.resolve(path, `${name}.ts`);
+            const exists = fs.existsSync(filePath);
+
+            if (!argv.o && exists) {
+                const write = (await inquirer.prompt<{ overwrite: boolean }>([{
+                    type: 'confirm',
+                    name: 'overwrite',
+                    default: false,
+                    message: `File "${filePath}" already exists. Overwrite it?`
+                }])).overwrite;
+
+                if (!write) {
+                    process.stdout.write(
+                        chalk.yellow('File exists, overwrite disabled, exit...')
+                    );
+                    process.exit(0);
+                }
+            }
+
             await IMQClient.create(name, {
                 compile: false,
                 path
@@ -71,7 +72,7 @@ export const { command, describe, builder, handler } = {
         }
 
         catch (err) {
-            process.stderr.write(chalk.bold.red(err.message) + '\n');
+            printError(err);
         }
     }
 };

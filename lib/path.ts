@@ -16,16 +16,23 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import * as p from 'path';
+import { OS_HOME } from './constants';
 
 /**
  * Resolves given path to an absolute canonical path
  *
- * @param {string} path
+ * @param {...string[]} args
  */
-export function resolve(path: string) {
-    if (path.charAt(0) === '~') {
-        path = process.env['HOME'] + path.substr(1);
+export function resolve(...args: string[]) {
+    const paths: string[] = [];
+
+    for (let path of args) {
+        if (path.charAt(0) === '~') {
+            path = OS_HOME + path.substr(1);
+        }
+
+        paths.push(path);
     }
 
-    return p.normalize(path);
+    return p.normalize(p.resolve.apply(p, paths));
 }

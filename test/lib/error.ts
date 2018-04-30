@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: client patch
+ * IMQ-CLI Unit Tests: error
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,25 +15,14 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { Argv, Arguments } from 'yargs';
+import '../mocks';
+import { expect } from 'chai';
 import { printError } from '../../lib';
 
-// noinspection JSUnusedGlobalSymbols
-export const { command, describe, builder, handler } = {
-    command: 'patch <name> [path]',
-    describe: 'Patches given IMQ-RPC client',
-
-    builder(yargs: Argv) {
-        return yargs.default('path', '.');
-    },
-
-    handler(argv: Arguments) {
-        try {
-            // TODO: implement
-        }
-
-        catch (err) {
-            printError(err);
-        }
-    }
-};
+describe('error', () => {
+    describe('printError()', () => {
+        it('should be a function', () => {
+            expect(typeof printError).equals('function');
+        });
+    });
+});
