@@ -24,12 +24,15 @@ export const { command, describe, builder, handler } = {
     describe: 'Patches given IMQ-RPC client',
 
     builder(yargs: Argv) {
-        return yargs.default('path', '.');
+        return yargs
+            .default('path', '.')
+            .describe('path', 'Path do directory with client file');
     },
 
     handler(argv: Arguments) {
         try {
             // TODO: implement
+            console.log('Not implemented...');
         }
 
         catch (err) {

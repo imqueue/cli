@@ -23,3 +23,4 @@ export const IMQ_HOME = '~/.imq';
 export const CONFIG_FILENAME = 'config.json';
 export const CONFIG_PATH = resolve(IMQ_HOME, CONFIG_FILENAME);
 export const IS_ZSH = Object.keys(process.env).some(key => /^ZSH/.test(key));
+export const VERSION = require(`${__dirname}/../package.json`).version;

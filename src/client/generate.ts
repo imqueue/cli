@@ -35,6 +35,7 @@ export const { command, describe, builder, handler, promptOverride } = {
                 describe: 'Overwrite existing client without prompt',
                 boolean: true
             })
+            .describe('path', 'Directory where client file should be placed')
             .default('path', '.');
     },
 

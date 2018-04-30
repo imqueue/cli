@@ -17,12 +17,25 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import * as yargs from 'yargs';
+import { VERSION } from './lib';
 
 yargs
-    .version(require(`${__dirname}/package.json`).version)
+    .usage('IMQ Command Line Interface' +
+        `\nVersion: ${VERSION}` +
+        '\n\nUsage: $0 <command>')
+    .version(VERSION)
     .commandDir('src')
     .demandCommand()
     .wrap(yargs.terminalWidth())
     .help()
     .argv
 ;
+
+const commands = (<any>yargs).getCommandInstance().getCommands();
+
+if (commands.length && !(
+    yargs.argv._[0] && ~commands.indexOf(yargs.argv._[0])
+)) {
+    yargs.showHelp();
+    process.exit(1);
+}
