@@ -15,7 +15,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { Argv } from 'yargs';
+import { Argv, Arguments } from 'yargs';
 
 // noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
@@ -26,7 +26,7 @@ export const { command, describe, builder, handler } = {
         return yargs.default('path', '.');
     },
 
-    handler(argv: Argv) {
+    handler(argv: Arguments) {
         // TODO: implement
     }
 };

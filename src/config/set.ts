@@ -15,14 +15,18 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { Argv } from 'yargs';
+import { Argv, Arguments } from 'yargs';
 
 // noinspection JSUnusedGlobalSymbols
-export const { command, describe, handler } = {
+export const { command, describe, builder, handler } = {
     command: 'set <option> <value>',
     describe: 'Updates given config option with given value',
 
-    handler(argv: Argv) {
+    builder(yargs: Argv) {
+
+    },
+
+    handler(argv: Arguments) {
         // TODO: implement
     }
 };
