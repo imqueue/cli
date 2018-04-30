@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: completions
+ * IMQ-CLI Unit Tests: client
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,14 +15,14 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import './mocks';
+import '../mocks';
 import { expect } from 'chai';
-import * as client from '../src/completions';
+import * as client from '../../src/client';
 
-describe('completions', () => {
+describe('client', () => {
     it('should be a valid command definition', () => {
         expect(typeof client.command).equals('string');
-        expect(client.command).contains('completions');
+        expect(client.command).contains('client');
         expect(typeof client.describe).equals('string');
         expect(client.describe).not.to.be.empty;
         expect(typeof client.builder).equals('function');
