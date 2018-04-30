@@ -37,7 +37,8 @@ export const { command, describe, builder, handler } = {
                 describe: 'Prints config in JSON format (only if ' +
                           'option is not passed)'
             })
-            .default('option', '');
+            .default('option', '')
+            .describe('option', 'Config option to display value [optional]');
     },
 
     handler(argv: Arguments) {

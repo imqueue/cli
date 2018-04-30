@@ -55,6 +55,7 @@ export const { command, describe, handler } = {
             const config = loadConfig();
 
             // TODO: implement user questions and save
+            console.log('Not implemented...');
 
             saveConfig(config);
         }

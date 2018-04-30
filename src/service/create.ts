@@ -28,12 +28,16 @@ export const { command, describe, builder, handler } = {
     builder(yargs: Argv) {
         return yargs
             .default('name', `./${path.basename(process.cwd())}`)
-            .default('path', '.');
+            .describe('name', 'Service name to create with')
+            .default('path', '.')
+            .describe('path',
+                'Path to directory where service will be generated to');
     },
 
     handler(argv: Arguments) {
         try {
             // TODO: implement
+            console.log('Not implemented...');
         }
 
         catch (err) {
