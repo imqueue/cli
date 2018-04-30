@@ -7,7 +7,7 @@
 
 ## Why?
 
-IMQ-CLI makes work with imq-rpc simplier.	Frees you from writing boilerplate.
+IMQ-CLI makes work with imq-rpc simpler. Frees you from writing boilerplate.
 
 ## Usage
 
