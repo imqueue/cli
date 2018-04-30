@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: completions off
+ * IMQ-CLI Unit Tests: config init
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,14 +15,14 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import '../mocks';
+import '../../mocks';
 import { expect } from 'chai';
-import * as client from '../../src/completions/off';
+import * as client from '../../../src/config/init';
 
-describe('completions off', () => {
+describe('config init', () => {
     it('should be a valid command definition', () => {
         expect(typeof client.command).equals('string');
-        expect(client.command).contains('off');
+        expect(client.command).contains('init');
         expect(typeof client.describe).equals('string');
         expect(client.describe).not.to.be.empty;
         expect(typeof client.handler).equals('function');

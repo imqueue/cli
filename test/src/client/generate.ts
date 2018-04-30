@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: client patch
+ * IMQ-CLI Unit Tests: client generate
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,14 +15,14 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import '../mocks';
+import '../../mocks';
 import { expect } from 'chai';
-import * as client from '../../src/client/patch';
+import * as client from '../../../src/client/generate';
 
-describe('client patch', () => {
+describe('client generate', () => {
     it('should be a valid command definition', () => {
         expect(typeof client.command).equals('string');
-        expect(client.command).contains('patch');
+        expect(client.command).contains('generate');
         expect(typeof client.describe).equals('string');
         expect(client.describe).not.to.be.empty;
         expect(typeof client.handler).equals('function');

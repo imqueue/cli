@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: config init
+ * IMQ-CLI Unit Tests: service
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -17,14 +17,14 @@
  */
 import '../mocks';
 import { expect } from 'chai';
-import * as client from '../../src/config/init';
+import * as client from '../../src/service';
 
-describe('config init', () => {
+describe('service', () => {
     it('should be a valid command definition', () => {
         expect(typeof client.command).equals('string');
-        expect(client.command).contains('init');
+        expect(client.command).contains('service');
         expect(typeof client.describe).equals('string');
         expect(client.describe).not.to.be.empty;
-        expect(typeof client.handler).equals('function');
+        expect(typeof client.builder).equals('function');
     });
 });

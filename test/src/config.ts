@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: completions on
+ * IMQ-CLI Unit Tests: config
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -17,14 +17,14 @@
  */
 import '../mocks';
 import { expect } from 'chai';
-import * as client from '../../src/completions/on';
+import * as client from '../../src/config';
 
-describe('completions on', () => {
+describe('config', () => {
     it('should be a valid command definition', () => {
         expect(typeof client.command).equals('string');
-        expect(client.command).contains('on');
+        expect(client.command).contains('config');
         expect(typeof client.describe).equals('string');
         expect(client.describe).not.to.be.empty;
-        expect(typeof client.handler).equals('function');
+        expect(typeof client.builder).equals('function');
     });
 });
