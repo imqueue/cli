@@ -16,19 +16,19 @@ IMQ-CLI makes work with imq-rpc simplier.	Frees you from writing boilerplate.
 To generate client for service Test in current dir just specify the service Name.
 
 ~~~sh
-# imq-cli client generate Test
+# imq client generate Test
 ~~~
 
 To specify the out folder you should use second paramenter.
 
 ~~~sh
-# imq-cli client generate Test /tmp
+# imq client generate Test /tmp
 ~~~
 
 Use option "-o" to overwrite out file anyway....
 
 ~~~sh
-# imq-cli client generate -o Test /tmp
+# imq client generate -o Test /tmp
 ~~~
 
 Coming soon...
