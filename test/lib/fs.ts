@@ -21,7 +21,7 @@ import * as os from 'os';
 import * as fs from 'fs';
 import { uuid } from 'imq-rpc';
 import * as p from 'path';
-import { mkdirp, touch } from '../../lib/fs';
+import { mkdirp, touch } from '../../lib';
 
 const TEMP_DIR: string = p.resolve(os.tmpdir(), '.imq-cli-test');
 
