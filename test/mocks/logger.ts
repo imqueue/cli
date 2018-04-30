@@ -1,5 +1,5 @@
 /*!
- * IMQ-RPC Unit Test Mocks: logger
+ * IMQ-CLI Unit Test Mocks: logger
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *

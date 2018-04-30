@@ -15,5 +15,10 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-export const CONFIG_FILENAME = 'config.json';
+import * as os from 'os';
+import { resolve } from './path';
+
+export const OS_HOME: string = os.homedir() || String(process.env['HOME']);
 export const IMQ_HOME = '~/.imq';
+export const CONFIG_FILENAME = 'config.json';
+export const CONFIG_PATH = resolve(IMQ_HOME, CONFIG_FILENAME);

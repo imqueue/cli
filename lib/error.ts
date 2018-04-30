@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: client patch
+ * IMQ-CLI library: error
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,25 +15,20 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { Argv, Arguments } from 'yargs';
-import { printError } from '../../lib';
+import chalk from 'chalk';
 
-// noinspection JSUnusedGlobalSymbols
-export const { command, describe, builder, handler } = {
-    command: 'patch <name> [path]',
-    describe: 'Patches given IMQ-RPC client',
+// that is just a printing function, no need to do specific tests
+// istanbul ignore next
+/**
+ * Prints error message to standard error output
+ *
+ * @param {Error} err - error to display message from
+ * @param {boolean} [withStackTrace] - if true will printError error stack
+ */
+export function printError(err: Error, withStackTrace: boolean = false) {
+    process.stderr.write(chalk.bold.red(err.message) + '\n');
 
-    builder(yargs: Argv) {
-        return yargs.default('path', '.');
-    },
-
-    handler(argv: Arguments) {
-        try {
-            // TODO: implement
-        }
-
-        catch (err) {
-            printError(err);
-        }
+    if (withStackTrace && err.stack) {
+        process.stderr.write(chalk.cyan(err.stack) + '\n');
     }
-};
+}

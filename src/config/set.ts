@@ -15,18 +15,37 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { Argv, Arguments } from 'yargs';
+import { Arguments } from 'yargs';
+import chalk from 'chalk';
+import {
+    printError,
+    loadConfig,
+    saveConfig,
+    prepareConfigValue
+} from '../../lib';
 
 // noinspection JSUnusedGlobalSymbols
-export const { command, describe, builder, handler } = {
+export const { command, describe, handler } = {
     command: 'set <option> <value>',
     describe: 'Updates given config option with given value',
 
-    builder(yargs: Argv) {
-
-    },
-
     handler(argv: Arguments) {
-        // TODO: implement
+        try {
+            const config = loadConfig();
+
+            config[argv.option] = prepareConfigValue(argv.value);
+            saveConfig(config);
+
+            process.stdout.write(
+                chalk.green('Option ') +
+                chalk.cyan(`${argv.option}`) +
+                chalk.green(' is set to ') +
+                chalk.cyan(`${argv.value}`) + '\n'
+            );
+        }
+
+        catch (err) {
+            printError(err);
+        }
     }
 };

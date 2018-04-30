@@ -21,7 +21,7 @@ import {
     readFileSync as read,
     writeFileSync as write
 } from 'fs';
-import { resolve } from '../../lib';
+import { resolve, printError } from '../../lib';
 import chalk from 'chalk';
 
 let PROGRAM: string = '';
@@ -36,13 +36,14 @@ export const { command, describe, builder, handler } = {
     },
 
     handler() {
-        const rxReplace = new RegExp(`###-begin-${PROGRAM}-completions-###` +
-            '[\\s\\S]*?' + `###-end-${PROGRAM}-completions-###`);
-        const isZsh = Object.keys(process.env).some(key => /^ZSH/.test(key));
-        const rcFilename = isZsh ? '~/.zshrc' : '~/.bashrc';
-        const rcFile = resolve(rcFilename);
-
         try {
+            const rxReplace = new RegExp(`###-begin-${PROGRAM}-completions-###`
+                + '[\\s\\S]*?' + `###-end-${PROGRAM}-completions-###`);
+            const isZsh = Object.keys(process.env)
+                .some(key => /^ZSH/.test(key));
+            const rcFilename = isZsh ? '~/.zshrc' : '~/.bashrc';
+            const rcFile = resolve(rcFilename);
+
             if (exists(rcFile)) {
                 const rcText = read(rcFile, { encoding: 'utf8' })
                     .replace(rxReplace, '')
@@ -60,7 +61,7 @@ export const { command, describe, builder, handler } = {
         }
 
         catch (err) {
-            process.stderr.write(chalk.bold.red(err.message));
+            printError(err);
         }
     }
 };

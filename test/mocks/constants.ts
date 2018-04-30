@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: client patch
+ * IMQ-CLI Unit Test Mocks: constants
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,25 +15,15 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { Argv, Arguments } from 'yargs';
-import { printError } from '../../lib';
+import * as mock from 'mock-require';
 
-// noinspection JSUnusedGlobalSymbols
-export const { command, describe, builder, handler } = {
-    command: 'patch <name> [path]',
-    describe: 'Patches given IMQ-RPC client',
-
-    builder(yargs: Argv) {
-        return yargs.default('path', '.');
-    },
-
-    handler(argv: Arguments) {
-        try {
-            // TODO: implement
-        }
-
-        catch (err) {
-            printError(err);
-        }
-    }
+const constants = {
+    OS_HOME: '/tmp',
+    IMQ_HOME: '/tmp/.imq',
+    CONFIG_FILENAME: 'config.json',
+    CONFIG_PATH: '/tmp/.imq/config.json'
 };
+
+mock('../../lib/constants', constants);
+
+export * from '../../lib/constants';

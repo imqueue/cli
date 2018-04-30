@@ -1,5 +1,5 @@
 /*!
- * IMQ-RPC Unit Test Mocks Exports
+ * IMQ-CLI Unit Test Mocks Exports
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,5 +15,6 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
+export * from './constants';
 export * from './logger';
 export * from './redis';

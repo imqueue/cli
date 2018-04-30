@@ -21,7 +21,7 @@ import {
     appendFileSync as append,
     readFileSync as read
 } from 'fs';
-import { resolve, touch } from '../../lib';
+import { resolve, touch, printError } from '../../lib';
 import chalk from 'chalk';
 
 let PROGRAM: string = '';
@@ -36,9 +36,11 @@ export const { command, describe, builder, handler } = {
     },
 
     handler() {
-        const zshScript = Object.keys(process.env).some(key => /^ZSH/.test(key))
-            ? 'autoload bashcompinit\nbashcompinit' : '';
-        const script = `
+        try {
+            const zshScript = Object.keys(process.env)
+                .some(key => /^ZSH/.test(key)) ?
+                    'autoload bashcompinit\nbashcompinit' : '';
+            const script = `
 ###-begin-${PROGRAM}-completions-###
 ${zshScript}
 _yargs_completions() {
@@ -54,10 +56,8 @@ _yargs_completions() {
 }
 complete -F _yargs_completions ${PROGRAM}
 ###-end-${PROGRAM}-completions-###\n`;
-        const rcFilename = zshScript ? '~/.zshrc' : '~/.bashrc';
-        const rcFile = resolve(rcFilename);
-
-        try {
+            const rcFilename = zshScript ? '~/.zshrc' : '~/.bashrc';
+            const rcFile = resolve(rcFilename);
             const rcText = read(rcFile, { encoding: 'utf8' });
             const rxExist = new RegExp(`###-begin-${PROGRAM}-completions-###`);
             const modify = exists(rcFile) ? append : touch;
@@ -85,7 +85,7 @@ complete -F _yargs_completions ${PROGRAM}
         }
 
         catch (err) {
-            process.stderr.write(chalk.bold.red(err.message));
+            printError(err);
         }
     }
 };

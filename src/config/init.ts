@@ -15,39 +15,52 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { Arguments, Argv } from 'yargs';
 import * as inquirer from 'inquirer';
-import * as fs from 'fs';
-import { resolve, touch, CONFIG_FILENAME, IMQ_HOME } from '../../lib';
+import {
+    CONFIG_PATH,
+    loadConfig,
+    saveConfig,
+    configEmpty,
+    printError
+} from '../../lib';
+import chalk from 'chalk';
 
 // noinspection JSUnusedGlobalSymbols
-export const { command, describe, builder, handler } = {
-    command: 'init [path]',
+export const { command, describe, handler } = {
+    command: 'init',
     describe: 'Interactively initializes IMQ CLI configuration file',
 
-    builder(yargs: Argv) {
-        return yargs.default('path', IMQ_HOME);
-    },
+    async handler() {
+        try {
+            if (!configEmpty()) {
+                process.stdout.write(
+                    chalk.bold.yellow('Config already initialized, path: ') +
+                    chalk.cyan(CONFIG_PATH) + '\n'
+                );
 
-    async handler(argv: Arguments) {
-        const configPath = `${resolve(argv.path)}/${CONFIG_FILENAME}`;
+                const answer: any = await inquirer.prompt<{ reInit: boolean }>(
+                    [{
+                        type: 'confirm',
+                        name: 'reInit',
+                        message: 'Do you want to re-init?',
+                        default: false
+                    }]
+                );
 
-        if (fs.existsSync(configPath)) {
-            console.log('Config already initialized, path:', configPath);
-
-            const answer: any = await inquirer.prompt<{ reInit: boolean }>([{
-                type: 'confirm',
-                name: 'reInit',
-                message: 'Do you want to re-init?',
-                default: false
-            }]);
-
-            if (!answer.reInit) {
-                return;
+                if (!answer.reInit) {
+                    return;
+                }
             }
+
+            const config = loadConfig();
+
+            // TODO: implement user questions and save
+
+            saveConfig(config);
         }
 
-        // TODO: implement user questions and save
-        touch(configPath, '{}');
+        catch (err) {
+            printError(err);
+        }
     }
 };
