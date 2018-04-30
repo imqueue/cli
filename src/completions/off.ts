@@ -26,6 +26,22 @@ import chalk from 'chalk';
 
 let PROGRAM: string = '';
 
+// istanbul ignore next
+/**
+ * Prints script removal success message to the user
+ *
+ * @access private
+ * @param {string} rcFilename - path to shell rc file modified
+ */
+function printSuccess(rcFilename: string) {
+    process.stdout.write(
+        chalk.green('Completions removed from ') +
+        chalk.cyan(`${rcFilename}`) + '\n' +
+        'To have these changes to take effect, please, run:\n\n' +
+        '  $ ' + chalk.cyan(`source ${rcFilename}`) + '\n\n'
+    );
+}
+
 // noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
     command: 'off',
@@ -52,12 +68,7 @@ export const { command, describe, builder, handler } = {
                 write(rcFile, rcText, { encoding: 'utf8' });
             }
 
-            process.stdout.write(
-                chalk.green('Completions removed from ') +
-                chalk.cyan(`${rcFilename}`) + '\n' +
-                'To have these changes to take effect, please, run:\n\n' +
-                '  $ ' + chalk.cyan(`source ${rcFilename}`) + '\n\n'
-            );
+            printSuccess(rcFilename);
         }
 
         catch (err) {
