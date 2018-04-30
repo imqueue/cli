@@ -1,6 +1,6 @@
 {
   "name": "imq-cli",
-  "version": "1.0.0-dev1",
+  "version": "1.0.0-dev2",
   "description": "Command Line Interface for IMQ",
   "keywords": [
     "cli",
@@ -39,7 +39,7 @@
   "dependencies": {
     "@types/inquirer": "0.0.41",
     "chalk": "^2.4.1",
-    "imq-rpc": "^1.1.5",
+    "imq-rpc": "^1.1.6",
     "inquirer": "^5.2.0",
     "yargs": "^11.0.0"
   },

@@ -19,7 +19,7 @@ clients based on desired configuration.
 
 ~~~bash
 IMQ Command Line Interface
-Version: 1.0.0-dev1
+Version: 1.0.0-dev2
 
 Usage: imq <command>
 
