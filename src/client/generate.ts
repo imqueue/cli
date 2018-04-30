@@ -67,7 +67,7 @@ export const { command, describe, builder, handler } = {
             process.stdout.write(
                 chalk.green('Successfully created. Path: ') +
                 chalk.cyan(filePath) + '\n'
-            )
+            );
         }
 
         catch(err) {
