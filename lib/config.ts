@@ -94,6 +94,7 @@ export function prepareConfigValue(value: any) {
         }
 
         // istanbul ignore else
+        // noinspection RegExpSingleCharAlternation,RegExpRedundantEscape
         if (/^\s*(\[|\{)/.test(value)) {
             return JSON.parse(value);
         }
