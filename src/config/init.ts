@@ -18,10 +18,7 @@
 import { Arguments, Argv } from 'yargs';
 import * as inquirer from 'inquirer';
 import * as fs from 'fs';
-import { resolve } from '../../lib/path';
-import { touch } from '../../lib/fs';
-
-const CONFIG_FILENAME = 'config.json';
+import { resolve, touch, CONFIG_FILENAME, IMQ_HOME } from '../../lib';
 
 // noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
@@ -29,7 +26,7 @@ export const { command, describe, builder, handler } = {
     describe: 'Interactively initializes IMQ CLI configuration file',
 
     builder(yargs: Argv) {
-        return yargs.default('path', '~/.imq');
+        return yargs.default('path', IMQ_HOME);
     },
 
     async handler(argv: Arguments) {

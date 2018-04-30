@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI library: exports
+ * IMQ-CLI library: constants
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,6 +15,5 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-export * from './constants';
-export * from './fs';
-export * from './path';
+export const CONFIG_FILENAME = 'config.json';
+export const IMQ_HOME = '~/.imq';

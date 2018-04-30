@@ -21,7 +21,7 @@ import * as p from 'path';
 /**
  * Silently recursively creates all directories in a given path
  *
- * @param {string} path
+ * @param {string} path - path to create
  */
 export function mkdirp(path: string): void {
     try {
@@ -42,10 +42,11 @@ export function mkdirp(path: string): void {
 }
 
 /**
- * Silently creates a file under given file path
+ * Silently creates a file under given file path.
+ * If content of a file is omitted, will create an empty file.
  *
- * @param {string} path
- * @param {string} content
+ * @param {string} path - path to file to create
+ * @param {string} [content] - file contents to put in
  */
 export function touch(
     path: string,
