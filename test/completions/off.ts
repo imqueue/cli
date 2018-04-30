@@ -1,6 +1,5 @@
-#!/usr/bin/env node
 /*!
- * I Message Queue Command Line Interface
+ * IMQ-CLI Unit Tests: completions off
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -16,13 +15,16 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import * as yargs from 'yargs';
+import '../mocks';
+import { expect } from 'chai';
+import * as client from '../../src/completions/off';
 
-yargs
-    .version(require(`${__dirname}/package.json`).version)
-    .commandDir('src')
-    .demandCommand()
-    .wrap(yargs.terminalWidth())
-    .help()
-    .argv
-;
+describe('completions off', () => {
+    it('should be a valid command definition', () => {
+        expect(typeof client.command).equals('string');
+        expect(client.command).contains('off');
+        expect(typeof client.describe).equals('string');
+        expect(client.describe).not.to.be.empty;
+        expect(typeof client.handler).equals('function');
+    });
+});

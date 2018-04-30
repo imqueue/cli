@@ -43,7 +43,7 @@ export const { command, describe, builder, handler } = {
         const exists = fs.existsSync(filePath);
 
         if (!argv.o && exists) {
-			const write = (await inquirer.prompt<{overwrite: boolean}>([{
+			const write = (await inquirer.prompt<{ overwrite: boolean }>([{
                 type: 'confirm',
                 name: 'overwrite',
                 default: false,
@@ -70,7 +70,7 @@ export const { command, describe, builder, handler } = {
             );
         }
 
-        catch(err) {
+        catch (err) {
             process.stderr.write(chalk.bold.red(err.message) + '\n');
         }
     }
