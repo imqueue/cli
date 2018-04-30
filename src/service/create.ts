@@ -16,7 +16,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import * as path from 'path';
-import { Argv } from 'yargs';
+import { Argv, Arguments } from 'yargs';
 
 // noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
@@ -30,7 +30,7 @@ export const { command, describe, builder, handler } = {
             .default('path', '.');
     },
 
-    handler(argv: Argv) {
+    handler(argv: Arguments) {
         // TODO: implement
     }
 };
