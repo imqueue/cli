@@ -21,7 +21,8 @@ const constants = {
     OS_HOME: '/tmp',
     IMQ_HOME: '/tmp/.imq',
     CONFIG_FILENAME: 'config.json',
-    CONFIG_PATH: '/tmp/.imq/config.json'
+    CONFIG_PATH: '/tmp/.imq/config.json',
+    IS_ZSH: Object.keys(process.env).some(key => /^ZSH/.test(key))
 };
 
 mock('../../lib/constants', constants);
