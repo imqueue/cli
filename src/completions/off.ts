@@ -21,10 +21,11 @@ import {
     readFileSync as read,
     writeFileSync as write
 } from 'fs';
-import { resolve, printError } from '../../lib';
+import { resolve, printError, IS_ZSH } from '../../lib';
 import chalk from 'chalk';
 
 let PROGRAM: string = '';
+let RX_REPLACE: RegExp;
 
 // istanbul ignore next
 /**
@@ -49,21 +50,19 @@ export const { command, describe, builder, handler } = {
 
     builder(yargs: Argv) {
         PROGRAM = yargs.argv.$0;
+        RX_REPLACE = new RegExp(`###-begin-${PROGRAM}-completions-###`
+            + '[\\s\\S]*?' + `###-end-${PROGRAM}-completions-###`);
     },
 
     handler() {
         try {
-            const rxReplace = new RegExp(`###-begin-${PROGRAM}-completions-###`
-                + '[\\s\\S]*?' + `###-end-${PROGRAM}-completions-###`);
-            const isZsh = Object.keys(process.env)
-                .some(key => /^ZSH/.test(key));
-            const rcFilename = isZsh ? '~/.zshrc' : '~/.bashrc';
+            const rcFilename = IS_ZSH ? '~/.zshrc' : '~/.bashrc';
             const rcFile = resolve(rcFilename);
 
             if (exists(rcFile)) {
                 const rcText = read(rcFile, { encoding: 'utf8' })
-                    .replace(rxReplace, '')
-                    .trim();
+                    .replace(RX_REPLACE, '')
+                    .trim() + '\n';
 
                 write(rcFile, rcText, { encoding: 'utf8' });
             }

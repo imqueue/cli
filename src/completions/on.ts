@@ -21,10 +21,11 @@ import {
     appendFileSync as append,
     readFileSync as read
 } from 'fs';
-import { resolve, touch, printError } from '../../lib';
+import { resolve, touch, printError, IS_ZSH } from '../../lib';
 import chalk from 'chalk';
 
 let PROGRAM: string = '';
+let RX_EXISTS: RegExp;
 
 // istanbul ignore next
 /**
@@ -92,21 +93,19 @@ export const { command, describe, builder, handler } = {
 
     builder(yargs: Argv) {
         PROGRAM = yargs.argv.$0;
+        RX_EXISTS = new RegExp(`###-begin-${PROGRAM}-completions-###`);
     },
 
     handler() {
         try {
-            const zshScript = Object.keys(process.env)
-                .some(key => /^ZSH/.test(key)) ?
-                'autoload bashcompinit\nbashcompinit' : '';
-            const script = getScript(zshScript);
-            const rcFilename = zshScript ? '~/.zshrc' : '~/.bashrc';
+            const zScript = IS_ZSH ? 'autoload bashcompinit\nbashcompinit' : '';
+            const script = getScript(zScript);
+            const rcFilename = IS_ZSH ? '~/.zshrc' : '~/.bashrc';
             const rcFile = resolve(rcFilename);
             const rcText = read(rcFile, { encoding: 'utf8' });
-            const rxExist = new RegExp(`###-begin-${PROGRAM}-completions-###`);
             const modify = exists(rcFile) ? append : touch;
 
-            if (!rxExist.test(rcText)) {
+            if (!RX_EXISTS.test(rcText)) {
                 modify(rcFile, script);
                 printAdded(rcFilename);
             }
