@@ -99,14 +99,12 @@ export const { command, describe, builder, handler } = {
     handler() {
         try {
             const zScript = IS_ZSH ? 'autoload bashcompinit\nbashcompinit' : '';
-            const script = getScript(zScript);
             const rcFilename = IS_ZSH ? '~/.zshrc' : '~/.bashrc';
             const rcFile = resolve(rcFilename);
             const rcText = read(rcFile, { encoding: 'utf8' });
-            const modify = exists(rcFile) ? append : touch;
 
             if (!RX_EXISTS.test(rcText)) {
-                modify(rcFile, script);
+                (exists(rcFile) ? append : touch)(rcFile, getScript(zScript));
                 printAdded(rcFilename);
             }
 
