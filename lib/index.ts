@@ -20,3 +20,4 @@ export * from './error';
 export * from './config';
 export * from './fs';
 export * from './path';
+export * from './travis';
