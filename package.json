@@ -37,6 +37,7 @@
   "author": "Mykhailo Stadnyk <mikhus@gmail.com> (https://github.com/Mikhus)",
   "license": "ISC",
   "dependencies": {
+    "@rstacruz/travis-encrypt": "^1.1.1",
     "@types/dotenv": "^4.0.3",
     "@types/inquirer": "0.0.41",
     "chalk": "^2.4.1",
