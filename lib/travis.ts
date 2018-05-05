@@ -16,9 +16,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import * as NodeRSA from 'node-rsa';
-
-const Travis = require('travis-ci');
-const version: string = '2.0.0';
+import { TravisClient } from 'node-travis';
 
 /**
  * Returns travis instance
@@ -27,7 +25,7 @@ const version: string = '2.0.0';
  * @param {boolean} pro
  */
 function getInstance(pro: boolean) {
-    return new Travis({ version, pro });
+    return new TravisClient({ pro });
 }
 
 // istanbul ignore next
@@ -39,8 +37,11 @@ function getInstance(pro: boolean) {
  * @param {string} password
  * @return {boolean}
  */
-function isPro(username?: string, password?: string) {
-    return !!(username && password);
+function isPro() {
+    return !!(
+        process.env.TRAVIS_ACCESS_TOKEN ||
+        process.env.GITHUB_OAUTH_TOKEN
+    );
 }
 
 // istanbul ignore next
@@ -54,9 +55,7 @@ function isPro(username?: string, password?: string) {
 async function loadKey(travis: any, slug: string): Promise<any> {
     const [owner, repo] = slug.split('/');
 
-    return new Promise((resolve, reject) => {
-        travis.repos(owner, repo).key.get(wrappedCallback(resolve, reject));
-    });
+    return await travis.repos(owner, repo).key.get();
 }
 
 // istanbul ignore next
@@ -65,15 +64,13 @@ async function loadKey(travis: any, slug: string): Promise<any> {
  *
  * @access private
  * @param {Travis} travis
- * @param {string} username
- * @param {string} password
  * @return {Promise<boolean>}
  */
-async function auth(travis: any, username: string, password: string) {
+async function auth(travis: any) {
     try {
-        await new Promise((resolve, reject) => {
-            const options = { username, password };
-            travis.authenticate(options, wrappedCallback(resolve, reject));
+        await travis.authenticate({
+            auth_token: process.env.TRAVIS_ACCESS_TOKEN,
+            github_token: process.env.GITHUB_OAUTH_TOKEN
         });
 
         return true;
@@ -90,39 +87,19 @@ async function auth(travis: any, username: string, password: string) {
  *
  * @access private
  * @param {string} slug
- * @param {string} username
- * @param {string} password
  * @return {Promise<string>}
  */
 async function fetchKey(
-    slug: string, username?: string, password?: string
+    slug: string
 ): Promise<string> {
-    const pro = isPro(username, password);
+    const pro = isPro();
     const travis = getInstance(pro);
 
-    if (pro && !await auth(travis, <string>username, <string>password)) {
+    if (pro && !await auth(travis)) {
         return '';
     }
 
-    const data = await loadKey(travis, slug);
-
-    return data && data.key || '';
-}
-
-// istanbul ignore next
-/**
- * Builds and returns
- *
- * @access private
- * @param {Function} resolve
- * @param {Function} reject
- * @return {(err: Error, result: string) => any}
- */
-function wrappedCallback(resolve: Function, reject: Function) {
-    return (err: Error, result: string) => {
-        if (err) return reject(err);
-        resolve(result);
-    };
+    return (await loadKey(travis, slug) || {}).key || '';
 }
 
 /**
@@ -131,18 +108,15 @@ function wrappedCallback(resolve: Function, reject: Function) {
  * @see https://docs.travis-ci.com/user/encryption-keys/
  * @param {string} repository - git repository owner/name
  * @param {string} data - sensitive data to encrypt
- * @param {string} [username] - travis username
- * @param {string} [password] - travis password
  * @return {Promise<string>}
  */
 export async function travisEncrypt(
     repository: string,
-    data: string,
-    username?: string,
-    password?: string
+    data: string
 ): Promise<string> {
-    const pem = (await fetchKey(repository, username, password))
-        .replace(/RSA PUBLIC KEY/g, 'PUBLIC KEY');
+    const pem = (await fetchKey(repository)).replace(
+        /RSA PUBLIC KEY/g,
+        'PUBLIC KEY');
 
     return new NodeRSA(pem, 'pkcs8-public-pem').encrypt(data, 'base64');
 }
