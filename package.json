@@ -42,7 +42,7 @@
     "imq-rpc": "^1.1.7",
     "inquirer": "^5.2.0",
     "node-rsa": "^0.4.2",
-    "node-travis": "^1.0.0-dev",
+    "node-travis": "^1.0.0-dev1",
     "yargs": "^11.0.0"
   },
   "preferGlobal": true,
