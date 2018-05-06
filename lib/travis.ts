@@ -24,6 +24,7 @@ import { TravisClient } from 'node-travis';
  * @see https://docs.travis-ci.com/user/encryption-keys/
  * @param {string} repository - git repository owner/name
  * @param {string} data - sensitive data to encrypt
+ * @param {string} github_token - token if auth required (pro mode)
  * @return {Promise<string>}
  */
 export async function travisEncrypt(
@@ -33,6 +34,7 @@ export async function travisEncrypt(
 ): Promise<string> {
     const travis = new TravisClient({ pro: !!github_token });
 
+    // istanbul ignore next
     if (travis.pro) {
         await travis.authenticate({ github_token });
     }
