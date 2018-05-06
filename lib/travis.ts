@@ -42,10 +42,9 @@ export async function travisEncrypt(
     const [owner, repo] = repository.split('/');
     const pem = await travis.repos(owner, repo).key.get();
     const rsa = new NodeRSA();
-    const buf = Buffer.from(data, 'utf8');
 
     rsa.importKey(Buffer.from(pem.key, 'utf8'), 'public');
     rsa.setOptions({ encryptionScheme: 'pkcs1' });
 
-    return rsa.encrypt(buf).toString('base64');
+    return rsa.encrypt(Buffer.from(data, 'utf8')).toString('base64');
 }
