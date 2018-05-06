@@ -19,90 +19,6 @@ import * as NodeRSA from 'node-rsa';
 import { TravisClient } from 'node-travis';
 
 /**
- * Returns travis instance
- *
- * @access private
- * @param {boolean} pro
- */
-function getInstance(pro: boolean) {
-    return new TravisClient({ pro });
-}
-
-// istanbul ignore next
-/**
- * Returns true if username and password is defined, false otherwise
- *
- * @access private
- * @param {string} username
- * @param {string} password
- * @return {boolean}
- */
-function isPro() {
-    return !!(
-        process.env.TRAVIS_ACCESS_TOKEN ||
-        process.env.GITHUB_OAUTH_TOKEN
-    );
-}
-
-// istanbul ignore next
-/**
- * Loads key data for repository from travis
- *
- * @param {Travis} travis
- * @param {string} slug
- * @return {Promise<any>}
- */
-async function loadKey(travis: any, slug: string): Promise<any> {
-    const [owner, repo] = slug.split('/');
-
-    return await travis.repos(owner, repo).key.get();
-}
-
-// istanbul ignore next
-/**
- * Performs travis authentication
- *
- * @access private
- * @param {Travis} travis
- * @return {Promise<boolean>}
- */
-async function auth(travis: any) {
-    try {
-        await travis.authenticate({
-            auth_token: process.env.TRAVIS_ACCESS_TOKEN,
-            github_token: process.env.GITHUB_OAUTH_TOKEN
-        });
-
-        return true;
-    }
-
-    catch (err) {
-        return false;
-    }
-}
-
-// istanbul ignore next
-/**
- * Fetches public encryption key from travis
- *
- * @access private
- * @param {string} slug
- * @return {Promise<string>}
- */
-async function fetchKey(
-    slug: string
-): Promise<string> {
-    const pro = isPro();
-    const travis = getInstance(pro);
-
-    if (pro && !await auth(travis)) {
-        return '';
-    }
-
-    return (await loadKey(travis, slug) || {}).key || '';
-}
-
-/**
  * Returns encrypted secure key for travis sensitive data.
  *
  * @see https://docs.travis-ci.com/user/encryption-keys/
@@ -112,11 +28,22 @@ async function fetchKey(
  */
 export async function travisEncrypt(
     repository: string,
-    data: string
+    data: string,
+    github_token?: string
 ): Promise<string> {
-    const pem = (await fetchKey(repository)).replace(
-        /RSA PUBLIC KEY/g,
-        'PUBLIC KEY');
+    const travis = new TravisClient({ pro: !!github_token });
 
-    return new NodeRSA(pem, 'pkcs8-public-pem').encrypt(data, 'base64');
+    if (travis.pro) {
+        await travis.authenticate({ github_token });
+    }
+
+    const [owner, repo] = repository.split('/');
+    const pem = await travis.repos(owner, repo).key.get();
+    const rsa = new NodeRSA();
+    const buf = Buffer.from(data, 'utf8');
+
+    rsa.importKey(Buffer.from(pem.key, 'utf8'), 'public');
+    rsa.setOptions({ encryptionScheme: 'pkcs1' });
+
+    return rsa.encrypt(buf).toString('base64');
 }
