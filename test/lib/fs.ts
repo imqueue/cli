@@ -21,7 +21,7 @@ import * as os from 'os';
 import * as fs from 'fs';
 import { uuid } from 'imq-rpc';
 import * as p from 'path';
-import { mkdirp, touch } from '../../lib';
+import { mkdirp, touch, rmdir } from '../../lib';
 
 const TEMP_DIR: string = p.resolve(os.tmpdir(), '.imq-cli-test');
 
@@ -60,6 +60,34 @@ describe('fs', () => {
 
             expect(fs.existsSync(file)).to.be.true;
             expect(fs.readFileSync(file).toString()).equals('initial');
+        });
+    });
+
+    describe('rmdir()', () => {
+        it('should be a function', () => {
+            expect(typeof rmdir).equals('function');
+        });
+
+        it('should remove directory with all it contents', () => {
+            const target = p.resolve(TEMP_DIR, uuid());
+            const file = p.resolve(target, uuid());
+            const dir = p.resolve(target, uuid());
+            const dirFile = p.resolve(dir, uuid());
+            const dirDir = p.resolve(dir, uuid());
+
+            fs.mkdirSync(target);
+            fs.writeFileSync(file, '');
+            fs.mkdirSync(dir);
+            fs.mkdirSync(dirDir);
+            fs.writeFileSync(dirFile, '');
+
+            rmdir(target);
+
+            expect(fs.existsSync(dirDir)).to.be.false;
+            expect(fs.existsSync(dirFile)).to.be.false;
+            expect(fs.existsSync(dir)).to.be.false;
+            expect(fs.existsSync(file)).to.be.false;
+            expect(fs.existsSync(target)).to.be.false;
         });
     });
 });

@@ -35,13 +35,17 @@ import { execSync } from 'child_process';
 
 const commandExists = require('command-exists').sync;
 
-function checkGit() {
+// we are going to ignore almast all code here because it's very hard to test
+// command line user interaction
+// istanbul ignore next
+export function checkGit() {
     if (!commandExists('git')) {
         throw new Error('Git required but is not installed!');
     }
 }
 
-async function loadTemplates() {
+// istanbul ignore next
+export async function loadTemplates() {
     if (fs.existsSync(TPL_HOME)) {
         await updateTemplates();
     }
@@ -65,7 +69,8 @@ async function loadTemplates() {
     }, {});
 }
 
-async function updateTemplates() {
+// istanbul ignore next
+export async function updateTemplates() {
     const cwd = process.cwd();
 
     process.chdir(TPL_HOME);
@@ -77,7 +82,8 @@ async function updateTemplates() {
     process.chdir(cwd);
 }
 
-async function loadTemplate(url: string): Promise<string> {
+// istanbul ignore next
+export async function loadTemplate(url: string): Promise<string> {
     const name = (url.split(/[\/]/).pop() || '').replace(/\.git$/, '');
     const path = resolve(CUSTOM_TPL_HOME, name);
 
@@ -103,7 +109,8 @@ async function loadTemplate(url: string): Promise<string> {
     return path;
 }
 
-async function selectTemplate(
+// istanbul ignore next
+export async function selectTemplate(
     type: string
 ): Promise<{
     [name: string]: string
@@ -159,7 +166,8 @@ async function selectTemplate(
     return { [name]: path };
 }
 
-async function templateOptions(config: IMQCLIConfig) {
+// istanbul ignore next
+export async function templateOptions(config: IMQCLIConfig) {
     let answer: any = await inquirer.prompt<{ useDefault: boolean }>(
         [{
             type: 'confirm',
@@ -213,16 +221,19 @@ async function templateOptions(config: IMQCLIConfig) {
 
 }
 
-async function versionSystemOptions(config: IMQCLIConfig) {
+// istanbul ignore next
+export async function versionSystemOptions(config: IMQCLIConfig) {
 
 }
 
-async function serviceQuestions(config: IMQCLIConfig) {
+// istanbul ignore next
+export async function serviceQuestions(config: IMQCLIConfig) {
     await templateOptions(config);
     await versionSystemOptions(config);
 }
 
-async function clientQuestions(config: IMQCLIConfig) {
+// istanbul ignore next
+export async function clientQuestions(config: IMQCLIConfig) {
 
 }
 
