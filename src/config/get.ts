@@ -57,7 +57,7 @@ export const { command, describe, builder, handler } = {
 
             if (argv.option) {
                 return process.stdout.write(
-                    JSON.stringify(config[argv.option])
+                    JSON.stringify(config[argv.option]) + '\n';
                 );
             }
 
