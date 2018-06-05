@@ -38,6 +38,7 @@
   "license": "ISC",
   "dependencies": {
     "chalk": "^2.4.1",
+    "command-exists": "^1.2.6",
     "dotenv": "^5.0.1",
     "imq-rpc": "^1.1.7",
     "inquirer": "^5.2.0",

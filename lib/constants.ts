@@ -20,6 +20,9 @@ import { resolve } from './path';
 
 export const OS_HOME: string = os.homedir() || String(process.env['HOME']);
 export const IMQ_HOME = '~/.imq';
+export const TPL_REPO = 'git@github.com:imqueue/templates.git';
+export const TPL_HOME = resolve(IMQ_HOME, 'templates');
+export const CUSTOM_TPL_HOME = resolve(IMQ_HOME, 'custom-templates');
 export const CONFIG_FILENAME = 'config.json';
 export const CONFIG_PATH = resolve(IMQ_HOME, CONFIG_FILENAME);
 export const IS_ZSH = Object.keys(process.env).some(key => /^ZSH/.test(key));
