@@ -17,6 +17,32 @@
  */
 import * as fs from 'fs';
 import * as p from 'path';
+import { resolve } from '.';
+
+/**
+ * Removes directory and all its content recursively
+ *
+ * @param {string} path
+ */
+export function rmdir(path: string) {
+    let files = [];
+
+    if( fs.existsSync(path) ) {
+        files = fs.readdirSync(path);
+
+        files.forEach((file, index) => {
+            const curPath = resolve(path, file);
+
+            if (fs.lstatSync(curPath).isDirectory()) {
+                rmdir(curPath);
+            } else {
+                fs.unlinkSync(curPath);
+            }
+        });
+
+        fs.rmdirSync(path);
+    }
+};
 
 /**
  * Silently recursively creates all directories in a given path
