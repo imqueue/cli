@@ -14,8 +14,8 @@
   "scripts": {
     "prepublish": "./node_modules/.bin/tsc",
     "test": "(./node_modules/.bin/tsc && ./node_modules/.bin/nyc mocha && ./node_modules/.bin/nyc report --reporter=text-lcov | coveralls) && npm run test-coverage",
-    "test-fast": "./node_modules/.bin/tsc && ./node_modules/.bin/nyc mocha && /usr/bin/env node -e \"require('opn')('file://`pwd`/coverage/index.html', { wait: false });\"",
-    "test-local": "export COVERALLS_REPO_TOKEN=$IMQ_CLI_COVERALLS_TOKEN && npm test && /usr/bin/env node -e \"require('opn')('https://coveralls.io/github/imqueue/imq-rpc', { wait: false });\"",
+    "test-fast": "./node_modules/.bin/tsc && ./node_modules/.bin/nyc mocha ; /usr/bin/env node -e \"require('opn')('file://`pwd`/coverage/index.html', { wait: false });\"",
+    "test-local": "export COVERALLS_REPO_TOKEN=$IMQ_CLI_COVERALLS_TOKEN && npm test ; /usr/bin/env node -e \"require('opn')('https://coveralls.io/github/imqueue/imq-rpc', { wait: false });\"",
     "test-coverage": "cat ./coverage/lcov.info | CODECLIMATE_API_HOST=https://codebeat.co/webhooks/code_coverage CODECLIMATE_REPO_TOKEN=bafe0c12-51c6-4419-b671-cf107b5293e3 ./node_modules/.bin/codeclimate-test-reporter",
     "clean-typedefs": "find . -name '*.d.ts' -not -wholename '*node_modules*' -not -wholename '*generator*' -type f -delete",
     "clean-maps": "find . -name '*.js.map' -not -wholename '*node_modules*' -not -wholename '*generator*' -type f -delete",

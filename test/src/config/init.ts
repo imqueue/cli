@@ -17,14 +17,14 @@
  */
 import '../../mocks';
 import { expect } from 'chai';
-import * as client from '../../../src/config/init';
+import * as config from '../../../src/config/init';
 
 describe('config init', () => {
     it('should be a valid command definition', () => {
-        expect(typeof client.command).equals('string');
-        expect(client.command).contains('init');
-        expect(typeof client.describe).equals('string');
-        expect(client.describe).not.to.be.empty;
-        expect(typeof client.handler).equals('function');
+        expect(typeof config.command).equals('string');
+        expect(config.command).contains('init');
+        expect(typeof config.describe).equals('string');
+        expect(config.describe).not.to.be.empty;
+        expect(typeof config.handler).equals('function');
     });
 });
