@@ -40,6 +40,11 @@ inquirer.registerPrompt(
     require('inquirer-autocomplete-prompt')
 );
 
+// istanbul ignore next
+export function wrap(text: string, width = 80, indent = '') {
+    return require('word-wrap')(text, { width, indent });
+}
+
 // we are going to ignore almost all code here because it's very hard to test
 // command line user interaction
 // istanbul ignore next
@@ -227,8 +232,49 @@ export async function templateOptions(config: IMQCLIConfig) {
 }
 
 // istanbul ignore next
-export async function versionSystemOptions(config: IMQCLIConfig) {
+export async function versionSystemOptions(
+    config: IMQCLIConfig
+): Promise<void> {
+    let answer: any = await inquirer.prompt<{ autoCreateRepo: boolean }>([{
+        type: 'confirm',
+        name: 'autoCreateRepo',
+        message: 'Would you like IMQ automatically create git ' +
+            'repository for new services when generate?',
+        default: true
+    }]);
 
+    if (!answer.autoCreateRepo) {
+        config.useGit = false;
+        return ;
+    }
+
+    config.useGit = true;
+
+    console.log(chalk.cyan(
+        wrap('\nTo publish git repository you need to provide base url ' +
+            'where your git repositories published to. It is recommended ' +
+            'also to set-up git SSH access on your machine to ' +
+            'make publishing process run smoothly.\n\nFor example, if ' +
+            'you are using GitHub for your repositories, you need to enter ' +
+            'git@github.com:[user_or_org] as base URL and setup SSH ' +
+            'access as described at https://help.github.com/articles/' +
+            'adding-a-new-ssh-key-to-your-github-account/\n')
+    ));
+
+    answer = await inquirer.prompt<{ url: string }>([{
+        type: 'input',
+        name: 'url',
+        message: 'Enter base git URL under which services should be published:'
+    }]);
+
+    if (!/^git@[-a-z0-9_.]+:[-a-z0-9_.\/]+$/i.test(answer.url)) {
+        console.log(chalk.red('Wrong git URL specified, please, try again.'));
+        return await versionSystemOptions(config);
+    }
+
+    config.gitBaseUrl = answer.url;
+
+    console.log(chalk.green(`Base git URL is set to "${config.gitBaseUrl}"`));
 }
 
 const RX_ESCAPE = /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g;
@@ -294,7 +340,7 @@ export async function authorName(config: IMQCLIConfig): Promise<void> {
         return await authorName(config);
     }
 
-    config.author = answer.author;
+    config.author = answer.author.trim();
 
     console.log(chalk.green(
         `Auto-generated code will be authored by "${config.author}"`
@@ -309,12 +355,12 @@ export async function authorEmail(config: IMQCLIConfig) {
         message: 'Enter user or organization email:'
     }]);
 
-    if (!/^[-a-z0-9.]+@[-a-z0-9.]+$/i.test(answer.email)) {
+    if (!/^[-a-z0-9.]+@[-a-z0-9.]+$/i.test(answer.email.trim())) {
         console.log(chalk.red(`Given email is invalid, please, try again.`));
         return await authorName(config);
     }
 
-    config.email = answer.email;
+    config.email = answer.email.trim();
 
     console.log(chalk.green(
         `Generated code will be referred to given contact: ${config.email}`
@@ -333,11 +379,6 @@ export async function serviceQuestions(config: IMQCLIConfig) {
     await templateOptions(config);
     await licensingOptions(config);
     await versionSystemOptions(config);
-}
-
-// istanbul ignore next
-export async function clientQuestions(config: IMQCLIConfig) {
-
 }
 
 // noinspection JSUnusedGlobalSymbols
@@ -379,9 +420,9 @@ export const { command, describe, handler } = {
             const config = loadConfig();
 
             await serviceQuestions(config);
-            await clientQuestions(config);
-
             saveConfig(config);
+
+            console.log(chalk.magenta('IMQ-CLI successfully configured!'));
         }
 
         catch (err) {
