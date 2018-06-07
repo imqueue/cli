@@ -35,7 +35,12 @@ import { execSync } from 'child_process';
 
 const commandExists = require('command-exists').sync;
 
-// we are going to ignore almast all code here because it's very hard to test
+inquirer.registerPrompt(
+    'autocomplete',
+    require('inquirer-autocomplete-prompt')
+);
+
+// we are going to ignore almost all code here because it's very hard to test
 // command line user interaction
 // istanbul ignore next
 export function checkGit() {
