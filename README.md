@@ -69,7 +69,35 @@ Coming soon...
 
 ### Managing IMQ-CLI Configuration
 
-Coming soon...
+IMQ-CLI can be used with a pre-configured options to shorten commands usage.
+Global base configurations options usually stored in `~/.imq/config.json` file.
+This file can be managed manually, but it is recommended to use special
+command:
+
+~~~bash
+imq config init
+~~~
+
+which will guide you through configuration process.
+
+There are also useful commands to retrieve and set specific configuration
+values, stored in a configuration file:
+
+~~~bash
+imq config get
+~~~
+will print all upset configuration options in `option = value` format.
+
+~~~bash
+imq config get [option_name]
+~~~
+will print a single requested option value.
+
+~~~bash
+imq config set [option_name] [new_value]
+~~~
+will set requested options to a given new value.
+
 
 ### IMQ-CLI Completions For Your Shell
 
