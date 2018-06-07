@@ -42,8 +42,10 @@
     "dotenv": "^5.0.1",
     "imq-rpc": "^1.1.7",
     "inquirer": "^5.2.0",
+    "inquirer-autocomplete-prompt": "^0.12.2",
     "node-rsa": "^0.4.2",
     "node-travis": "^1.0.0-dev1",
+    "word-wrap": "^1.2.3",
     "yargs": "^11.0.0"
   },
   "preferGlobal": true,
