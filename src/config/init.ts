@@ -231,9 +231,107 @@ export async function versionSystemOptions(config: IMQCLIConfig) {
 
 }
 
+const RX_ESCAPE = /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g;
+
+// istanbul ignore next
+export async function licensingOptions(config: IMQCLIConfig) {
+    let answer: any = await inquirer.prompt<{ addLicense: boolean }>([{
+        type: 'confirm',
+        name: 'addLicense',
+        message: 'Would you like to use specific license for your services?',
+        default: true
+    }]);
+    let licenseName = 'UNLICENSED';
+
+    if (!answer.addLicense) {
+        config.license = licenseName;
+        return ;
+    }
+
+    let licenses: any = require('../../lib/licenses.json');
+    licenses = Object.keys(licenses).map((id: string) => licenses[id]);
+
+    answer = await (<any>inquirer.prompt)([{
+        type: 'autocomplete',
+        name: 'licenseName',
+        message: 'Select license:',
+        source: async (answers: any, input: string) => {
+            return licenses.filter((license: any) => {
+                let rx = new RegExp(
+                    `^${(input || '').replace(RX_ESCAPE, "\\$&")}`, 'i'
+                );
+
+                return license.key.match(rx) || license.name.match(rx);
+            }).map((license: any) => license && license.name || '');
+        }
+    }]);
+
+    const license = licenses.find((license: any) =>
+        license.name === answer.licenseName);
+
+    if (license) {
+        config.license = license.spdx_id;
+        licenseName = license.name;
+    }
+
+    console.log(chalk.green(
+        `Selected "${
+            licenseName
+        }" to be a license for IMQ generated code and services`
+    ));
+}
+
+// istanbul ignore next
+export async function authorName(config: IMQCLIConfig): Promise<void> {
+    const answer = await inquirer.prompt<{ author: string }>([{
+        type: 'input',
+        name: 'author',
+        message: 'Enter author\'s full name (user or organization):'
+    }]);
+
+    if (!answer.author.trim()) {
+        console.log(chalk.red(`Given name is invalid, please, try again.`));
+        return await authorName(config);
+    }
+
+    config.author = answer.author;
+
+    console.log(chalk.green(
+        `Auto-generated code will be authored by "${config.author}"`
+    ));
+}
+
+// istanbul ignore next
+export async function authorEmail(config: IMQCLIConfig) {
+    const answer = await inquirer.prompt<{ email: string }>([{
+        type: 'input',
+        name: 'email',
+        message: 'Enter user or organization email:'
+    }]);
+
+    if (!/^[-a-z0-9.]+@[-a-z0-9.]+$/i.test(answer.email)) {
+        console.log(chalk.red(`Given email is invalid, please, try again.`));
+        return await authorName(config);
+    }
+
+    config.email = answer.email;
+
+    console.log(chalk.green(
+        `Generated code will be referred to given contact: ${config.email}`
+    ));
+}
+
+// istanbul ignore next
+export async function authorOptions(config: IMQCLIConfig) {
+    await authorName(config);
+    await authorEmail(config);
+}
+
 // istanbul ignore next
 export async function serviceQuestions(config: IMQCLIConfig) {
+    await authorOptions(config);
     await templateOptions(config);
+    await licensingOptions(config);
     await versionSystemOptions(config);
 }
 
@@ -288,6 +386,7 @@ export const { command, describe, handler } = {
 
         catch (err) {
             printError(err);
+            console.error(err);
         }
     }
 };
