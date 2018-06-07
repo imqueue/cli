@@ -1,4 +1,4 @@
-# I Message Queue Cli (imq-cli)
+# I Message Queue CLI (imq-cli)
 
 [![Build Status](https://travis-ci.org/imqueue/imq-cli.svg?branch=master)](https://travis-ci.org/imqueue/imq-cli)
 [![codebeat badge](https://codebeat.co/badges/bafe0c12-51c6-4419-b671-cf107b5293e3)](https://codebeat.co/projects/github-com-imqueue-imq-cli-master)
