@@ -96,7 +96,7 @@ will print a single requested option value.
 ~~~bash
 imq config set [option_name] [new_value]
 ~~~
-will set requested options to a given new value.
+will set requested option to a given new value.
 
 
 ### IMQ-CLI Completions For Your Shell
