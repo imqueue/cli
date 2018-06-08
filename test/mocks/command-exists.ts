@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI library: exports
+ * IMQ-CLI Unit Test Mocks: command-exists
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,10 +15,16 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-export * from './constants';
-export * from './error';
-export * from './config';
-export * from './fs';
-export * from './path';
-export * from './travis';
-export * from './template';
+import * as mock from 'mock-require';
+
+(<any>global).checkGitResult = true;
+
+function _commandExists() {
+    return (<any>global).checkGitResult;
+}
+
+(_commandExists as any).sync = _commandExists;
+
+mock('command-exists', _commandExists);
+
+export const commandExists = require('command-exists');

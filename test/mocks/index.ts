@@ -18,3 +18,4 @@
 export * from './constants';
 export * from './logger';
 export * from './redis';
+export * from './command-exists';
