@@ -38,6 +38,7 @@
   "author": "Mykhailo Stadnyk <mikhus@gmail.com> (https://github.com/Mikhus)",
   "license": "ISC",
   "dependencies": {
+    "@types/semver": "^5.5.0",
     "@types/sinon": "^5.0.1",
     "chalk": "^2.4.1",
     "command-exists": "^1.2.6",
@@ -48,6 +49,7 @@
     "node-rsa": "^1.0.0",
     "node-travis": "^1.0.0-dev1",
     "nyc": "^12.0.2",
+    "semver": "^5.5.0",
     "word-wrap": "^1.2.3",
     "yargs": "^11.1.0"
   },

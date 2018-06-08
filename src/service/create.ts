@@ -19,6 +19,7 @@ import * as path from 'path';
 import { Argv, Arguments } from 'yargs';
 import * as fs from 'fs';
 import chalk from 'chalk';
+import * as semver from 'semver';
 import {
     IMQCLIConfig,
     loadConfig,
@@ -27,6 +28,9 @@ import {
     loadTemplates,
     dashed,
     camelCase,
+    resolve,
+    cpr,
+    touch,
 } from '../../lib';
 
 let config: IMQCLIConfig;
@@ -53,33 +57,160 @@ async function ensureTemplate(template: string) {
 }
 
 // istanbul ignore next
-async function ensureLicense(license: string) {
-    return license;
+async function ensureLicense(
+    path:string,
+    license: string
+): Promise<{ text: string, header: string }> {
+    let text = '';
+    let header = '';
+
+    return { text, header };
+}
+
+// istanbul ignore next
+function ensureName(name: string) {
+    if (!name.trim()) {
+        throw new TypeError(`Service name expected, but was not given!`);
+    }
+
+    return dashed(name.trim());
+}
+
+// istanbul ignore next
+function ensureVersion(version: string) {
+    if (!version.trim()) {
+        version = '1.0.0';
+    }
+
+    if (!semver.valid(version)) {
+        throw new TypeError('Given version is invalid, please, provide ' +
+            'valid semver format!')
+    }
+
+    return version;
+}
+
+// istanbul ignore next
+function ensureDescription(description: string) {
+    return description || '';
+}
+
+// istanbul ignore next
+function ensureServiceRepo(argv: Arguments) {
+
+}
+
+// istanbul ignore next
+function ensureServiceBugsPage(argv: Arguments) {
+
+}
+
+// istanbul ignore next
+function ensureServiceHomePage(argv: Arguments) {
+
+}
+
+// istanbul ignore next
+function ensureAuthorName(name: string) {
+
+}
+
+// istanbul ignore next
+function ensureAuthorEmail(email: string) {
+
+}
+
+// istanbul ignore next
+function ensureTravisTag(argv: Arguments) {
+
+}
+
+// istanbul ignore next
+function ensureDockerNamespace(argv: Arguments) {
+
+}
+
+// istanbul ignore next
+function ensureDockerTag(argv: Arguments) {
+
+}
+
+// istanbul ignore next
+async function buildTags(path: string, argv: Arguments) {
+    const license = await ensureLicense(path, argv.license);
+    const name = ensureName(argv.name);
+
+    return {
+        SERVICE_NAME: name,
+        SERVICE_CLASS_NAME: camelCase(name),
+        SERVICE_VERSION: ensureVersion(argv.serviceVersion),
+        SERVICE_DESCRIPTION: ensureDescription(argv.description),
+        SERVICE_REPO: ensureServiceRepo(argv),
+        SERVICE_BUGS: ensureServiceBugsPage(argv),
+        SERVICE_HOMEPAGE: ensureServiceHomePage(argv),
+        SERVICE_AUTHOR_NAME: ensureAuthorName(argv.author),
+        SERVICE_AUTHOR_EMAIL: ensureAuthorEmail(argv.email),
+        SERVICE_LICENSE: license.text,
+        SERVICE_LICENSE_HEADER: license.header,
+        TRAVIS_NODE_TAG: ensureTravisTag(argv),
+        DOCKER_NAMESPACE: ensureDockerNamespace(argv),
+        NODE_DOCKER_TAG: ensureDockerTag(argv),
+    }
+}
+
+// istanbul ignore next
+function createServiceFile(path:string, tags: any) {
+    touch(resolve(path, 'src', `${tags.SERVICE_CLASS_NAME}.ts`),
+        `${tags.SERVICE_LICENSE_HEADER}
+import {
+    IMQService,
+    expose,
+    profile,
+} from 'imq-rpc';
+
+export class ${tags.SERVICE_CLASS_NAME} extends IMQService {
+    // Implement your service here, example:
+    // /**
+    //  * Returns "Hello, World!" string
+    //  * 
+    //  * @return {string}
+    //  */
+    // @profile()
+    // @expose()
+    // public hello(): string {
+    //     return "Hello, World"!
+    // }
+}
+`);
+}
+
+function compileTemplate(path: string, tags: any) {
+
+}
+
+// istanbul ignore next
+async function makeService(path: string, argv: Arguments) {
+    const tags = await buildTags(path, argv);
+
+    compileTemplate(path, tags);
+    createServiceFile(path, tags);
 }
 
 // istanbul ignore next
 async function buildFromTemplate(argv: Arguments) {
     const template = await ensureTemplate(argv.template);
+    const path = resolve(argv.path);
 
     console.log(`Building service from template "${template}"...`);
-}
 
-// istanbul ignore next
-async function licenseCode(argv: Arguments) {
-    const license = await ensureLicense(argv.license);
-    if (license === 'UNLICENSED') {
-        return ; // nothing to do about license
-    }
-
-    console.log(`Licensing code with license ${license}...`);
+    cpr(template, path);
+    await makeService(path, argv);
 }
 
 // istanbul ignore next
 async function ensureGitRepo(argv: Arguments) {
-    if (!/^git@[-a-z0-9_.]+:[-a-z0-9_.\/]+$/i.test(argv.gitBaseUrl)) {
-        throw new TypeError(
-            `Given git base URL "${argv.gitBaseUrl}" is invalid!`
-        );
+    if (!/^git@[-a-z0-9_.]+:[-a-z0-9_.\/]+$/i.test(argv.u)) {
+        throw new TypeError(`Given git base URL "${argv.u}" is invalid!`);
     }
 
     return argv.gitBaseUrl + '/' + dashed(argv.name);
@@ -88,6 +219,11 @@ async function ensureGitRepo(argv: Arguments) {
 // istanbul ignore next
 async function createGitRepo(argv: Arguments) {
     const repo = await ensureGitRepo(argv);
+}
+
+// istanbul ignore next
+async function installPackages(argv: Arguments) {
+
 }
 
 // noinspection JSUnusedGlobalSymbols
@@ -117,6 +253,15 @@ export const { command, describe, builder, handler } = {
             .describe('u', 'Git repos base URL')
             .default('u', config.gitBaseUrl)
 
+            .describe('no-install', 'Do not install npm packages ' +
+                'automatically on service creation')
+            .boolean('no-install')
+            .default('no-install', false)
+
+            .alias('V', 'service-version')
+            .describe('V', 'Initial service version')
+            .default('V', '1.0.0')
+
             .alias('l', 'license')
             .describe('l', 'License for created service, should be either ' +
                 'license name in SPDX format or path to a custom license file')
@@ -126,6 +271,10 @@ export const { command, describe, builder, handler } = {
             .describe('t', 'Template used to create service (should be ' +
                 'either template name, git url or file system directory)')
             .default('t', config.template)
+
+            .alias('d', 'description')
+            .describe('d', 'Service description')
+            .default('d', '')
 
             .default('name', `./${path.basename(process.cwd())}`)
             .describe('name', 'Service name to create with')
@@ -138,10 +287,13 @@ export const { command, describe, builder, handler } = {
     async handler(argv: Arguments) {
         try {
             await buildFromTemplate(argv);
-            await licenseCode(argv);
 
             if (argv.g && argv.u) {
                 await createGitRepo(argv);
+            }
+
+            if (!argv.noInstall) {
+                await installPackages(argv);
             }
 
             console.log(chalk.green('Service successfully created!'));
