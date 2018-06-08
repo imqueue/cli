@@ -17,9 +17,78 @@
  */
 import * as path from 'path';
 import { Argv, Arguments } from 'yargs';
-import { IMQCLIConfig, loadConfig, printError } from '../../lib';
+import * as fs from 'fs';
+import chalk from 'chalk';
+import {
+    IMQCLIConfig,
+    loadConfig,
+    printError,
+    loadTemplate,
+    loadTemplates,
+    dashed,
+    camelCase,
+} from '../../lib';
 
 let config: IMQCLIConfig;
+
+// istanbul ignore next
+async function ensureTemplate(template: string) {
+    if (fs.existsSync(template)) {
+        return template;
+    }
+
+    if (/^git@/.test(template)) {
+        // template is a git url
+        return await loadTemplate(template);
+    }
+
+    // template is a name
+    const templates = await loadTemplates();
+
+    if (!templates[template]) {
+        throw new Error(`No such template exists - "${template}"`);
+    }
+
+    return templates[template];
+}
+
+// istanbul ignore next
+async function ensureLicense(license: string) {
+    return license;
+}
+
+// istanbul ignore next
+async function buildFromTemplate(argv: Arguments) {
+    const template = await ensureTemplate(argv.template);
+
+    console.log(`Building service from template "${template}"...`);
+}
+
+// istanbul ignore next
+async function licenseCode(argv: Arguments) {
+    const license = await ensureLicense(argv.license);
+    if (license === 'UNLICENSED') {
+        return ; // nothing to do about license
+    }
+
+    console.log(`Licensing code with license ${license}...`);
+}
+
+// istanbul ignore next
+async function ensureGitRepo(argv: Arguments) {
+    if (!/^git@[-a-z0-9_.]+:[-a-z0-9_.\/]+$/i.test(argv.gitBaseUrl)) {
+        throw new TypeError(
+            `Given git base URL "${argv.gitBaseUrl}" is invalid!`
+        );
+    }
+
+    return argv.gitBaseUrl + '/' + dashed(argv.name);
+}
+
+// istanbul ignore next
+async function createGitRepo(argv: Arguments) {
+    const repo = await ensureGitRepo(argv);
+}
 
 // noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
@@ -66,10 +135,16 @@ export const { command, describe, builder, handler } = {
                 'Path to directory where service will be generated to');
     },
 
-    handler(argv: Arguments) {
+    async handler(argv: Arguments) {
         try {
-            // TODO: implement
-            console.log('Not implemented...');
+            await buildFromTemplate(argv);
+            await licenseCode(argv);
+
+            if (argv.g && argv.u) {
+                await createGitRepo(argv);
+            }
+
+            console.log(chalk.green('Service successfully created!'));
         }
 
         catch (err) {
