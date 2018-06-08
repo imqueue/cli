@@ -20,6 +20,35 @@ import * as p from 'path';
 import { resolve } from '.';
 
 /**
+ * Copy contents from source directory to destination directory
+ * recursively
+ *
+ * @param {string} from
+ * @param {string} to
+ */
+export function cpr(from: string, to: string) {
+    from = resolve(from);
+    to = resolve(to);
+
+    if (!fs.existsSync(to)) {
+        mkdirp(to);
+    }
+
+    fs.readdirSync(from).forEach(file => {
+        const fromPath = resolve(from, file);
+        const toPath = resolve(to, file);
+
+        if (fs.statSync(fromPath).isDirectory()) {
+            cpr(fromPath, toPath);
+        }
+
+        else {
+            fs.copyFileSync(fromPath, toPath);
+        }
+    });
+}
+
+/**
  * Removes directory and all its content recursively
  *
  * @param {string} path

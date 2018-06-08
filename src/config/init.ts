@@ -25,9 +25,7 @@ import {
     IMQCLIConfig,
     resolve,
     wrap,
-    checkGit,
     loadTemplates,
-    updateTemplates,
     loadTemplate,
 } from '../../lib';
 import chalk from 'chalk';
