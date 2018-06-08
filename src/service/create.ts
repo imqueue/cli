@@ -17,7 +17,9 @@
  */
 import * as path from 'path';
 import { Argv, Arguments } from 'yargs';
-import { printError } from '../../lib';
+import { IMQCLIConfig, loadConfig, printError } from '../../lib';
+
+let config: IMQCLIConfig;
 
 // noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
@@ -26,9 +28,39 @@ export const { command, describe, builder, handler } = {
               'under given path.',
 
     builder(yargs: Argv) {
+        config = loadConfig();
+
         return yargs
+            .alias('a', 'author')
+            .describe('a', 'Service author full name (person or organization)')
+            .default('a', config.author)
+
+            .alias('e', 'email')
+            .describe('e', 'Service author\'s contact email')
+            .default('e', config.email)
+
+            .alias('g', 'use-git')
+            .describe('g', 'Turns on automatic git repo creation')
+            .boolean('g')
+            .default('g', config.useGit)
+
+            .alias('u', 'git-url')
+            .describe('u', 'Git repos base URL')
+            .default('u', config.gitBaseUrl)
+
+            .alias('l', 'license')
+            .describe('l', 'License for created service, should be either ' +
+                'license name in SPDX format or path to a custom license file')
+            .default('l', config.license || 'UNLICENSED')
+
+            .alias('t', 'template')
+            .describe('t', 'template to use to create service (should be ' +
+                'either template name, git url or file system directory)')
+            .default('t', config.template)
+
             .default('name', `./${path.basename(process.cwd())}`)
             .describe('name', 'Service name to create with')
+
             .default('path', '.')
             .describe('path',
                 'Path to directory where service will be generated to');

@@ -3,6 +3,7 @@
   "version": "1.0.0-dev5",
   "description": "Command Line Interface for IMQ",
   "keywords": [
+    "command-line-tool",
     "cli",
     "rpc-client",
     "rpc-service",
