@@ -54,7 +54,7 @@ export const { command, describe, builder, handler } = {
             .default('l', config.license || 'UNLICENSED')
 
             .alias('t', 'template')
-            .describe('t', 'template to use to create service (should be ' +
+            .describe('t', 'Template used to create service (should be ' +
                 'either template name, git url or file system directory)')
             .default('t', config.template)
 
