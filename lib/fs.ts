@@ -27,10 +27,11 @@ import { resolve } from '.';
 export function rmdir(path: string) {
     let files = [];
 
+    // istanbul ignore else
     if( fs.existsSync(path) ) {
         files = fs.readdirSync(path);
 
-        files.forEach((file, index) => {
+        files.forEach(file => {
             const curPath = resolve(path, file);
 
             if (fs.lstatSync(curPath).isDirectory()) {
@@ -42,7 +43,7 @@ export function rmdir(path: string) {
 
         fs.rmdirSync(path);
     }
-};
+}
 
 /**
  * Silently recursively creates all directories in a given path

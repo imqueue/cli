@@ -22,7 +22,10 @@ const constants = {
     IMQ_HOME: '/tmp/.imq',
     CONFIG_FILENAME: 'config.json',
     CONFIG_PATH: '/tmp/.imq/config.json',
-    IS_ZSH: Object.keys(process.env).some(key => /^ZSH/.test(key))
+    IS_ZSH: Object.keys(process.env).some(key => /^ZSH/.test(key)),
+    TPL_HOME: '/tmp/.imq/templates',
+    TPL_REPO: 'git@github.com:imqueue/templates.git',
+    CUSTOM_TPL_HOME: '/tmp/.imq/custom-templates',
 };
 
 mock('../../lib/constants', constants);

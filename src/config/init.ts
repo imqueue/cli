@@ -18,107 +18,28 @@
 import * as inquirer from 'inquirer';
 import {
     CONFIG_PATH,
-    TPL_HOME,
-    CUSTOM_TPL_HOME,
-    TPL_REPO,
     loadConfig,
     saveConfig,
     configEmpty,
     printError,
     IMQCLIConfig,
     resolve,
-    rmdir
+    wrap,
+    checkGit,
+    loadTemplates,
+    updateTemplates,
+    loadTemplate,
 } from '../../lib';
 import chalk from 'chalk';
 import * as fs from 'fs';
-import { execSync } from 'child_process';
-
-const commandExists = require('command-exists').sync;
 
 inquirer.registerPrompt(
     'autocomplete',
     require('inquirer-autocomplete-prompt')
 );
 
-// istanbul ignore next
-export function wrap(text: string, width = 80, indent = '') {
-    return require('word-wrap')(text, { width, indent });
-}
-
 // we are going to ignore almost all code here because it's very hard to test
 // command line user interaction
-// istanbul ignore next
-export function checkGit() {
-    if (!commandExists('git')) {
-        throw new Error('Git required but is not installed!');
-    }
-}
-
-// istanbul ignore next
-export async function loadTemplates() {
-    if (fs.existsSync(TPL_HOME)) {
-        await updateTemplates();
-    }
-
-    else {
-        checkGit();
-        console.log('Loading IMQ templates, please, wait...');
-        execSync(`git clone ${TPL_REPO} ${TPL_HOME}`);
-    }
-
-    return fs.readdirSync(TPL_HOME).reduce((res: any, next: any) => {
-        const path = resolve(TPL_HOME, next);
-
-        if (/^\./.test(next)) return res;
-
-        if (fs.statSync(path).isDirectory()) {
-            res[next] = path;
-        }
-
-        return res;
-    }, {});
-}
-
-// istanbul ignore next
-export async function updateTemplates() {
-    const cwd = process.cwd();
-
-    process.chdir(TPL_HOME);
-    checkGit();
-
-    console.log('Updating IMQ templates, please, wait...');
-
-    execSync('git pull');
-    process.chdir(cwd);
-}
-
-// istanbul ignore next
-export async function loadTemplate(url: string): Promise<string> {
-    const name = (url.split(/[\/]/).pop() || '').replace(/\.git$/, '');
-    const path = resolve(CUSTOM_TPL_HOME, name);
-
-    if (fs.existsSync(path)) {
-        let answer = await inquirer.prompt<{ overwrite: boolean }>([{
-            type: 'confirm',
-            name: 'overwrite',
-            message: 'Seems such template was already loaded, would you like ' +
-                'to fetch it again and overwrite?',
-            default: false
-        }]);
-
-        if (!answer.overwrite) {
-            return path;
-        }
-
-        rmdir(path);
-    }
-
-    console.log(`Loading template from repository ${url}, please, wait...`);
-    execSync(`git clone ${url} ${path}`);
-
-    return path;
-}
-
 // istanbul ignore next
 export async function selectTemplate(
     type: string
@@ -277,6 +198,7 @@ export async function versionSystemOptions(
     console.log(chalk.green(`Base git URL is set to "${config.gitBaseUrl}"`));
 }
 
+// noinspection RegExpRedundantEscape
 const RX_ESCAPE = /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g;
 
 // istanbul ignore next
