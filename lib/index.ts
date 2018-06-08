@@ -16,6 +16,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 export * from './constants';
+export * from './names';
 export * from './error';
 export * from './config';
 export * from './fs';
