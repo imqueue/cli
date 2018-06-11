@@ -18,6 +18,7 @@
 import * as path from 'path';
 import { Argv, Arguments } from 'yargs';
 import * as fs from 'fs';
+import * as os from 'os';
 import chalk from 'chalk';
 import * as semver from 'semver';
 import {
@@ -31,6 +32,7 @@ import {
     resolve,
     cpr,
     touch,
+    wrap
 } from '../../lib';
 
 let config: IMQCLIConfig;
@@ -57,14 +59,86 @@ async function ensureTemplate(template: string) {
 }
 
 // istanbul ignore next
+function findLicense(name: string): any {
+    const licenses = require('../../lib/licenses.json');
+
+    for (let id of Object.keys(licenses)) {
+        if (name === id ||
+            name.toLowerCase() === id ||
+            new RegExp(`^${name.toLowerCase()}`, 'i')
+                .test(licenses[id].spdx_id)
+        ) {
+            return licenses[id];
+        }
+    }
+
+    return null;
+}
+
+// istanbul ignore next
 async function ensureLicense(
     path:string,
-    license: string
-): Promise<{ text: string, header: string }> {
+    license: string,
+    author: string,
+    email: string,
+    homepage: string,
+    serviceName: string
+): Promise<{ text: string, header: string, name: string }> {
     let text = '';
     let header = '';
+    let name = '';
 
-    return { text, header };
+    if (license === 'UNLICENSED') {
+        header = `/*!
+ * Copyright (c) ${new Date().getFullYear()} ${author} <${email}>
+ * 
+ * This software is private and is unlicensed. Please, contact
+ * author for any licensing details.
+ */`;
+        text = `Copyright (c) ${new Date().getFullYear()} ${author} <${email}>
+
+This software is private and is unlicensed. Please, contact
+author for any licensing details.\n`
+        name = license;
+    } else {
+        const lic: any = findLicense(license);
+        const values: any = {
+            'year': new Date().getFullYear(),
+            'fullname': author,
+            'email': email,
+            'project': serviceName,
+            'project_url': homepage
+        }
+
+        if (!lic) {
+            return ensureLicense(
+                path, 'UNLICENSED', author, email, homepage, serviceName
+            );
+        }
+
+        text = lic.body + '\n';
+
+        for (let varName of lic.vars) {
+            text = text.replace(`[${varName}]`, values[varName]);
+        }
+
+        name = lic.name;
+        header = wrap(lic.header ||
+            `Copyright (c) ${new Date().getFullYear()} ${author} <${email}>
+
+This software is licensed under ${
+            lic.spdx_id
+        } license.
+Please, refer to LICENSE file in project's root directory for details.`);
+        header = `/*!\n * ${header.split(/\r?\n/).join('\n * ')}\n */`;
+    }
+
+    try {
+        fs.unlinkSync(resolve(path, 'LICENSE'))
+    } catch (err) { /* ignore */ }
+    touch(resolve(path, 'LICENSE'), wrap(text));
+
+    return { text, header, name };
 }
 
 // istanbul ignore next
@@ -91,38 +165,81 @@ function ensureVersion(version: string) {
 }
 
 // istanbul ignore next
-function ensureDescription(description: string) {
-    return description || '';
+function ensureDescription(description: string, name: string) {
+    return description || `${dashed(name)} - IMQ based service`;
 }
 
 // istanbul ignore next
-function ensureServiceRepo(argv: Arguments) {
+function ensureServiceRepo(baseUrl: string, name: string) {
+    if (!baseUrl) {
+        return '';
+    }
 
+    return `\n  "repository": {
+    "type": "git",
+    "url": "${baseUrl}/${dashed(name)}"
+  },\n`;
 }
 
 // istanbul ignore next
 function ensureServiceBugsPage(argv: Arguments) {
+    let url = argv.B;
 
+    if (!url && /github\.com/.test(argv.gitBaseUrl || '')) {
+        url = `${argv.gitBaseUrl
+            .replace(/^git@/, 'https://')}/${dashed(argv.name)}/issues`;
+    }
+
+    if (!url) {
+        return '';
+    }
+
+    return `\n  "bugs": {
+    "url": "${url}"
+  },\n`;
 }
 
 // istanbul ignore next
 function ensureServiceHomePage(argv: Arguments) {
+    let url = argv.H;
 
+    if (!url && /github\.com/.test(argv.gitBaseUrl || '')) {
+        url = `${argv.gitBaseUrl
+            .replace(/^git@/, 'https://')}/${dashed(argv.name)}`;
+    }
+
+    if (!url) {
+        return '';
+    }
+
+    return `\n  "homepage": "${url}",\n`;
 }
 
 // istanbul ignore next
 function ensureAuthorName(name: string) {
+    name = name.trim();
 
+    if (!name) {
+        throw new TypeError('Author\'s name is required, but was not given!');
+    }
+
+    return name;
 }
 
 // istanbul ignore next
 function ensureAuthorEmail(email: string) {
+    email = email.trim();
 
+    if (!/^[-a-z0-9.]+@[-a-z0-9.]+$/i.test(email)) {
+        throw new TypeError('Author\'s email is required, but was not given!');
+    }
+
+    return email;
 }
 
 // istanbul ignore next
 function ensureTravisTag(argv: Arguments) {
-
+    return argv.n || 'latest';
 }
 
 // istanbul ignore next
@@ -135,27 +252,61 @@ function ensureDockerTag(argv: Arguments) {
 
 }
 
+let dockerUser;
+let dockerPass;
+let isRepoInit = false;
+
+// istanbul ignore next
+async function ensureDockerUserSecret(argv: Arguments) {
+    if (!isRepoInit) {
+        await initRepo(argv.gitBaseUrl, dashed(argv.name));
+    }
+}
+
+// istanbul ignore next
+async function ensureDockerPassSecret(argv: Arguments) {
+
+}
+
+// istanbul ignore next
+async function initRepo(url: string, name: string) {
+
+}
+
 // istanbul ignore next
 async function buildTags(path: string, argv: Arguments) {
-    const license = await ensureLicense(path, argv.license);
     const name = ensureName(argv.name);
+    const author = ensureAuthorName(argv.author);
+    const email = ensureAuthorEmail(argv.email);
+    const homepage = ensureServiceHomePage(argv);
+    const license = await ensureLicense(
+        path,
+        argv.license,
+        author,
+        email,
+        homepage,
+        name
+    );
 
     return {
         SERVICE_NAME: name,
         SERVICE_CLASS_NAME: camelCase(name),
         SERVICE_VERSION: ensureVersion(argv.serviceVersion),
-        SERVICE_DESCRIPTION: ensureDescription(argv.description),
-        SERVICE_REPO: ensureServiceRepo(argv),
+        SERVICE_DESCRIPTION: ensureDescription(argv.description, name),
+        SERVICE_REPO: ensureServiceRepo(argv.u, name),
         SERVICE_BUGS: ensureServiceBugsPage(argv),
-        SERVICE_HOMEPAGE: ensureServiceHomePage(argv),
-        SERVICE_AUTHOR_NAME: ensureAuthorName(argv.author),
-        SERVICE_AUTHOR_EMAIL: ensureAuthorEmail(argv.email),
-        SERVICE_LICENSE: license.text,
+        SERVICE_HOMEPAGE: homepage,
+        SERVICE_AUTHOR_NAME: author,
+        SERVICE_AUTHOR_EMAIL: `<${email}>`,
         SERVICE_LICENSE_HEADER: license.header,
+        SERVICE_LICENSE: license.text,
         TRAVIS_NODE_TAG: ensureTravisTag(argv),
         DOCKER_NAMESPACE: ensureDockerNamespace(argv),
         NODE_DOCKER_TAG: ensureDockerTag(argv),
-    }
+        DOCKER_USER_SECRET: await ensureDockerUserSecret(argv),
+        DOCKER_PASS_SECRET: await ensureDockerPassSecret(argv),
+        LICENSE_NAME: license.name,
+    };
 }
 
 // istanbul ignore next
@@ -169,7 +320,7 @@ import {
 } from 'imq-rpc';
 
 export class ${tags.SERVICE_CLASS_NAME} extends IMQService {
-    // Implement your service here, example:
+    // Implement your service methods here, example:
     // /**
     //  * Returns "Hello, World!" string
     //  * 
@@ -184,8 +335,32 @@ export class ${tags.SERVICE_CLASS_NAME} extends IMQService {
 `);
 }
 
-function compileTemplate(path: string, tags: any) {
+function compileTemplateFile(text: string, tags: any): string {
+    for (let tag of Object.keys(tags)) {
+        text = text.replace(
+            new RegExp(`%${tag}`, 'g'),
+            tags[tag]
+        );
+    }
 
+    return text;
+}
+
+function compileTemplate(path: string, tags: any) {
+    fs.readdirSync(path).forEach((file: string) => {
+        const filePath = resolve(path, file);
+
+        if (fs.statSync(filePath).isDirectory()) {
+            return compileTemplate(filePath, tags);
+        }
+
+        let content = compileTemplateFile(
+            fs.readFileSync(filePath, { encoding: 'utf8' }),
+            tags
+        );
+
+        fs.writeFileSync(filePath, content);
+    });
 }
 
 // istanbul ignore next
@@ -238,11 +413,11 @@ export const { command, describe, builder, handler } = {
         return yargs
             .alias('a', 'author')
             .describe('a', 'Service author full name (person or organization)')
-            .default('a', config.author)
+            .default('a', config.author || os.userInfo().username)
 
             .alias('e', 'email')
             .describe('e', 'Service author\'s contact email')
-            .default('e', config.email)
+            .default('e', config.email || '')
 
             .alias('g', 'use-git')
             .describe('g', 'Turns on automatic git repo creation')
@@ -251,7 +426,7 @@ export const { command, describe, builder, handler } = {
 
             .alias('u', 'git-url')
             .describe('u', 'Git repos base URL')
-            .default('u', config.gitBaseUrl)
+            .default('u', config.gitBaseUrl || '')
 
             .describe('no-install', 'Do not install npm packages ' +
                 'automatically on service creation')
@@ -262,6 +437,14 @@ export const { command, describe, builder, handler } = {
             .describe('V', 'Initial service version')
             .default('V', '1.0.0')
 
+            .alias('H', 'homepage')
+            .describe('H', 'Homepage URL for service, if required')
+            .default('H', '')
+
+            .alias('B', 'bugs-url')
+            .describe('B', 'Bugs url for service, if required')
+            .default('B', '')
+
             .alias('l', 'license')
             .describe('l', 'License for created service, should be either ' +
                 'license name in SPDX format or path to a custom license file')
@@ -270,11 +453,15 @@ export const { command, describe, builder, handler } = {
             .alias('t', 'template')
             .describe('t', 'Template used to create service (should be ' +
                 'either template name, git url or file system directory)')
-            .default('t', config.template)
+            .default('t', config.template || 'default')
 
             .alias('d', 'description')
             .describe('d', 'Service description')
             .default('d', '')
+
+            .alias('n', 'node-versions')
+            .describe('n', 'Node version tags to use for builds')
+            .default('n', 'latest')
 
             .default('name', `./${path.basename(process.cwd())}`)
             .describe('name', 'Service name to create with')
@@ -301,6 +488,7 @@ export const { command, describe, builder, handler } = {
 
         catch (err) {
             printError(err);
+            console.error(err);
         }
     }
 };
