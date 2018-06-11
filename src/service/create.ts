@@ -76,6 +76,29 @@ function findLicense(name: string): any {
 }
 
 // istanbul ignore next
+function updateLicenseText(
+    text: string,
+    author: string,
+    email: string,
+    serviceName: string,
+    homepage: string
+): string {
+    const values: any = {
+        'year': new Date().getFullYear(),
+        'fullname': author,
+        'email': email,
+        'project': serviceName,
+        'project_url': homepage
+    };
+
+    for (let varName of Object.keys(values)) {
+        text = text.replace(`[${varName}]`, values[varName]);
+    }
+
+    return text;
+}
+
+// istanbul ignore next
 async function ensureLicense(
     path:string,
     license: string,
@@ -102,34 +125,18 @@ author for any licensing details.\n`
         name = license;
     } else {
         const lic: any = findLicense(license);
-        const values: any = {
-            'year': new Date().getFullYear(),
-            'fullname': author,
-            'email': email,
-            'project': serviceName,
-            'project_url': homepage
-        }
-
-        if (!lic) {
-            return ensureLicense(
-                path, 'UNLICENSED', author, email, homepage, serviceName
-            );
-        }
-
-        text = lic.body + '\n';
-
-        for (let varName of lic.vars) {
-            text = text.replace(`[${varName}]`, values[varName]);
-        }
-
+        text = updateLicenseText(
+            lic.body + '\n',
+            author, email, serviceName, homepage
+        );
         name = lic.name;
-        header = wrap(lic.header ||
-            `Copyright (c) ${new Date().getFullYear()} ${author} <${email}>
+        header = updateLicenseText(
+            lic.header|| '',
+            author, email, serviceName, homepage
+        ) || `Copyright (c) ${new Date().getFullYear()} ${author} <${email}>
 
-This software is licensed under ${
-            lic.spdx_id
-        } license.
-Please, refer to LICENSE file in project's root directory for details.`);
+This software is licensed under ${lic.spdx_id} license.
+Please, refer to LICENSE file in project's root directory for details.`;
         header = `/*!\n * ${header.split(/\r?\n/).join('\n * ')}\n */`;
     }
 
