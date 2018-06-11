@@ -335,6 +335,7 @@ export class ${tags.SERVICE_CLASS_NAME} extends IMQService {
 `);
 }
 
+// istanbul ignore next
 function compileTemplateFile(text: string, tags: any): string {
     for (let tag of Object.keys(tags)) {
         text = text.replace(
@@ -346,6 +347,7 @@ function compileTemplateFile(text: string, tags: any): string {
     return text;
 }
 
+// istanbul ignore next
 function compileTemplate(path: string, tags: any) {
     fs.readdirSync(path).forEach((file: string) => {
         const filePath = resolve(path, file);
