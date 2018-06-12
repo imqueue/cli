@@ -159,7 +159,7 @@ export async function versionSystemOptions(
         name: 'autoCreateRepo',
         message: 'Would you like IMQ automatically create git ' +
             'repository for new services when generate?',
-        default: true
+        default: true,
     }]);
 
     if (!answer.autoCreateRepo) {
@@ -183,17 +183,55 @@ export async function versionSystemOptions(
     answer = await inquirer.prompt<{ url: string }>([{
         type: 'input',
         name: 'url',
-        message: 'Enter base git URL under which services should be published:'
+        message: 'Enter github organization or user name:',
     }]);
 
-    if (!/^git@[-a-z0-9_.]+:[-a-z0-9_.\/]+$/i.test(answer.url)) {
-        console.log(chalk.red('Wrong git URL specified, please, try again.'));
+    if (!/^[-_a-z0-9]+$/i.test(answer.url)) {
+        console.log(chalk.red('Wrong user or organization name.'));
         return await versionSystemOptions(config);
     }
 
-    config.gitBaseUrl = answer.url;
+    config.gitBaseUrl = `git@github.com:${answer.url}`;
 
     console.log(chalk.green(`Base git URL is set to "${config.gitBaseUrl}"`));
+
+    answer = await inquirer.prompt<{ saveGitHubToken: boolean }>([{
+        type: 'confirm',
+        name: 'saveGitHubToken',
+        message: 'Would you like to save GitHub auth token in a local config ' +
+            'to prevent imq to ask it any time service is created?',
+        default: false,
+    }]);
+
+    if (!answer.saveGitHubToken) {
+        return ;
+    }
+
+    console.log(chalk.cyan(wrap(
+        'To make GitHub integration work you must provide a valid token ' +
+        'which grants permission to create repository for a specified ' +
+        'organization or user name.\nUsually you can generate the token ' +
+        'on this page: https://github.com/settings/tokens'
+    )));
+
+    answer = await inquirer.prompt<{ gitHubAuthToken: string }>([{
+        type: 'input',
+        name: 'gitHubAuthToken',
+        message: 'Enter GitHub auth token:',
+    }]);
+
+    if (!answer.gitHubAuthToken.trim()) {
+        console.log(chalk.red(
+            'Given token is empty, you will be prompted to enter it on ' +
+            'service create command'
+        ));
+
+        return ;
+    }
+
+    config.gitHubAuthToken = answer.gitHubAuthToken.trim();
+
+    console.log(chalk.green('GitHub auth token stored in local config file'));
 }
 
 // noinspection RegExpRedundantEscape
