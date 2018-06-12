@@ -264,25 +264,18 @@ function ensureDockerTag(argv: Arguments) {
 
 }
 
-let dockerUser;
-let dockerPass;
-let isRepoInit = false;
-
-// istanbul ignore next
-async function ensureDockerUserSecret(argv: Arguments) {
-    if (!isRepoInit) {
-        await initRepo(argv.gitBaseUrl, dashed(argv.name));
-    }
-}
-
-// istanbul ignore next
-async function ensureDockerPassSecret(argv: Arguments) {
+async function ensureDockerSecrets(argv: Arguments) {
 
 }
 
 // istanbul ignore next
-async function initRepo(url: string, name: string) {
-
+async function buildDockerCi(argv: Arguments) {
+    const tags = {
+        TRAVIS_NODE_TAG: ensureTravisTags(argv).map(t => `- ${t}`).join('\n'),
+        DOCKER_NAMESPACE: ensureDockerNamespace(argv),
+        NODE_DOCKER_TAG: ensureDockerTag(argv),
+        DOCKER_SECRETS: await ensureDockerSecrets(argv),
+    };
 }
 
 // istanbul ignore next
@@ -307,11 +300,6 @@ async function buildTags(path: string, argv: Arguments) {
         SERVICE_AUTHOR_EMAIL: `<${email}>`,
         SERVICE_LICENSE_HEADER: license.header,
         SERVICE_LICENSE: license.text,
-        TRAVIS_NODE_TAG: ensureTravisTags(argv).map(t => `- ${t}`).join('\n'),
-        DOCKER_NAMESPACE: ensureDockerNamespace(argv),
-        NODE_DOCKER_TAG: ensureDockerTag(argv),
-        DOCKER_USER_SECRET: await ensureDockerUserSecret(argv),
-        DOCKER_PASS_SECRET: await ensureDockerPassSecret(argv),
         LICENSE_NAME: license.name,
     };
 }
@@ -403,6 +391,7 @@ async function ensureGitRepo(argv: Arguments) {
 // istanbul ignore next
 async function createGitRepo(argv: Arguments) {
     const repo = await ensureGitRepo(argv);
+    // TODO: init repo
 }
 
 // istanbul ignore next
@@ -473,6 +462,14 @@ export const { command, describe, builder, handler } = {
                 'by comma if multiple')
             .default('n', 'latest')
 
+            .alias('D', 'dockerize')
+            .describe('D', 'Enable service dockerization.')
+            .boolean('D')
+
+            .alias('N', 'docker-namespace')
+            .describe('N', 'Docker hub namespace')
+            .default('N', '')
+
             .default('name', `./${path.basename(process.cwd())}`)
             .describe('name', 'Service name to create with')
 
@@ -488,6 +485,8 @@ export const { command, describe, builder, handler } = {
             if (argv.g && argv.u) {
                 await createGitRepo(argv);
             }
+
+            await buildDockerCi(argv);
 
             if (!argv.noInstall) {
                 await installPackages(argv);
