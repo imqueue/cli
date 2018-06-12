@@ -17,6 +17,14 @@
  */
 import * as Github  from '@octokit/rest';
 
+/**
+ * Returns a team data for given organization, using github API
+ * object which is already authenticated under some user
+ *
+ * @param {Github} github
+ * @param {string} owner
+ * @return {Promise<any>}
+ */
 export async function getTeam(github: Github, owner: string): Promise<any> {
     try {
         return ((await github.orgs.getTeams({
@@ -27,6 +35,14 @@ export async function getTeam(github: Github, owner: string): Promise<any> {
     }
 }
 
+/**
+ * Returns organization info for a given organization name
+ * using a given github API object already authenticated by some user
+ *
+ * @param {Github} github
+ * @param {string} owner
+ * @return {Promise<any>}
+ */
 export async function getOrg(github: Github, owner: string): Promise<any> {
     try {
         return (await github.orgs.get({ org: owner }) || {}).data || {};
@@ -37,6 +53,15 @@ export async function getOrg(github: Github, owner: string): Promise<any> {
     }
 }
 
+/**
+ * Creates empty github repository
+ *
+ * @param {string} url
+ * @param {string} token
+ * @param {string} description
+ * @param {boolean} isPrivate
+ * @return {Promise<void>}
+ */
 export async function createRepository(
     url: string,
     token: string,
