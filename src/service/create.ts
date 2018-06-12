@@ -247,6 +247,7 @@ function ensureAuthorEmail(email: string) {
 // istanbul ignore next
 function ensureTravisTags(argv: Arguments): string[] {
     const tags = (argv.n || '').split(/\s+|\s*,\s*/);
+
     if (!tags.length) {
         tags.push('latest');
     }
@@ -463,7 +464,7 @@ export const { command, describe, builder, handler } = {
             .default('n', 'latest')
 
             .alias('D', 'dockerize')
-            .describe('D', 'Enable service dockerization.')
+            .describe('D', 'Enable service dockerization with CI builds')
             .boolean('D')
 
             .alias('N', 'docker-namespace')
