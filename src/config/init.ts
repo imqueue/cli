@@ -232,6 +232,20 @@ export async function versionSystemOptions(
     config.gitHubAuthToken = answer.gitHubAuthToken.trim();
 
     console.log(chalk.green('GitHub auth token stored in local config file'));
+
+    answer = await inquirer.prompt<{ isPrivate: boolean }>([{
+        type: 'confirm',
+        name: 'isPrivate',
+        message: 'Does created service should a private repository on GitHub?',
+        default: true,
+    }]);
+
+    config.gitRepoPrivate = answer.isPrivate;
+
+    console.log(chalk.green(
+        `Service on GitHub will be created as ${config.gitRepoPrivate ?
+            'private' : 'public'} repository.`
+    ));
 }
 
 // noinspection RegExpRedundantEscape
@@ -361,6 +375,10 @@ export async function dockerCredentials(config: IMQCLIConfig): Promise<void> {
 
     config.dockerHubUser = answer.dockerHubUser.trim();
     config.dockerHubPassword = answer.dockerHubPassword.trim();
+
+    console.log(chalk.green(
+        'Docker hub credentials saved in a local config file.'
+    ));
 }
 
 // istanbul ignore next

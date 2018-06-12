@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI library: exports
+ * IMQ-CLI library: fs
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,12 +15,29 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-export * from './constants';
-export * from './names';
-export * from './error';
-export * from './config';
-export * from './fs';
-export * from './path';
-export * from './travis';
-export * from './template';
-export * from './github';
+import * as Github  from '@octokit/rest';
+import { AuthUserToken } from "@octokit/rest";
+
+
+export async function createRepository(
+    url: string,
+    token: string,
+    description: string,
+    isPrivate: boolean = true,
+) {
+    const name = url.split('/').reverse().shift();
+
+    if (!name) {
+        throw new TypeError(`Given github url "${url}" is invalid!`);
+    }
+
+    const github = new Github();
+
+    await github.authenticate({ type: 'token', token });
+    await github.repos.create({
+        auto_init: false,
+        description,
+        name,
+        private: isPrivate
+    });
+}
