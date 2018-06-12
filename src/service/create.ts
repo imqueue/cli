@@ -27,6 +27,7 @@ import {
     printError,
     loadTemplate,
     loadTemplates,
+    createRepository,
     dashed,
     camelCase,
     resolve,
@@ -386,13 +387,22 @@ async function ensureGitRepo(argv: Arguments) {
         throw new TypeError(`Given git base URL "${argv.u}" is invalid!`);
     }
 
-    return argv.gitBaseUrl + '/' + dashed(argv.name);
+    return argv.u + '/' + dashed(argv.name);
 }
 
 // istanbul ignore next
 async function createGitRepo(argv: Arguments) {
-    const repo = await ensureGitRepo(argv);
-    // TODO: init repo
+    if (!argv.T || !argv.T.trim()) {
+        throw new Error('GitHub token required, but was not given!');
+    }
+
+    const url = await ensureGitRepo(argv);
+    await createRepository(
+        url,
+        argv.T.trim(),
+        ensureDescription(argv.description, ensureName(argv.name)),
+        argv.p || config.gitRepoPrivate
+    );
 }
 
 // istanbul ignore next
@@ -471,6 +481,14 @@ export const { command, describe, builder, handler } = {
             .describe('N', 'Docker hub namespace')
             .default('N', '')
 
+            .alias('T', 'github-token')
+            .describe('T', 'GitHub auth token')
+            .default('T', config.gitHubAuthToken)
+
+            .alias('p', 'private')
+            .describe('p', 'Service repository will be private at GitHub')
+            .boolean('p')
+
             .default('name', `./${path.basename(process.cwd())}`)
             .describe('name', 'Service name to create with')
 
@@ -498,7 +516,6 @@ export const { command, describe, builder, handler } = {
 
         catch (err) {
             printError(err);
-            console.error(err);
         }
     }
 };
