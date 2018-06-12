@@ -245,8 +245,13 @@ function ensureAuthorEmail(email: string) {
 }
 
 // istanbul ignore next
-function ensureTravisTag(argv: Arguments) {
-    return argv.n || 'latest';
+function ensureTravisTags(argv: Arguments): string[] {
+    const tags = (argv.n || '').split(/\s+|\s*,\s*/);
+    if (!tags.length) {
+        tags.push('latest');
+    }
+
+    return tags;
 }
 
 // istanbul ignore next
@@ -287,12 +292,7 @@ async function buildTags(path: string, argv: Arguments) {
     const email = ensureAuthorEmail(argv.email);
     const homepage = ensureServiceHomePage(argv);
     const license = await ensureLicense(
-        path,
-        argv.license,
-        author,
-        email,
-        homepage,
-        name
+        path, argv.license, author, email, homepage, name
     );
 
     return {
@@ -307,7 +307,7 @@ async function buildTags(path: string, argv: Arguments) {
         SERVICE_AUTHOR_EMAIL: `<${email}>`,
         SERVICE_LICENSE_HEADER: license.header,
         SERVICE_LICENSE: license.text,
-        TRAVIS_NODE_TAG: ensureTravisTag(argv),
+        TRAVIS_NODE_TAG: ensureTravisTags(argv).map(t => `- ${t}`).join('\n'),
         DOCKER_NAMESPACE: ensureDockerNamespace(argv),
         NODE_DOCKER_TAG: ensureDockerTag(argv),
         DOCKER_USER_SECRET: await ensureDockerUserSecret(argv),
@@ -469,7 +469,8 @@ export const { command, describe, builder, handler } = {
             .default('d', '')
 
             .alias('n', 'node-versions')
-            .describe('n', 'Node version tags to use for builds')
+            .describe('n', 'Node version tags to use for builds, separated ' +
+                'by comma if multiple')
             .default('n', 'latest')
 
             .default('name', `./${path.basename(process.cwd())}`)

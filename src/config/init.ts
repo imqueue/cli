@@ -293,12 +293,90 @@ export async function authorOptions(config: IMQCLIConfig) {
     await authorEmail(config);
 }
 
+export async function dockerCredentials(config: IMQCLIConfig): Promise<void> {
+    const answer = await inquirer.prompt<{
+        dockerHubUser: string,
+        dockerHubPassword: string
+    }>([{
+        type: 'input',
+        name: 'dockerHubUser',
+        message: 'Docker hub user:'
+    }, {
+        type: 'password',
+        name: 'dockerHubPassword',
+        message: 'Docker hub password:'
+    }]);
+
+    if (!answer.dockerHubUser.trim()) {
+        console.log(chalk.red(
+            'Given docker hub user name is empty, please try again'
+        ));
+        return dockerCredentials(config);
+    }
+
+    if (!answer.dockerHubPassword.trim()) {
+        console.log(chalk.red(
+            'Given docker hub password is empty, please try again'
+        ));
+        return dockerCredentials(config);
+    }
+
+    config.dockerHubUser = answer.dockerHubUser.trim();
+    config.dockerHubPassword = answer.dockerHubPassword.trim();
+}
+
+// istanbul ignore next
+export async function dockerQuestions(config: IMQCLIConfig): Promise<void> {
+    let answer: any = await inquirer.prompt<{ useDocker: boolean }>([{
+        type: 'confirm',
+        name: 'useDocker',
+        message: 'Would you like to dockerize created imq services?',
+        default: true
+    }]);
+
+    if (!answer.useDocker) {
+        config.useDocker = false;
+        return ;
+    }
+
+    answer = await inquirer.prompt<{ dockerHubNamespace: string }>([{
+        type: 'input',
+        name: 'dockerHubNamespace',
+        message: 'Docker hub namespace:'
+    }]);
+
+    if (!answer.dockerHubNamespace.trim()) {
+        console.log(chalk.red(
+            'Given docker hub namespace is invalid, please, try again...'
+        ));
+        return await dockerQuestions(config);
+    }
+
+    config.useDocker = true;
+    config.dockerHubNamespace = answer.dockerHubNamespace.trim();
+
+    answer = await inquirer.prompt<{ saveDockerCredentials: boolean }>([{
+        type: 'confirm',
+        name: 'saveDockerCredentials',
+        message: 'Would you like to store docker credentials locally to ' +
+            'allow imq create CI-Docker secrets without prompt?',
+        default: false
+    }]);
+
+    if (!answer.saveDockerCredentials) {
+        return ;
+    }
+
+    await dockerCredentials(config);
+}
+
 // istanbul ignore next
 export async function serviceQuestions(config: IMQCLIConfig) {
     await authorOptions(config);
     await templateOptions(config);
     await licensingOptions(config);
     await versionSystemOptions(config);
+    await dockerQuestions(config);
 }
 
 // noinspection JSUnusedGlobalSymbols
