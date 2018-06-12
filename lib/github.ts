@@ -16,8 +16,26 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import * as Github  from '@octokit/rest';
-import { AuthUserToken } from "@octokit/rest";
 
+export async function getTeam(github: Github, owner: string): Promise<any> {
+    try {
+        return ((await github.orgs.getTeams({
+            org: owner
+        }) || {}).data || []).shift();
+    } catch (err) {
+        return null;
+    }
+}
+
+export async function getOrg(github: Github, owner: string): Promise<any> {
+    try {
+        return (await github.orgs.get({ org: owner }) || {}).data || {};
+    }
+
+    catch (err) {
+        return null;
+    }
+}
 
 export async function createRepository(
     url: string,
@@ -25,19 +43,58 @@ export async function createRepository(
     description: string,
     isPrivate: boolean = true,
 ) {
-    const name = url.split('/').reverse().shift();
+    const [owner, repo]  = (url.split(':').reverse().shift() || '').split('/');
 
-    if (!name) {
+    if (!repo || !owner) {
         throw new TypeError(`Given github url "${url}" is invalid!`);
     }
 
     const github = new Github();
 
     await github.authenticate({ type: 'token', token });
-    await github.repos.create({
+
+    try {
+        await github.repos.get({ owner, repo });
+    } catch (err) {
+        if (err.code !== 404) {
+            throw new Error(
+                'GitHub repository check failed with error: ' + err.message
+            );
+        }
+    }
+
+    const team = await getTeam(github, owner);
+    const org = await getOrg(github, owner);
+
+    const repository = await github.repos.create({
         auto_init: false,
         description,
-        name,
+        name: repo,
         private: isPrivate
     });
+
+    if (org && team && owner !== repository.data.owner.login) {
+        try {
+            await github.repos.transfer({
+                new_owner: owner,
+                owner: repository.data.owner.login,
+                repo,
+                team_id: [team.id]
+            });
+        }
+
+        catch (err) {
+            if (err.errors) {
+                if (err.errors.find((e: any) =>
+                    /has no private repositories available/.test(e.message))
+                ) {
+                    throw new Error(
+                        'Private repositories are disabled on your GitHub ' +
+                        'account.'
+                    );
+                }
+            }
+            throw err;
+        }
+    }
 }
