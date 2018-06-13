@@ -24,17 +24,55 @@ describe('node', () => {
         it('should be a function', () => {
             expect(typeof node.semverCompare).equals('function');
         });
+
+        it('should perform comparison properly', () => {
+            expect(node.semverCompare('0.0.0', '0.0.0')).equals(0);
+            expect(node.semverCompare('1.0.0', '1.0.0')).equals(0);
+            expect(node.semverCompare('1.2.10', '1.2.10')).equals(0);
+            expect(node.semverCompare('3.4.5', '3.4.5')).equals(0);
+            expect(node.semverCompare('1.0.1', '1.0.0')).equals(-1);
+            expect(node.semverCompare('1.1.1', '1.0.1')).equals(-1);
+            expect(node.semverCompare('0.0.1', '0.0.0')).equals(-1);
+            expect(node.semverCompare('10.0.0', '1.0.0')).equals(-1);
+            expect(node.semverCompare('0.0.0', '2.0.0')).equals(1);
+            expect(node.semverCompare('1.0.0', '2.0.0')).equals(1);
+            expect(node.semverCompare('1.0.1', '1.1.0')).equals(1);
+            expect(node.semverCompare('1.0.0', '10.0.0')).equals(1);
+        });
     });
 
     describe('getNodeVersions()', () => {
         it('should be a function', () => {
             expect(typeof node.getNodeVersions).equals('function');
         });
+
+        it('should return node versions', async () => {
+            const versions = await node.getNodeVersions();
+            expect(versions).instanceof(Array);
+            expect(versions[0].version).to.be.string;
+            expect(versions[0].version).match(/^v\d+\.\d+\.\d+$/);
+        });
     });
 
     describe('nodeVersion()', () => {
         it('should be a function', () => {
             expect(typeof node.nodeVersion).equals('function');
+        });
+
+        it('should return proper version for given tag', async () => {
+            const versions = await node.getNodeVersions();
+            const lts: any = versions.find(v => !!v.lts);
+            const max10: any = versions.find(v => /^v10/.test(v.version));
+            const max43: any = versions.find(v => /v4\.3/.test(v.version));
+
+            expect('v' + await node.nodeVersion('latest'))
+                .equals(versions[0].version);
+            expect('v' + await node.nodeVersion('node')).equals(lts.version);
+            expect('v' + await node.nodeVersion('stable')).equals(lts.version);
+            expect('v' + await node.nodeVersion('lts')).equals(lts.version);
+            expect('v' + await node.nodeVersion('lts/*')).equals(lts.version);
+            expect('v' + await node.nodeVersion('10')).equals(max10.version);
+            expect('v' + await node.nodeVersion('4.3')).equals(max43.version);
         });
     });
 });

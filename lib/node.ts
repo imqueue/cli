@@ -57,15 +57,18 @@ export function semverCompare(a: string, b: string) {
 export async function getNodeVersions(
     force: boolean = false
 ): Promise<NodeVersion[]> {
+    // istanbul ignore if
     if (!force && nodeVersions) {
         return nodeVersions;
     }
 
     return new Promise<NodeVersion[]>((resolve, reject) => {
         request('https://nodejs.org/dist/index.json', (err, res) => {
+            // istanbul ignore if
             if (err) return reject(err);
 
-            nodeVersions = (JSON.parse(res.body) || [])
+            nodeVersions = (JSON.parse(res.body) ||
+                /* istanbul ignore next */[])
                 .sort((a: NodeVersion, b: NodeVersion) => semverCompare(
                     a.version.replace(RX_VERSION_CLEAN, ''),
                     b.version.replace(RX_VERSION_CLEAN, '')
@@ -87,22 +90,27 @@ export async function nodeVersion(tag: string) {
 
     switch (tag) {
         case 'latest': {
-            return (((versions || [])[0] || <any>{})
-                .version || '')
+            return (((versions || /* istanbul ignore next */[])[0] ||
+                /* istanbul ignore next */<any>{})
+                .version || /* istanbul ignore next */'')
                 .replace(RX_VERSION_CLEAN, '');
         }
         case 'node':
         case 'stable':
         case 'lts':
         case 'lts/*': {
-            return ((versions.find(version => !!version.lts) || <any>{})
-                .version||'').replace(RX_VERSION_CLEAN, '');
+            return ((versions.find(version => !!version.lts) ||
+                /* istanbul ignore next */<any>{})
+                .version || /* istanbul ignore next */'')
+                .replace(RX_VERSION_CLEAN, '');
         }
         default: {
             return ((versions.find(version =>
                 new RegExp(`^v${tag.replace(RX_ESCAPE, '\\.')}`)
                     .test(version.version)
-            ) || <any>{}).version || '').replace(RX_VERSION_CLEAN, '');
+                ) /* istanbul ignore next */|| <any>{})
+                .version || /* istanbul ignore next */'')
+                .replace(RX_VERSION_CLEAN, '');
         }
     }
 }
