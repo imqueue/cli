@@ -17,13 +17,14 @@
  */
 import '../mocks';
 import { expect } from 'chai';
+import { uuid } from 'imq-rpc';
 import * as github from '../../lib/github';
 import { config as envConfig } from 'dotenv';
 
 envConfig();
 
 describe('github', function () {
-    this.timeout(10000);
+    this.timeout(30000);
 
     const token = String(process.env.GITHUB_AUTH_TOKEN);
 
@@ -102,6 +103,76 @@ describe('github', function () {
     describe('createRepository()', () => {
         it('should be a function', () => {
             expect(typeof github.createRepository).equals('function');
+        });
+
+        it('should create repository in user space if asked', async () => {
+            const owner = 'Mikhus';
+            const repo = uuid();
+            const url = `git@github.com:${owner}/${repo}`;
+            const git: any = await github.getInstance(token);
+
+            try {
+                await github.createRepository(url, token, 'IMQ-CLI test repo');
+                const data = await git.repos.get({ owner, repo });
+                expect(data).to.be.ok;
+                expect(data.name).equals(repo);
+                expect(data.owner.login).equals(owner);
+            } catch (err) {}
+            try {
+                // cleanup
+                await git.repos.delete({ owner, repo });
+            } catch (err) {}
+        });
+
+        it('should create repository in org space if asked', async () => {
+            const owner = 'imqueue';
+            const repo = uuid();
+            const url = `git@github.com:${owner}/${repo}`;
+            const git: any = await github.getInstance(token);
+
+            try {
+                await github.createRepository(
+                    url, token, 'IMQ-CLI test repo', false
+                );
+                const data = await git.repos.get({ owner, repo });
+                expect(data).to.be.ok;
+                expect(data.name).equals(repo);
+                expect(data.owner.login).equals(owner);
+            } catch (err) {}
+            try {
+                // cleanup
+                await git.repos.delete({ owner, repo });
+            } catch (err) {}
+        });
+
+        it('should throw if invalid url given', async () => {
+            try {
+                await github.createRepository(
+                    'j032', token, 'IMQ-CLI test repo'
+                );
+            } catch (err) {
+                expect(err).instanceof(TypeError);
+                expect(err.message).match(/url .*? is invalid/);
+            }
+        });
+
+        it('should throw proper error if repository exists', async () => {
+            const owner = 'Mikhus';
+            const repo = uuid();
+            const url = `git@github.com:${owner}/${repo}`;
+            const git: any = await github.getInstance(token);
+
+            try {
+                await github.createRepository(url, token, 'IMQ-CLI test repo');
+                await github.createRepository(url, token, 'IMQ-CLI test repo');
+            } catch (err) {
+                expect(err).instanceof(Error);
+                expect(err.message).equals('Repository already exists!');
+            }
+            try {
+                // cleanup
+                await git.repos.delete({ owner, repo });
+            } catch (err) {}
         });
     });
 });

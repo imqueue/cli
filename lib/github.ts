@@ -84,26 +84,31 @@ export async function createRepository(
     description: string,
     isPrivate: boolean = true,
 ) {
-    const [owner, repo]  = (url.split(':').reverse().shift() || '').split('/');
+    const [owner, repo]  = (url.split(':').reverse().shift() ||
+        /* istanbul ignore next */'').split('/');
 
-    if (!repo || !owner) {
+    if (!(repo && owner)) {
         throw new TypeError(`Given github url "${url}" is invalid!`);
     }
 
     const github = await getInstance(token);
 
     try {
-        await github.repos.get({ owner, repo });
-    } catch (err) {
+        const repository = await github.repos.get({ owner, repo });
+
+        // istanbul ignore else
+        if (repository && repository.data && repository.data.name === repo) {
+            throw new Error('Repository already exists!');
+        }
+    } catch(err) {
         if (err.code !== 404) {
-            throw new Error(
-                'GitHub repository check failed with error: ' + err.message
-            );
+            throw err;
         }
     }
 
     const team = await getTeam(github, owner);
     const org = await getOrg(github, owner);
+
     const repository = await github.repos.create({
         auto_init: false,
         description,
@@ -112,27 +117,11 @@ export async function createRepository(
     });
 
     if (org && team && owner !== repository.data.owner.login) {
-        try {
-            await github.repos.transfer({
-                new_owner: owner,
-                owner: repository.data.owner.login,
-                repo,
-                team_id: [team.id]
-            });
-        }
-
-        catch (err) {
-            if (err.errors) {
-                if (err.errors.find((e: any) =>
-                    /has no private repositories available/.test(e.message))
-                ) {
-                    throw new Error(
-                        'Private repositories are disabled on your GitHub ' +
-                        'account.'
-                    );
-                }
-            }
-            throw err;
-        }
+        await github.repos.transfer({
+            new_owner: owner,
+            owner: repository.data.owner.login,
+            repo,
+            team_id: [team.id]
+        });
     }
 }
