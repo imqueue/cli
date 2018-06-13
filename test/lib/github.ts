@@ -59,6 +59,15 @@ describe('github', () => {
         it('should be a function', () => {
             expect(typeof github.getTeam).equals('function');
         });
+
+        it('should return team object for a logged-in user', async () => {
+            const token = String(process.env.GITHUB_AUTH_TOKEN);
+            const git = await github.getInstance(token);
+            const team = await github.getTeam(git, 'imqueue');
+
+            expect(team).to.be.ok;
+            expect(team.id).not.to.be.undefined;
+        });
     });
 
     describe('getOrg()', () => {
