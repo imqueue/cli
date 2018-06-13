@@ -21,6 +21,7 @@ node_modules/
 .settings/
 *.sublime-workspace
 .vscode/*
+.env
 
 .sass-cache/
 connect.lock/

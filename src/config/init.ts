@@ -345,6 +345,7 @@ export async function authorOptions(config: IMQCLIConfig) {
     await authorEmail(config);
 }
 
+// istanbul ignore next
 export async function dockerCredentials(config: IMQCLIConfig): Promise<void> {
     const answer = await inquirer.prompt<{
         dockerHubUser: string,
