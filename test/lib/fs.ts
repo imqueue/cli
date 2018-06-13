@@ -21,12 +21,53 @@ import * as os from 'os';
 import * as fs from 'fs';
 import { uuid } from 'imq-rpc';
 import * as p from 'path';
-import { mkdirp, touch, rmdir } from '../../lib';
+import { mkdirp, touch, rmdir, cpr } from '../../lib';
 
 const TEMP_DIR: string = p.resolve(os.tmpdir(), '.imq-cli-test');
 
 describe('fs', () => {
     after(() => { try { fs.rmdirSync(TEMP_DIR) } catch (e) {} });
+
+    describe('cpr()', () => {
+        it('should be a function', () => {
+            expect(typeof cpr).equals('function');
+        });
+
+        it('should copy directory contents recursively', () => {
+            const src = p.resolve(TEMP_DIR, uuid());
+            const dst = p.resolve(TEMP_DIR, uuid());
+
+            fs.mkdirSync(src);
+            fs.mkdirSync(p.resolve(src, 'dir'));
+            fs.writeFileSync(p.resolve(src, 'file'), '');
+            fs.writeFileSync(p.resolve(src, 'dir/file'), '');
+
+            cpr(src, dst);
+
+            expect(fs.statSync(dst).isDirectory()).to.be.true;
+            expect(fs.statSync(p.resolve(dst, 'dir')).isDirectory()).to.be.true;
+            expect(fs.statSync(p.resolve(dst, 'file')).isFile()).to.be.true;
+            expect(fs.statSync(p.resolve(dst, 'dir/file')).isFile()).to.be.true;
+        });
+
+        it('should copy properly', () => {
+            const src = p.resolve(TEMP_DIR, uuid());
+            const dst = p.resolve(TEMP_DIR, uuid());
+
+            fs.mkdirSync(src);
+            fs.mkdirSync(dst);
+            fs.mkdirSync(p.resolve(src, 'dir'));
+            fs.writeFileSync(p.resolve(src, 'file'), '');
+            fs.writeFileSync(p.resolve(src, 'dir/file'), '');
+
+            cpr(src, dst);
+
+            expect(fs.statSync(dst).isDirectory()).to.be.true;
+            expect(fs.statSync(p.resolve(dst, 'dir')).isDirectory()).to.be.true;
+            expect(fs.statSync(p.resolve(dst, 'file')).isFile()).to.be.true;
+            expect(fs.statSync(p.resolve(dst, 'dir/file')).isFile()).to.be.true;
+        });
+    });
 
     describe('mkdirp()', () => {
         it('should be a function', () => {

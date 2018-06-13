@@ -29,7 +29,9 @@ export async function getTeam(github: Github, owner: string): Promise<any> {
     try {
         return ((await github.orgs.getTeams({
             org: owner
-        }) || {}).data || []).shift();
+        }) || /* istanbul ignore next */{})
+        .data || /* istanbul ignore next */[])
+        .shift();
     } catch (err) {
         return null;
     }
@@ -45,7 +47,7 @@ export async function getTeam(github: Github, owner: string): Promise<any> {
  */
 export async function getOrg(github: Github, owner: string): Promise<any> {
     try {
-        return (await github.orgs.get({ org: owner }) || {}).data || {};
+        return (await github.orgs.get({ org: owner })).data;
     }
 
     catch (err) {

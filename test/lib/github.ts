@@ -22,14 +22,17 @@ import { config as envConfig } from 'dotenv';
 
 envConfig();
 
-describe('github', () => {
+describe('github', function () {
+    this.timeout(10000);
+
+    const token = String(process.env.GITHUB_AUTH_TOKEN);
+
     describe('getInstance()', () => {
         it('should be a function', () => {
             expect(typeof github.getInstance).equals('function');
         });
 
         it('should not throw if valid token given', async () => {
-            const token = String(process.env.GITHUB_AUTH_TOKEN);
             let error = null;
 
             try {
@@ -42,11 +45,10 @@ describe('github', () => {
         });
 
         it('should trow if invalid token given', async () => {
-            const token = '';
             let error = null;
 
             try {
-                await github.getInstance(token);
+                await github.getInstance('');
             } catch (err) {
                 error = err;
             }
@@ -61,18 +63,39 @@ describe('github', () => {
         });
 
         it('should return team object for a logged-in user', async () => {
-            const token = String(process.env.GITHUB_AUTH_TOKEN);
             const git = await github.getInstance(token);
             const team = await github.getTeam(git, 'imqueue');
 
             expect(team).to.be.ok;
             expect(team.id).not.to.be.undefined;
         });
+
+        it('should return null if there is no team', async () => {
+            const git = await github.getInstance(token);
+            const team = await github.getTeam(git, 'Mikhus');
+
+            expect(team).to.be.null;
+        });
     });
 
     describe('getOrg()', () => {
         it('should be a function', () => {
             expect(typeof github.getOrg).equals('function');
+        });
+
+        it('should return organization if it exists', async () => {
+            const git = await github.getInstance(token);
+            const org = await github.getOrg(git, 'imqueue');
+
+            expect(org).to.be.ok;
+            expect(org.name).equals('imqueue');
+        });
+
+        it('should return null if there is no team', async () => {
+            const git = await github.getInstance(token);
+            const org = await github.getOrg(git, 'Mikhus');
+
+            expect(org).to.be.null;
         });
     });
 
