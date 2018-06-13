@@ -17,16 +17,16 @@
  */
 import '../mocks';
 import { expect } from 'chai';
-import * as os from 'os';
 import * as fs from 'fs';
 import { uuid } from 'imq-rpc';
 import * as p from 'path';
 import { mkdirp, touch, rmdir, cpr } from '../../lib';
 
-const TEMP_DIR: string = p.resolve(os.tmpdir(), '.imq-cli-test');
+const TEMP_DIR: string = p.resolve('.', '.imq-cli-test');
 
 describe('fs', () => {
-    after(() => { try { fs.rmdirSync(TEMP_DIR) } catch (e) {} });
+    before(() => { fs.mkdirSync(TEMP_DIR) });
+    after(() => { try { rmdir(TEMP_DIR) } catch (e) {} });
 
     describe('cpr()', () => {
         it('should be a function', () => {
