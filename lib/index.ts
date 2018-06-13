@@ -24,3 +24,4 @@ export * from './path';
 export * from './travis';
 export * from './template';
 export * from './github';
+export * from './node';

@@ -90,7 +90,6 @@ export async function createRepository(
 
     const team = await getTeam(github, owner);
     const org = await getOrg(github, owner);
-
     const repository = await github.repos.create({
         auto_init: false,
         description,

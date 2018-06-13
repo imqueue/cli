@@ -21,6 +21,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import chalk from 'chalk';
 import * as semver from 'semver';
+import * as inquirer from 'inquirer';
 import {
     IMQCLIConfig,
     loadConfig,
@@ -28,6 +29,8 @@ import {
     loadTemplate,
     loadTemplates,
     createRepository,
+    travisEncrypt,
+    nodeVersion,
     dashed,
     camelCase,
     resolve,
@@ -35,6 +38,9 @@ import {
     touch,
     wrap
 } from '../../lib';
+import { execSync } from 'child_process';
+
+const commandExists = require('command-exists').sync;
 
 let config: IMQCLIConfig;
 
@@ -107,10 +113,11 @@ async function ensureLicense(
     email: string,
     homepage: string,
     serviceName: string
-): Promise<{ text: string, header: string, name: string }> {
+): Promise<{ text: string, header: string, name: string, tag: string }> {
     let text = '';
     let header = '';
     let name = '';
+    let tag = 'UNLICENSED';
 
     if (license === 'UNLICENSED') {
         header = `/*!
@@ -131,6 +138,7 @@ author for any licensing details.\n`
             author, email, serviceName, homepage
         );
         name = lic.name;
+        tag = lic.spdx_id;
         header = updateLicenseText(
             lic.header|| '',
             author, email, serviceName, homepage
@@ -146,7 +154,7 @@ Please, refer to LICENSE file in project's root directory for details.`;
     } catch (err) { /* ignore */ }
     touch(resolve(path, 'LICENSE'), wrap(text));
 
-    return { text, header, name };
+    return { text, header, name, tag };
 }
 
 // istanbul ignore next
@@ -250,7 +258,7 @@ function ensureTravisTags(argv: Arguments): string[] {
     const tags = (argv.n || '').split(/\s+|\s*,\s*/);
 
     if (!tags.length) {
-        tags.push('latest');
+        tags.push('stable', 'latest');
     }
 
     return tags;
@@ -258,26 +266,148 @@ function ensureTravisTags(argv: Arguments): string[] {
 
 // istanbul ignore next
 function ensureDockerNamespace(argv: Arguments) {
+    const ns = (argv.N || '').trim();
 
+    if (!ns) {
+        throw new TypeError('Docker namespace is required, but was not given!');
+    }
+
+    return ns;
 }
 
 // istanbul ignore next
-function ensureDockerTag(argv: Arguments) {
+async function ensureDockerTag(argv: Arguments) {
+    if (argv.L.trim()) {
+        return argv.L.trim();
+    }
 
+    const tags = ensureTravisTags(argv);
+    const version =  await nodeVersion(tags[0]);
+
+    if (!version) {
+        throw new TypeError('Node version is not specified!');
+    }
+
+    return version;
 }
 
+// istanbul ignore next
 async function ensureDockerSecrets(argv: Arguments) {
+    const owner = argv.u.trim();
+    const name = ensureName(argv.name);
 
+    let { dockerHubUser, dockerHubPassword, gitHubAuthToken } = config;
+
+    if (!owner) {
+        throw new TypeError('GitHub namespace required, but is empty!');
+    }
+
+    const repo = `${owner}/${name}`;
+
+    if (!dockerHubUser) {
+        const answer = await inquirer.prompt<{ dockerHubUser: string}>([{
+            type: 'input',
+            name: 'dockerHubUser',
+            message: 'Docker hub user:'
+        }]);
+
+        if (!answer.dockerHubUser.trim()) {
+            throw new TypeError(
+                'DockerHub username required, but was not given!'
+            );
+        }
+
+        dockerHubUser = answer.dockerHubUser;
+    }
+
+    if (!dockerHubPassword) {
+        const answer = await inquirer.prompt<{ dockerHubPassword: string }>([{
+            type: 'password',
+            name: 'dockerHubPassword',
+            message: 'Docker hub password:'
+        }]);
+
+        if (!answer.dockerHubPassword.trim()) {
+            throw new TypeError(
+                'DockerHub password required, but was not given!'
+            );
+        }
+
+        dockerHubPassword = answer.dockerHubPassword;
+    }
+
+    if (!gitHubAuthToken) {
+        const answer = await inquirer.prompt<{ gitHubAuthToken: string }>([{
+            type: 'input',
+            name: 'gitHubAuthToken',
+            message: 'Enter GitHub auth token:',
+        }]);
+
+        if (!answer.gitHubAuthToken.trim()) {
+            throw new TypeError(
+                'Github auth token required, but was not given!'
+            );
+        }
+
+        gitHubAuthToken = answer.gitHubAuthToken;
+    }
+
+    console.log('Encrypting secrets...');
+
+    return [
+        await travisEncrypt(
+            repo, `DOCKER_USER="${dockerHubUser}"`, gitHubAuthToken
+        ),
+        await travisEncrypt(
+            repo, `DOCKER_PASS="${dockerHubPassword}"`, gitHubAuthToken
+        ),
+    ];
 }
 
 // istanbul ignore next
-async function buildDockerCi(argv: Arguments) {
+function stripDockerization(argv: Arguments) {
+    const path = resolve(argv.path);
+    const travis = resolve(path, '.travis.yml');
+    const docker = resolve(path, 'Dockerfile');
+
+    if (fs.existsSync(travis)) {
+        const travisYml = fs.readFileSync(travis, { encoding: 'utf8' });
+
+        fs.writeFileSync(
+            travis,
+            travisYml.replace(/services:[\s\S]+?$/, ''),
+            { encoding: 'utf8' }
+        );
+    }
+
+    if (fs.existsSync(docker)) {
+        fs.unlinkSync(docker);
+    }
+}
+
+// istanbul ignore next
+async function buildDockerCi(argv: Arguments): Promise<void> {
+    const dockerNs = ensureDockerNamespace(argv);
+    const dockerize = !!(argv.g && argv.u && dockerNs && (
+        argv.D || config.useDocker
+    ));
+
+    if (!dockerize) {
+        return stripDockerization(argv);
+    }
+
+    console.log('Building docker <-> CI integration...');
+
     const tags = {
         TRAVIS_NODE_TAG: ensureTravisTags(argv).map(t => `- ${t}`).join('\n'),
-        DOCKER_NAMESPACE: ensureDockerNamespace(argv),
-        NODE_DOCKER_TAG: ensureDockerTag(argv),
-        DOCKER_SECRETS: await ensureDockerSecrets(argv),
+        DOCKER_NAMESPACE: dockerNs,
+        NODE_DOCKER_TAG: await ensureDockerTag(argv),
+        DOCKER_SECRETS:
+            `- ${(await ensureDockerSecrets(argv)).join('\n  - ')}`,
     };
+
+    console.log('Updating docker and CI configs...');
+    compileTemplate(resolve(argv.path), tags);
 }
 
 // istanbul ignore next
@@ -300,16 +430,19 @@ async function buildTags(path: string, argv: Arguments) {
         SERVICE_HOMEPAGE: homepage,
         SERVICE_AUTHOR_NAME: author,
         SERVICE_AUTHOR_EMAIL: `<${email}>`,
-        SERVICE_LICENSE_HEADER: license.header,
-        SERVICE_LICENSE: license.text,
+        LICENSE_HEADER: license.header,
+        LICENSE_TEXT: license.text,
         LICENSE_NAME: license.name,
+        LICENSE_TAG: license.tag,
     };
 }
 
 // istanbul ignore next
 function createServiceFile(path:string, tags: any) {
+    console.log('Creating main service file...');
+
     touch(resolve(path, 'src', `${tags.SERVICE_CLASS_NAME}.ts`),
-        `${tags.SERVICE_LICENSE_HEADER}
+        `${tags.LICENSE_HEADER}
 import {
     IMQService,
     expose,
@@ -358,7 +491,7 @@ function compileTemplate(path: string, tags: any) {
             tags
         );
 
-        fs.writeFileSync(filePath, content);
+        fs.writeFileSync(filePath, content, { encoding: 'utf8' });
     });
 }
 
@@ -383,12 +516,14 @@ async function buildFromTemplate(argv: Arguments) {
 
 // istanbul ignore next
 async function ensureGitRepo(argv: Arguments) {
-    if (!/^git@[-a-z0-9_.]+:[-a-z0-9_.\/]+$/i.test(argv.u)) {
-        throw new TypeError(`Given git base URL "${argv.u}" is invalid!`);
+    if (!/^[-_a-z-0-9]+$/i.test(argv.u)) {
+        throw new TypeError(`Given github namespace "${argv.u}" is invalid!`);
     }
 
     return argv.u + '/' + dashed(argv.name);
 }
+
+let gitRepoInitialized = false;
 
 // istanbul ignore next
 async function createGitRepo(argv: Arguments) {
@@ -397,17 +532,75 @@ async function createGitRepo(argv: Arguments) {
     }
 
     const url = await ensureGitRepo(argv);
+
+    console.log('Creating github repository...');
     await createRepository(
         url,
         argv.T.trim(),
         ensureDescription(argv.description, ensureName(argv.name)),
         argv.p || config.gitRepoPrivate
     );
+
+    gitRepoInitialized = true;
 }
 
 // istanbul ignore next
 async function installPackages(argv: Arguments) {
+    if (!commandExists('npm')) {
+        throw new Error('npm command is not installed!');
+    }
 
+    const cwd = process.cwd();
+    const path = resolve(argv.path);
+    const pkg: any = require(resolve(path, 'package.json'));
+    const deps = Object.keys(pkg.dependencies);
+    const devDeps = Object.keys(pkg.devDependencies);
+
+    process.chdir(path);
+
+    if (deps && deps.length) {
+        console.log('Installing dependencies...')
+        execSync(`npm i --save ${deps.join(' ')}`);
+    }
+
+    if (devDeps && devDeps.length) {
+        console.log('Installing dev dependencies...');
+        execSync(`npm i --save-dev ${devDeps.join(' ')}`);
+    }
+
+    process.chdir(cwd);
+}
+
+// istanbul ignore next
+async function commit(argv: Arguments) {
+    const path = resolve(argv.path);
+    const name = ensureName(argv.name);
+    const owner = (argv.u || '').trim();
+    const cwd = process.cwd();
+    let url = config.gitBaseUrl;
+
+    if (!owner && !url) {
+        throw new TypeError('GitHub namespace missing!');
+    } else if (owner) {
+        url = `git@github.com:${owner}/${name}.git`;
+    } else {
+        url += `/${name}.git`;
+    }
+
+    process.chdir(path);
+
+    if (!commandExists('git')) {
+        throw new Error('Git command expected, but is not installed!');
+    }
+
+    console.log('Committing changes...');
+    execSync(`git init && \
+git add . && \
+git commit -am "Initial commit" && 
+git remote add origin ${url} && \
+git push origin master`);
+
+    process.chdir(cwd);
 }
 
 // noinspection JSUnusedGlobalSymbols
@@ -433,9 +626,10 @@ export const { command, describe, builder, handler } = {
             .boolean('g')
             .default('g', config.useGit)
 
-            .alias('u', 'git-url')
-            .describe('u', 'Git repos base URL')
-            .default('u', config.gitBaseUrl || '')
+            .alias('u', 'github-namespace')
+            .describe('u', 'GitHub namespace (usually user name or ' +
+                'organization name)')
+            .default('u', (config.gitBaseUrl || '').split(':').pop() || '')
 
             .describe('no-install', 'Do not install npm packages ' +
                 'automatically on service creation')
@@ -470,16 +664,22 @@ export const { command, describe, builder, handler } = {
 
             .alias('n', 'node-versions')
             .describe('n', 'Node version tags to use for builds, separated ' +
-                'by comma if multiple')
-            .default('n', 'latest')
+                'by comma if multiple. First one will be used for docker ' +
+                'build, if dockerize option enabled.')
+            .default('n', 'stable, latest')
 
             .alias('D', 'dockerize')
             .describe('D', 'Enable service dockerization with CI builds')
             .boolean('D')
 
+            .alias('L', 'node-docker-tag')
+            .describe('L', 'Node docker tag to use as base docker image ' +
+                'for docker builds')
+            .default('L', '')
+
             .alias('N', 'docker-namespace')
             .describe('N', 'Docker hub namespace')
-            .default('N', '')
+            .default('N', config.dockerHubNamespace)
 
             .alias('T', 'github-token')
             .describe('T', 'GitHub auth token')
@@ -511,11 +711,16 @@ export const { command, describe, builder, handler } = {
                 await installPackages(argv);
             }
 
+            if (gitRepoInitialized) {
+                await commit(argv);
+            }
+
             console.log(chalk.green('Service successfully created!'));
         }
 
         catch (err) {
             printError(err);
+            console.error(err);
         }
     }
 };
