@@ -54,6 +54,20 @@ export async function getOrg(github: Github, owner: string): Promise<any> {
 }
 
 /**
+ * Returns an authenticated instance of github API object
+ *
+ * @param {string} token
+ * @return {Promise<Github>}
+ */
+export async function getInstance(token: string): Promise<Github> {
+    const github = new Github();
+
+    await github.authenticate({ type: 'token', token });
+
+    return github;
+}
+
+/**
  * Creates empty github repository
  *
  * @param {string} url
@@ -74,9 +88,7 @@ export async function createRepository(
         throw new TypeError(`Given github url "${url}" is invalid!`);
     }
 
-    const github = new Github();
-
-    await github.authenticate({ type: 'token', token });
+    const github = await getInstance(token);
 
     try {
         await github.repos.get({ owner, repo });

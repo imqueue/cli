@@ -32,6 +32,7 @@ debug*
 .DS_Store
 Thumbs.db
 *.swp
+.env
 
 package-lock.json
 stats.json
