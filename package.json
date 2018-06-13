@@ -1,6 +1,6 @@
 {
   "name": "imq-cli",
-  "version": "1.0.0-dev6",
+  "version": "1.0.0-dev7",
   "description": "Command Line Interface for IMQ",
   "keywords": [
     "command-line-tool",
@@ -45,7 +45,7 @@
     "chalk": "^2.4.1",
     "command-exists": "^1.2.6",
     "dotenv": "^6.0.0",
-    "imq-rpc": "^1.1.7",
+    "imq-rpc": "^1.1.8",
     "inquirer": "^6.0.0",
     "inquirer-autocomplete-prompt": "^0.12.2",
     "node-rsa": "^1.0.0",
@@ -53,8 +53,7 @@
     "nyc": "^12.0.2",
     "request": "^2.87.0",
     "semver": "^5.5.0",
-    "word-wrap": "^1.2.3",
-    "yargs": "^11.1.0"
+    "word-wrap": "^1.2.3"
   },
   "preferGlobal": true,
   "devDependencies": {
@@ -77,11 +76,12 @@
     "nyc": "",
     "opn": "^5.2.0",
     "reflect-metadata": "^0.1.12",
-    "sinon": "^5.1.0",
+    "sinon": "^6.0.0",
     "source-map-support": "^0.5.3",
     "ts-node": "^6.0.2",
     "typedoc": "^0.11.1",
-    "typescript": "^2.8.3"
+    "typescript": "^2.8.3",
+    "yargs": "^11.1.0"
   },
   "main": "index.js",
   "bin": {
