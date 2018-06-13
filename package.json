@@ -1,6 +1,6 @@
 {
   "name": "imq-cli",
-  "version": "1.0.0-dev7",
+  "version": "1.0.0-dev8",
   "description": "Command Line Interface for IMQ",
   "keywords": [
     "command-line-tool",
@@ -14,6 +14,7 @@
   ],
   "scripts": {
     "prepublish": "./node_modules/.bin/tsc",
+    "postinstall": "imq config check || imq config init",
     "test": "(./node_modules/.bin/tsc && ./node_modules/.bin/nyc mocha && ./node_modules/.bin/nyc report --reporter=text-lcov | coveralls) && npm run test-coverage",
     "test-fast": "./node_modules/.bin/tsc && ./node_modules/.bin/nyc mocha ; /usr/bin/env node -e \"require('opn')('file://`pwd`/coverage/index.html', { wait: false });\"",
     "test-local": "export COVERALLS_REPO_TOKEN=$IMQ_CLI_COVERALLS_TOKEN && npm test ; /usr/bin/env node -e \"require('opn')('https://coveralls.io/github/imqueue/imq-rpc', { wait: false });\"",

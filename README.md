@@ -19,7 +19,7 @@ IMQ-CLI makes work with imq-rpc simpler. Frees you from writing boilerplate.
 IMQ-CLI first of all provides a way to manage your IMQ-RPC based services and 
 clients based on desired configuration.
 
-~~~bash
+~~~
 IMQ Command Line Interface
 Version: 1.0.0-dev2
 
@@ -38,7 +38,53 @@ Options:
 
 ### Service Management
 
-Coming soon...
+The main essence of this command-line tool is to provide simple way of
+creating services based on boilerplate templates.
+
+Currently it supports a single template `default`, which provides a way to
+create a service, targeted to be developed under GitHub version control
+system, integrated with TravisCI and docker builds. By simply running a single
+command it will create a ready-to-run service and all you will need is to
+write it's implementation.
+
+It is recommended to run `imq config init` right after installation of this
+command-line tool and before running `imq service create` commands.
+
+~~~
+imq service create [name] [path]
+
+Creates new service package with the given service name under given path.
+
+Options:
+  --version               Show version number                          [boolean]
+  --help                  Show help                                    [boolean]
+  -a, --author            Service author full name (person or organization)
+  -e, --email             Service author's contact email
+  -g, --use-git           Turns on automatic git repo creation         [boolean]
+  -u, --github-namespace  GitHub namespace (usually user name or organization
+                          name)
+  --no-install            Do not install npm packages automatically on service
+                          creation                                     [boolean]
+  -V, --service-version   Initial service version             [default: "1.0.0"]
+  -H, --homepage          Homepage URL for service, if required
+  -B, --bugs-url          Bugs url for service, if required
+  -l, --license           License for created service, should be either license
+                          name in SPDX format or path to a custom license file
+  -t, --template          Template used to create service (should be either
+                          template name, git url or file system directory)
+  -d, --description       Service description
+  -n, --node-versions     Node version tags to use for builds, separated by
+                          comma if multiple. First one will be used for docker
+                          build, if dockerize option enabled.
+  -D, --dockerize         Enable service dockerization with CI builds  [boolean]
+  -L, --node-docker-tag   Node docker tag to use as base docker image for docker
+                          builds
+  -N, --docker-namespace  Docker hub namespace
+  -T, --github-token      GitHub auth token
+  -p, --private           Service repository will be private at GitHub [boolean]
+  --name                  Service name to create with
+  --path                  Path to directory where service will be generated to
+~~~
 
 ### Client Management
 
@@ -51,7 +97,7 @@ This command will expect service name as mandatory option.
 
 Usage:
 
-~~~bash
+~~~
 imq client generate <name> [path]
 
 Generates IMQ-RPC client for a specified service
