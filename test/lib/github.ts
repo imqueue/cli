@@ -121,7 +121,7 @@ describe('github', function () {
             try {
                 // cleanup
                 await git.repos.delete({ owner, repo });
-            } catch (err) {}
+            } catch (err) { console.error(err); }
         });
 
         it('should create repository in org space if asked', async () => {
@@ -142,7 +142,7 @@ describe('github', function () {
             try {
                 // cleanup
                 await git.repos.delete({ owner, repo });
-            } catch (err) {}
+            } catch (err) { console.error(err); }
         });
 
         it('should throw if invalid url given', async () => {
@@ -172,7 +172,7 @@ describe('github', function () {
             try {
                 // cleanup
                 await git.repos.delete({ owner, repo });
-            } catch (err) {}
+            } catch (err) { console.error(err); }
         });
     });
 });
