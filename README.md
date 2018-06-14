@@ -15,6 +15,14 @@ features may not work or may work with problems.*
 
 IMQ-CLI makes work with imq-rpc simpler. Frees you from writing boilerplate.
 
+## Install
+
+As simple as:
+
+~~~bash
+npm i -g imq-cli
+~~~
+
 ## Usage
 
 IMQ-CLI first of all provides a way to manage your IMQ-RPC based services and 
