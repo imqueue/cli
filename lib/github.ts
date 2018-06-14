@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI library: fs
+ * IMQ-CLI library: github
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
