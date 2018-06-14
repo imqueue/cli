@@ -415,14 +415,18 @@ export const { command, describe, handler } = {
                 }
             }
 
-            process.stdout.write(
-                chalk.cyan('You are going to define global config options ' +
-                    'for IMQ CLI runs.\nThese options will be used as ' +
-                    'default parameters and will help\nyou shorten your ' +
-                    'commands.\nBy the way you will be able to override ' +
-                    'default options any\ntime running the exact command and ' +
-                    'provide them separately.\n\n')
-            );
+            console.log(chalk.cyan(wrap(
+                'Let\'s define global config options ' +
+                'for IMQ command line runs. These options will be used as ' +
+                'default parameters and will help you shorten your ' +
+                'commands.\n\n'
+            )));
+
+            console.log(chalk.yellow(wrap(
+                '- You can skip this step by pressing ' +
+                '[^C].\n- You can proceed to this step later by running:'
+            )));
+            console.log(chalk.magenta('\n  $ imq config init\n'));
 
             const config = loadConfig();
 
