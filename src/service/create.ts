@@ -297,7 +297,7 @@ async function ensureTravisTags(argv: Arguments): Promise<string[]> {
         }
     }
 
-    argv.n = argv.nodeVersions = tags = toTravisTags(tags);
+    argv.n = argv.nodeVersions = tags = await toTravisTags(tags);
 
     return tags;
 }
