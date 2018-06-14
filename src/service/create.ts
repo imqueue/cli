@@ -44,6 +44,7 @@ import {
     isNamespace,
     isGuthubToken,
     enableBuilds,
+    toTravisTags,
 } from '../../lib';
 import { execSync } from 'child_process';
 
@@ -296,7 +297,7 @@ async function ensureTravisTags(argv: Arguments): Promise<string[]> {
         }
     }
 
-    argv.n = argv.nodeVersions = tags;
+    argv.n = argv.nodeVersions = tags = toTravisTags(tags);
 
     return tags;
 }

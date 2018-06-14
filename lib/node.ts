@@ -89,13 +89,13 @@ export async function nodeVersion(tag: string) {
     const versions = await getNodeVersions();
 
     switch (tag) {
+        case 'node':
         case 'latest': {
             return (((versions || /* istanbul ignore next */[])[0] ||
                 /* istanbul ignore next */<any>{})
                 .version || /* istanbul ignore next */'')
                 .replace(RX_VERSION_CLEAN, '');
         }
-        case 'node':
         case 'stable':
         case 'lts':
         case 'lts/*': {
@@ -113,4 +113,32 @@ export async function nodeVersion(tag: string) {
                 .replace(RX_VERSION_CLEAN, '');
         }
     }
+}
+
+/**
+ * Converts given node tags to valid travis node tags
+ *
+ * @param {string | string[]} tags
+ * @return {Promise<string[]>}
+ */
+export async function toTravisTags(tags: string | string[]): Promise<string[]> {
+    if (!tags) {
+        return [];
+    }
+
+    if (typeof tags === 'string') {
+        tags = [tags];
+    }
+
+    const travisTags: string[] = [];
+
+    for (let tag of tags) {
+        switch (tag) {
+            case 'stable': case 'lts': travisTags.push('lts/*');
+            case 'latest': travisTags.push('node'); break;
+            default: travisTags.push(tag); break;
+        }
+    }
+
+    return travisTags.filter((tag, i) => travisTags.indexOf(tag) === i);
 }
