@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: client patch
+ * IMQ-CLI Unit Tests: config check
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,28 +15,16 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { Argv, Arguments } from 'yargs';
-import { printError } from '../../lib';
+import '../../mocks';
+import { expect } from 'chai';
+import * as config from '../../../src/config/check';
 
-// noinspection JSUnusedGlobalSymbols
-export const { command, describe, builder, handler } = {
-    command: 'patch <name> [path]',
-    describe: 'Patches given IMQ-RPC client',
-
-    builder(yargs: Argv) {
-        return yargs
-            .default('path', '.')
-            .describe('path', 'Path do directory with client file');
-    },
-
-    handler(argv: Arguments) {
-        try {
-            // TODO: implement
-            console.log('Not implemented...');
-        }
-
-        catch (err) {
-            printError(err);
-        }
-    }
-};
+describe('config check', () => {
+    it('should be a valid command definition', () => {
+        expect(typeof config.command).equals('string');
+        expect(config.command).contains('check');
+        expect(typeof config.describe).equals('string');
+        expect(config.describe).not.to.be.empty;
+        expect(typeof config.handler).equals('function');
+    });
+});

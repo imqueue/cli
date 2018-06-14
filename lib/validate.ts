@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: client patch
+ * IMQ-CLI library: validate
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,16 +15,37 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import '../../mocks';
-import { expect } from 'chai';
-import * as client from '../../../src/client/patch';
 
-describe('client patch', () => {
-    it('should be a valid command definition', () => {
-        expect(typeof client.command).equals('string');
-        expect(client.command).contains('patch');
-        expect(typeof client.describe).equals('string');
-        expect(client.describe).not.to.be.empty;
-        expect(typeof client.handler).equals('function');
-    });
-});
+const RX_EMAIL = /^[-a-z0-9.]+@[-a-z0-9.]+$/i;
+const RX_NS = /^[-_a-z-0-9]+$/i;
+const RX_TOKEN = /^[a-f0-9]{40}$/;
+
+/**
+ * Checks if a given string email-like
+ *
+ * @param {string} email
+ * @return {boolean}
+ */
+export function isEmail(email: string) {
+    return RX_EMAIL.test(email);
+}
+
+/**
+ * Checks if a given string satisfying namespace rules
+ *s
+ * @param {string} ns
+ * @return {boolean}
+ */
+export function isNamespace(ns: string) {
+    return RX_NS.test(ns);
+}
+
+/**
+ * Checks if a given string a valid GitHub auth token
+ *
+ * @param {string} token
+ * @return {boolean}
+ */
+export function isGuthubToken(token: string) {
+    return RX_TOKEN.test(token);
+}

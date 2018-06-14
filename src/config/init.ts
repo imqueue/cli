@@ -27,14 +27,10 @@ import {
     wrap,
     loadTemplates,
     loadTemplate,
+    licensingOptions,
 } from '../../lib';
 import chalk from 'chalk';
 import * as fs from 'fs';
-
-inquirer.registerPrompt(
-    'autocomplete',
-    require('inquirer-autocomplete-prompt')
-);
 
 // we are going to ignore almost all code here because it's very hard to test
 // command line user interaction
@@ -248,57 +244,6 @@ export async function versionSystemOptions(
     ));
 }
 
-// noinspection RegExpRedundantEscape
-const RX_ESCAPE = /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g;
-
-// istanbul ignore next
-export async function licensingOptions(config: IMQCLIConfig) {
-    let answer: any = await inquirer.prompt<{ addLicense: boolean }>([{
-        type: 'confirm',
-        name: 'addLicense',
-        message: 'Would you like to use specific license for your services?',
-        default: true
-    }]);
-    let licenseName = 'UNLICENSED';
-
-    if (!answer.addLicense) {
-        config.license = licenseName;
-        return ;
-    }
-
-    let licenses: any = require('../../lib/licenses.json');
-    licenses = Object.keys(licenses).map((id: string) => licenses[id]);
-
-    answer = await (<any>inquirer.prompt)([{
-        type: 'autocomplete',
-        name: 'licenseName',
-        message: 'Select license:',
-        source: async (answers: any, input: string) => {
-            return licenses.filter((license: any) => {
-                let rx = new RegExp(
-                    `^${(input || '').replace(RX_ESCAPE, "\\$&")}`, 'i'
-                );
-
-                return license.key.match(rx) || license.name.match(rx);
-            }).map((license: any) => license && license.name || '');
-        }
-    }]);
-
-    const license = licenses.find((license: any) =>
-        license.name === answer.licenseName);
-
-    if (license) {
-        config.license = license.spdx_id;
-        licenseName = license.name;
-    }
-
-    console.log(chalk.green(
-        `Selected "${
-            licenseName
-        }" to be a license for IMQ generated code and services`
-    ));
-}
-
 // istanbul ignore next
 export async function authorName(config: IMQCLIConfig): Promise<void> {
     const answer = await inquirer.prompt<{ author: string }>([{
@@ -431,7 +376,14 @@ export async function dockerQuestions(config: IMQCLIConfig): Promise<void> {
 export async function serviceQuestions(config: IMQCLIConfig) {
     await authorOptions(config);
     await templateOptions(config);
-    await licensingOptions(config);
+
+    const { id, name } = await licensingOptions();
+    config.license = id;
+
+    console.log(chalk.green(
+        `Selected "${name}" to be a license for IMQ generated code and services`
+    ));
+
     await versionSystemOptions(config);
     await dockerQuestions(config);
 }

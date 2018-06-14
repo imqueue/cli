@@ -117,11 +117,23 @@ export async function createRepository(
     });
 
     if (org && team && owner !== repository.data.owner.login) {
-        await github.repos.transfer({
-            new_owner: owner,
-            owner: repository.data.owner.login,
-            repo,
-            team_id: [team.id]
-        });
+        try {
+            await github.repos.transfer({
+                new_owner: owner,
+                owner: repository.data.owner.login,
+                repo,
+                team_id: [team.id]
+            });
+        }
+
+        catch (err) {
+            // make sure we clean up garbage
+            await github.repos.delete({
+                owner: repository.data.owner.login,
+                repo
+            });
+
+            throw err;
+        }
     }
 }
