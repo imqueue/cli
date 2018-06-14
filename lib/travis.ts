@@ -48,3 +48,37 @@ export async function travisEncrypt(
 
     return rsa.encrypt(Buffer.from(data, 'utf8')).toString('base64');
 }
+
+/**
+ * Enables builds for a given repository
+ *
+ * @param {string} owner
+ * @param {string} repo
+ * @param {string} github_token
+ * @return {Promise<void>}
+ */
+export async function enableBuilds(
+    owner: string,
+    repo: string,
+    github_token: string
+) {
+    const travis = new TravisClient();
+    await travis.authenticate({ github_token });
+
+    try {
+        await travis.users.sync.post();
+    } catch(err) { /* ignore */ }
+
+    const hook = (await travis.hooks.get()).hooks.find((hook: any) =>
+        hook.owner_name === owner && hook.name === repo);
+
+    if (!hook) {
+        return false;
+    } else if (hook.active) {
+        return true;
+    }
+
+    await travis.hooks(hook.id).put({ hook: { id: hook.id, active: true }});
+
+    return true;
+}

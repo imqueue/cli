@@ -26,7 +26,19 @@ import chalk from 'chalk';
  * @param {boolean} [withStackTrace] - if true will printError error stack
  */
 export function printError(err: Error, withStackTrace: boolean = false) {
-    process.stderr.write(chalk.bold.red(err.message) + '\n');
+    let message: string = err.message;
+
+    try {
+        let obj = JSON.parse(message);
+
+        if (obj.message && obj.errors) {
+            message = `${obj.message}: ${
+                obj.errors.map((err: any) => err.message).join('\n')
+            }`;
+        }
+    } catch (err) { /* ignore */ }
+
+    process.stderr.write(chalk.bold.red(message) + '\n');
 
     if (withStackTrace && err.stack) {
         process.stderr.write(chalk.cyan(err.stack) + '\n');

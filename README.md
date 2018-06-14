@@ -110,10 +110,6 @@ Options:
   --path           Directory where client file should be placed   [default: "."]
 ~~~
 
-**Patching Existing Clients:**
-
-Coming soon...
-
 ### Managing IMQ-CLI Configuration
 
 IMQ-CLI can be used with a pre-configured options to shorten commands usage.

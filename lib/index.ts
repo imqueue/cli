@@ -16,9 +16,11 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 export * from './constants';
+export * from './validate';
 export * from './names';
 export * from './error';
 export * from './config';
+export * from './license';
 export * from './fs';
 export * from './path';
 export * from './travis';
