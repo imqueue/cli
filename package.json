@@ -1,6 +1,6 @@
 {
   "name": "imq-cli",
-  "version": "1.0.0-dev9",
+  "version": "1.0.0-dev10",
   "description": "Command Line Interface for IMQ",
   "keywords": [
     "command-line-tool",

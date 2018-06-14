@@ -30,6 +30,8 @@ const RX_SPLIT = /[^a-z0-9]/i;
  * @return {string}
  */
 export function dashed(name: string): string {
+    name = name.trim();
+
     let dashed = name
         .replace(RX_NON_ALLOWED, '-')
         .replace(RX_CAP, m => `-${m.toLowerCase()}`)
@@ -51,6 +53,8 @@ export function dashed(name: string): string {
  * @return {string}
  */
 export function camelCase(name: string): string {
+    name = name.trim();
+
     return (!RX_LETTER.test(name[0]) ? name[0] : '') + name
         .split(RX_SPLIT)
         .map(s => s.substr(0, 1).toUpperCase() + s.substr(1))
