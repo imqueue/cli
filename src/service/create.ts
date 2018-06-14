@@ -815,7 +815,7 @@ export const { command, describe, builder, handler } = {
             .describe('p', 'Service repository will be private at GitHub')
             .boolean('p')
 
-            .default('name', `./${path.basename(process.cwd())}`)
+            .default('name', path.basename(process.cwd()))
             .describe('name', 'Service name to create with')
 
             .default('path', '.')
