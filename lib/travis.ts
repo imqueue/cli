@@ -49,6 +49,7 @@ export async function travisEncrypt(
     return rsa.encrypt(Buffer.from(data, 'utf8')).toString('base64');
 }
 
+// istanbul ignore next
 /**
  * Enables builds for a given repository
  *

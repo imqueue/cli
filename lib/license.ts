@@ -44,6 +44,14 @@ export function findLicense(name: string): any {
         }
     }
 
+    for (let id of Object.keys(LICENSES)) {
+        if (new RegExp(`^${name.toLowerCase()}`, 'i')
+            .test(LICENSES[id].name)
+        ) {
+            return LICENSES[id];
+        }
+    }
+
     return null;
 }
 
