@@ -19,7 +19,9 @@ import '../mocks';
 import { expect } from 'chai';
 import { travisEncrypt } from '../../lib';
 
-describe('travis', () => {
+describe('travis', function() {
+    this.timeout(30000);
+
     describe('travisEncrypt()', () => {
         it('should be a function', () => {
             expect(typeof travisEncrypt).equals('function');

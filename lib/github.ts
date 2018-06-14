@@ -124,15 +124,14 @@ export async function createRepository(
                 repo,
                 team_id: [team.id]
             });
-        }
-
-        catch (err) {
+        } catch (err) {
             // make sure we clean up garbage
+            // istanbul ignore next
             await github.repos.delete({
                 owner: repository.data.owner.login,
                 repo
             });
-
+            // istanbul ignore next
             throw err;
         }
     }
