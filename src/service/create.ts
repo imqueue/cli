@@ -186,28 +186,28 @@ function ensureDescription(description: string, name: string) {
 }
 
 // istanbul ignore next
-function ensureServiceRepo(baseUrl: string, name: string) {
-    if (!baseUrl) {
+function ensureServiceRepo(owner: string, name: string) {
+    if (!owner) {
         return '';
     }
 
     return `\n  "repository": {
     "type": "git",
-    "url": "${baseUrl}/${dashed(name)}"
+    "url": "git@github.com:/${owner}/${dashed(name)}"
   },\n`;
 }
 
 // istanbul ignore next
 function ensureServiceBugsPage(argv: Arguments) {
-    let url = argv.B;
+    const owner = argv.u.trim();
+    let url = argv.B.trim();
 
-    if (!url && /github\.com/.test(argv.gitBaseUrl || '')) {
-        url = `${argv.gitBaseUrl
-            .replace(/^git@/, 'https://')}/${dashed(argv.name)}/issues`;
+    if (!url && !owner) {
+        return '';
     }
 
-    if (!url) {
-        return '';
+    if (!url && owner) {
+        url = `https://github.com/${owner}/${dashed(argv.name)}/issues`;
     }
 
     return `\n  "bugs": {
@@ -217,15 +217,15 @@ function ensureServiceBugsPage(argv: Arguments) {
 
 // istanbul ignore next
 function ensureServiceHomePage(argv: Arguments) {
-    let url = argv.H;
+    const owner = argv.u.trim();
+    let url = argv.H.trim();
 
-    if (!url && /github\.com/.test(argv.gitBaseUrl || '')) {
-        url = `${argv.gitBaseUrl
-            .replace(/^git@/, 'https://')}/${dashed(argv.name)}`;
+    if (!url && !owner) {
+        return '';
     }
 
-    if (!url) {
-        return '';
+    if (!url && owner) {
+        url = `https://github.com/${owner}/${dashed(argv.name)}`;
     }
 
     return `\n  "homepage": "${url}",\n`;
