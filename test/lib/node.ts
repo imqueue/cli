@@ -67,12 +67,29 @@ describe('node', () => {
 
             expect('v' + await node.nodeVersion('latest'))
                 .equals(versions[0].version);
-            expect('v' + await node.nodeVersion('node')).equals(lts.version);
+            expect('v' + await node.nodeVersion('node'))
+                .equals(versions[0].version);
             expect('v' + await node.nodeVersion('stable')).equals(lts.version);
             expect('v' + await node.nodeVersion('lts')).equals(lts.version);
             expect('v' + await node.nodeVersion('lts/*')).equals(lts.version);
             expect('v' + await node.nodeVersion('10')).equals(max10.version);
             expect('v' + await node.nodeVersion('4.3')).equals(max43.version);
+        });
+    });
+
+    describe('toTravisTags()', () => {
+        it('should be a function', () => {
+            expect(typeof node.toTravisTags).equals('function');
+        });
+
+        it('should return valid tags converted', async () => {
+            expect(await node.toTravisTags('')).eqls([]);
+            expect(await node.toTravisTags('node')).eqls(['node']);
+            expect(await node.toTravisTags(['latest', 'stable']))
+                .eqls(['node', 'lts/*']);
+            expect(await node.toTravisTags(['latest', 'stable', 'lts']))
+                .eqls(['node', 'lts/*']);
+            expect(await node.toTravisTags('lts/*')).eqls(['lts/*']);
         });
     });
 });

@@ -29,7 +29,7 @@ export async function getTeam(github: Github, owner: string): Promise<any> {
     try {
         return ((await github.orgs.getTeams({
             org: owner
-        }) || /* istanbul ignore next */{})
+        }) || /* istanbul ignore next */{} as any)
         .data || /* istanbul ignore next */[])
         .shift();
     } catch (err) {
