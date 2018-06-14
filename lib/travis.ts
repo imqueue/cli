@@ -35,7 +35,7 @@ export async function travisEncrypt(
     const travis = new TravisClient({ pro: !!github_token });
 
     // istanbul ignore next
-    if (travis.pro) {
+    if (github_token) {
         await travis.authenticate({ github_token });
     }
 
@@ -61,9 +61,11 @@ export async function travisEncrypt(
 export async function enableBuilds(
     owner: string,
     repo: string,
-    github_token: string
+    github_token: string,
+    isPrivate: boolean
 ) {
-    const travis = new TravisClient();
+    const travis = new TravisClient({ pro: isPrivate });
+
     await travis.authenticate({ github_token });
 
     try {

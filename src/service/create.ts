@@ -407,10 +407,12 @@ async function ensureDockerSecrets(argv: Arguments) {
 
     return [
         await travisEncrypt(
-            repo, `DOCKER_USER="${dockerHubUser}"`, gitHubAuthToken
+            repo, `DOCKER_USER="${dockerHubUser}"`,
+            argv.p ? gitHubAuthToken : undefined
         ),
         await travisEncrypt(
-            repo, `DOCKER_PASS="${dockerHubPassword}"`, gitHubAuthToken
+            repo, `DOCKER_PASS="${dockerHubPassword}"`,
+            argv.p ? gitHubAuthToken : undefined
         ),
     ];
 }
@@ -461,7 +463,8 @@ async function buildDockerCi(argv: Arguments): Promise<void> {
             DOCKER_NAMESPACE: dockerNs,
             NODE_DOCKER_TAG: await ensureDockerTag(argv),
             DOCKER_SECRETS:
-                `- ${(await ensureDockerSecrets(argv)).join('\n  - ')}`,
+                `- secure: ${(await ensureDockerSecrets(argv))
+                    .join('\n  - secure: ')}`,
         });
     }
 
@@ -475,7 +478,8 @@ async function buildDockerCi(argv: Arguments): Promise<void> {
         enabled = await enableBuilds(
             argv.u,
             ensureName(argv.name),
-            config.gitHubAuthToken
+            config.gitHubAuthToken,
+            argv.p
         );
     } catch(err) { /* ignore */ }
 
@@ -663,6 +667,8 @@ async function createGitRepo(argv: Arguments) {
 
         isPrivate = answer.isPrivate;
     }
+
+    argv.p = argv.private = config.gitRepoPrivate = isPrivate;
 
     const descr = ensureDescription(argv.description, ensureName(argv.name));
 
