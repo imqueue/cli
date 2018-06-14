@@ -32,6 +32,8 @@ describe('names', () => {
             expect(dashed('Camel_Case')).equals('camel-case');
             expect(dashed('_camelCase')).equals('-camel-case');
             expect(dashed('-CamelCase')).equals('-camel-case');
+            expect(dashed(' CamelCase')).equals('camel-case');
+            expect(dashed(' CamelCase ')).equals('camel-case');
         });
     });
 
@@ -43,6 +45,8 @@ describe('names', () => {
         it('should properly transform given name to dashed string', () => {
             expect(camelCase('camel-case')).equals('CamelCase');
             expect(camelCase('-camel-case')).equals('-CamelCase');
+            expect(camelCase(' camel-case')).equals('CamelCase');
+            expect(camelCase(' camel-case ')).equals('CamelCase');
             expect(camelCase('camel_case/string')).equals('CamelCaseString');
         });
     });
