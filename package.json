@@ -1,6 +1,6 @@
 {
   "name": "imq-cli",
-  "version": "1.0.0-dev10",
+  "version": "1.0.0-dev11",
   "description": "Command Line Interface for IMQ",
   "keywords": [
     "command-line-tool",
@@ -40,9 +40,6 @@
   "license": "ISC",
   "dependencies": {
     "@octokit/rest": "^15.8.2",
-    "@types/request": "^2.47.0",
-    "@types/semver": "^5.5.0",
-    "@types/sinon": "^5.0.1",
     "chalk": "^2.4.1",
     "command-exists": "^1.2.6",
     "dotenv": "^6.0.0",
@@ -54,10 +51,14 @@
     "nyc": "^12.0.2",
     "request": "^2.87.0",
     "semver": "^5.5.0",
-    "word-wrap": "^1.2.3"
+    "word-wrap": "^1.2.3",
+    "yargs": "^11.1.0"
   },
   "preferGlobal": true,
   "devDependencies": {
+    "@types/request": "^2.47.0",
+    "@types/semver": "^5.5.0",
+    "@types/sinon": "",
     "@types/chai": "^4.1.2",
     "@types/chalk": "^2.2.0",
     "@types/dotenv": "^4.0.3",
@@ -66,7 +67,6 @@
     "@types/mock-require": "^2.0.0",
     "@types/node": "^10.3.2",
     "@types/node-rsa": "^0.4.3",
-    "@types/sinon": "",
     "@types/yargs": "^11.0.0",
     "chai": "^4.1.2",
     "codeclimate-test-reporter": "^0.5.0",
@@ -81,8 +81,7 @@
     "source-map-support": "^0.5.3",
     "ts-node": "^6.0.2",
     "typedoc": "^0.11.1",
-    "typescript": "^2.8.3",
-    "yargs": "^11.1.0"
+    "typescript": "^2.8.3"
   },
   "main": "index.js",
   "bin": {
