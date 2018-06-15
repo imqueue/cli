@@ -56,9 +56,6 @@
   },
   "preferGlobal": true,
   "devDependencies": {
-    "@types/request": "^2.47.0",
-    "@types/semver": "^5.5.0",
-    "@types/sinon": "",
     "@types/chai": "^4.1.2",
     "@types/chalk": "^2.2.0",
     "@types/dotenv": "^4.0.3",
@@ -67,6 +64,9 @@
     "@types/mock-require": "^2.0.0",
     "@types/node": "^10.3.2",
     "@types/node-rsa": "^0.4.3",
+    "@types/request": "^2.47.0",
+    "@types/semver": "^5.5.0",
+    "@types/sinon": "",
     "@types/yargs": "^11.0.0",
     "chai": "^4.1.2",
     "codeclimate-test-reporter": "^0.5.0",
@@ -81,7 +81,7 @@
     "source-map-support": "^0.5.3",
     "ts-node": "^6.0.2",
     "typedoc": "^0.11.1",
-    "typescript": "^2.8.3"
+    "typescript": "^2.9.2"
   },
   "main": "index.js",
   "bin": {
