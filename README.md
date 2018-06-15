@@ -8,12 +8,9 @@
 [![Known Vulnerabilities](https://snyk.io/test/github/imqueue/cli/badge.svg?targetFile=package.json)](https://snyk.io/test/github/imqueue/imq-cli?targetFile=package.json)
 [![License](https://img.shields.io/badge/license-ISC-blue.svg)](https://rawgit.com/imqueue/cli/master/LICENSE)
 
-***ATTENTION:** This package is unstable and still in development. Some of the
-features may not work or may work with problems.*
-
 ## Why?
 
-IMQ-CLI makes work with imq-rpc simpler. Frees you from writing boilerplate.
+Frees you from writing boilerplate when making @imqueue services.
 
 ## Install
 
@@ -24,6 +21,12 @@ npm i -g @imqueue/cli
 ~~~
 
 ## Usage
+
+To start simply run after install:
+
+~~~bash
+imq
+~~~
 
 IMQ-CLI first of all provides a way to manage your IMQ-RPC based services and 
 clients based on desired configuration.
