@@ -1,7 +1,7 @@
 /*!
  * IMQ-CLI command: client generate
  *
- * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
+ * Copyright (c) 2018, imqueue.com <support@imqueue.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,7 +16,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import { Argv, Arguments } from 'yargs';
-import { IMQClient } from 'imq-rpc';
+import { IMQClient } from '@imqueue/rpc';
 import * as fs from 'fs';
 import * as p from 'path';
 import * as inquirer from 'inquirer';

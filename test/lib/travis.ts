@@ -1,7 +1,7 @@
 /*!
  * IMQ-CLI Unit Tests: travis
  *
- * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
+ * Copyright (c) 2018, imqueue.com <support@imqueue.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -30,7 +30,7 @@ describe('travis', function() {
         it('should not throw on existing public repo', async () => {
             let error: any = null;
             try {
-                await travisEncrypt('imqueue/imq-cli', 'a=b');
+                await travisEncrypt('imqueue/cli', 'a=b');
             }
             catch (err) {
                 error = err;
@@ -50,7 +50,7 @@ describe('travis', function() {
         });
 
         it('should return string value', async () => {
-            expect(typeof await travisEncrypt('imqueue/imq-cli', 'a=b'))
+            expect(typeof await travisEncrypt('imqueue/cli', 'a=b'))
                 .equals('string');
         });
     });

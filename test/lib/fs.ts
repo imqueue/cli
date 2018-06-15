@@ -1,7 +1,7 @@
 /*!
  * IMQ-CLI Unit Tests: fs
  *
- * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
+ * Copyright (c) 2018, imqueue.com <support@imqueue.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -18,7 +18,7 @@
 import '../mocks';
 import { expect } from 'chai';
 import * as fs from 'fs';
-import { uuid } from 'imq-rpc';
+import { uuid } from '@imqueue/rpc';
 import * as p from 'path';
 import { mkdirp, touch, rmdir, cpr } from '../../lib';
 

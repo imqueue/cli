@@ -1,6 +1,6 @@
 {
-  "name": "imq-cli",
-  "version": "1.0.0-dev17",
+  "name": "@imqueue/cli",
+  "version": "1.0.0",
   "description": "Command Line Interface for IMQ",
   "keywords": [
     "command-line-tool",
@@ -30,24 +30,24 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com/imqueue/imq-cli.git"
+    "url": "git@github.com/imqueue/cli.git"
   },
   "bugs": {
-    "url": "https://github.com/imqueue/imq-cli/issues"
+    "url": "https://github.com/imqueue/cli/issues"
   },
   "homepage": "https://imqueue.com/",
-  "author": "Mykhailo Stadnyk <mikhus@gmail.com> (https://github.com/Mikhus)",
+  "author": "imqueue.com <support@imqueue.com> (https://imqueue.com)",
   "license": "ISC",
   "dependencies": {
     "@octokit/rest": "^15.8.2",
     "chalk": "^2.4.1",
     "command-exists": "^1.2.6",
     "dotenv": "^6.0.0",
-    "imq-rpc": "^1.1.8",
+    "@imqueue/rpc": "^1.2.0",
     "inquirer": "^6.0.0",
     "inquirer-autocomplete-prompt": "^0.12.2",
     "node-rsa": "^1.0.0",
-    "node-travis": "^1.0.0-dev1",
+    "@imqueue/travis": "^1.0.0",
     "nyc": "^12.0.2",
     "request": "^2.87.0",
     "semver": "^5.5.0",
