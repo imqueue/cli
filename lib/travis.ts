@@ -43,10 +43,10 @@ export async function travisEncrypt(
     const pem = await travis.repos(owner, repo).key.get();
     const rsa = new NodeRSA();
 
-    rsa.importKey(Buffer.from(pem.key, 'utf8'), 'public');
     rsa.setOptions({ encryptionScheme: 'pkcs1' });
+    rsa.importKey(pem.key);
 
-    return rsa.encrypt(Buffer.from(data, 'utf8')).toString('base64');
+    return rsa.encrypt(Buffer.from(data, 'utf8'), 'base64');
 }
 
 // istanbul ignore next
