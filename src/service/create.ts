@@ -47,6 +47,7 @@ import {
     toTravisTags,
 } from '../../lib';
 import { execSync } from 'child_process';
+import { expect } from "chai";
 
 const commandExists = require('command-exists').sync;
 
@@ -444,33 +445,7 @@ function stripDockerization(argv: Arguments) {
 }
 
 // istanbul ignore next
-async function buildDockerCi(argv: Arguments): Promise<void> {
-    const dockerNs = await ensureDockerNamespace(argv);
-    const dockerize = !!(gitRepoInitialized && dockerNs && (
-        argv.D || config.useDocker
-    ));
-
-    const tags = {
-        TRAVIS_NODE_TAG: (await ensureTravisTags(argv))
-            .map(t => `- ${t}`).join('\n'),
-    };
-
-    if (!dockerize) {
-        stripDockerization(argv);
-    } else {
-        console.log('Building docker <-> CI integration...');
-        Object.assign(tags, {
-            DOCKER_NAMESPACE: dockerNs,
-            NODE_DOCKER_TAG: await ensureDockerTag(argv),
-            DOCKER_SECRETS:
-                `- secure: ${(await ensureDockerSecrets(argv))
-                    .join('\n  - secure: ')}`,
-        });
-    }
-
-    console.log('Updating docker and CI configs...');
-    compileTemplate(resolve(argv.path), tags);
-
+async function enableTravisBuilds(argv: Arguments) {
     console.log('Enabling travis builds...');
     let enabled = false;
 
@@ -489,6 +464,38 @@ async function buildDockerCi(argv: Arguments): Promise<void> {
             'go to http://travis-ci.org/ and enable builds manually.'
         ));
     }
+}
+
+// istanbul ignore next
+async function buildDockerCi(argv: Arguments): Promise<void> {
+    const dockerNs = await ensureDockerNamespace(argv);
+    const dockerize = !!(gitRepoInitialized && dockerNs && (
+        argv.D || config.useDocker
+    ));
+
+    const tags = {
+        TRAVIS_NODE_TAG: (await ensureTravisTags(argv))
+            .map(t => `- ${t}`).join('\n'),
+    };
+
+    if (!dockerize) {
+        stripDockerization(argv);
+        await enableTravisBuilds(argv);
+    } else {
+        await enableTravisBuilds(argv);
+
+        console.log('Building docker <-> CI integration...');
+        Object.assign(tags, {
+            DOCKER_NAMESPACE: dockerNs,
+            NODE_DOCKER_TAG: await ensureDockerTag(argv),
+            DOCKER_SECRETS:
+                `- secure: ${(await ensureDockerSecrets(argv))
+                    .join('\n  - secure: ')}`,
+        });
+    }
+
+    console.log('Updating docker and CI configs...');
+    compileTemplate(resolve(argv.path), tags);
 }
 
 // istanbul ignore next
@@ -519,11 +526,11 @@ async function buildTags(path: string, argv: Arguments) {
 }
 
 // istanbul ignore next
-function createServiceFile(path:string, tags: any) {
+function createServiceFile(path: string, tags: any) {
     console.log('Creating main service file...');
 
     touch(resolve(path, 'src', `${tags.SERVICE_CLASS_NAME}.ts`),
-        `${tags.LICENSE_HEADER}
+`${tags.LICENSE_HEADER}
 import {
     IMQService,
     expose,
@@ -532,17 +539,51 @@ import {
 
 export class ${tags.SERVICE_CLASS_NAME} extends IMQService {
     // Implement your service methods here, example:
-    // /**
-    //  * Returns "Hello, World!" string
-    //  * 
-    //  * @return {string}
-    //  */
-    // @profile()
-    // @expose()
-    // public hello(): string {
-    //     return "Hello, World"!
-    // }
+    /**
+     * Returns "Hello!" string.
+     * This method is just an example of implementation. Please, remove it
+     * and write your service methods instead.
+     * 
+     * @return {string}
+     */
+    @profile()
+    @expose()
+    public hello(): string {
+        return "Hello!";
+    }
 }
+`);
+}
+
+// istanbul ignore next
+function createServiceTestFile(path: string, tags: any) {
+    console.log('Creating main service test file...');
+
+    touch(resolve(path, 'test/src', `${tags.SERVICE_CLASS_NAME}.ts`),
+`${tags.LICENSE_HEADER}
+import { expect } from 'chai';
+import { ${tags.SERVICE_CLASS_NAME} } from '../../src';
+
+describe('${tags.SERVICE_CLASS_NAME}', () => {
+    it('should be a class of IMQService', () => {
+        expect(typeof ${tags.SERVICE_CLASS_NAME})
+            .equals('function');
+        expect(typeof (${tags.SERVICE_CLASS_NAME}.prototype as any).describe)
+            .equals('function');
+    });
+
+    // implement tests for your service methods here...
+    // test below is just an example, remove it when it is not required anymore
+    describe('hello()', () => {
+        const service = new ${tags.SERVICE_CLASS_NAME}();
+        it('should be a function', () => {
+            expect(typeof service.hello).equals('function');
+        });
+        it('should return "Hello!" string', () => {
+            expect(service.hello()).equals('Hello!');
+        });
+    });
+});
 `);
 }
 
@@ -582,6 +623,7 @@ async function makeService(path: string, argv: Arguments) {
 
     compileTemplate(path, tags);
     createServiceFile(path, tags);
+    createServiceTestFile(path, tags);
 }
 
 // istanbul ignore next
