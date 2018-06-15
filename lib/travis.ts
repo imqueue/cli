@@ -1,7 +1,7 @@
 /*!
  * IMQ-CLI library: travis
  *
- * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
+ * Copyright (c) 2018, imqueue.com <support@imqueue.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,7 +16,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import * as NodeRSA from 'node-rsa';
-import { TravisClient } from 'node-travis';
+import { TravisClient } from '@imqueue/travis';
 
 /**
  * Returns encrypted secure key for travis sensitive data.

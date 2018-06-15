@@ -1,7 +1,7 @@
 /*!
  * IMQ-CLI command: service create
  *
- * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
+ * Copyright (c) 2018, imqueue.com <support@imqueue.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -535,7 +535,7 @@ import {
     IMQService,
     expose,
     profile,
-} from 'imq-rpc';
+} from '@imqueue/rpc';
 
 export class ${tags.SERVICE_CLASS_NAME} extends IMQService {
     // Implement your service methods here, example:

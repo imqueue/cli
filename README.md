@@ -1,12 +1,12 @@
-# I Message Queue CLI (imq-cli)
+# I Message Queue CLI (@imqueue/cli)
 
-[![Build Status](https://travis-ci.org/imqueue/imq-cli.svg?branch=master)](https://travis-ci.org/imqueue/imq-cli)
-[![codebeat badge](https://codebeat.co/badges/bafe0c12-51c6-4419-b671-cf107b5293e3)](https://codebeat.co/projects/github-com-imqueue-imq-cli-master)
-[![Coverage Status](https://coveralls.io/repos/github/imqueue/imq-cli/badge.svg?branch=master)](https://coveralls.io/github/imqueue/imq-cli?branch=master)
-[![David](https://img.shields.io/david/imqueue/imq-cli.svg)](https://david-dm.org/imqueue/imq-cli)
-[![David](https://img.shields.io/david/dev/imqueue/imq-cli.svg)](https://david-dm.org/imqueue/imq-cli?type=dev)
-[![Known Vulnerabilities](https://snyk.io/test/github/imqueue/imq-cli/badge.svg?targetFile=package.json)](https://snyk.io/test/github/imqueue/imq-cli?targetFile=package.json)
-[![License](https://img.shields.io/badge/license-ISC-blue.svg)](https://rawgit.com/imqueue/imq-cli/master/LICENSE)
+[![Build Status](https://travis-ci.org/imqueue/cli.svg?branch=master)](https://travis-ci.org/imqueue/cli)
+[![codebeat badge](https://codebeat.co/badges/bafe0c12-51c6-4419-b671-cf107b5293e3)](https://codebeat.co/projects/github-com-imqueue-cli-master)
+[![Coverage Status](https://coveralls.io/repos/github/imqueue/cli/badge.svg?branch=master)](https://coveralls.io/github/imqueue/cli?branch=master)
+[![David](https://img.shields.io/david/imqueue/cli.svg)](https://david-dm.org/imqueue/cli)
+[![David](https://img.shields.io/david/dev/imqueue/cli.svg)](https://david-dm.org/imqueue/cli?type=dev)
+[![Known Vulnerabilities](https://snyk.io/test/github/imqueue/cli/badge.svg?targetFile=package.json)](https://snyk.io/test/github/imqueue/imq-cli?targetFile=package.json)
+[![License](https://img.shields.io/badge/license-ISC-blue.svg)](https://rawgit.com/imqueue/cli/master/LICENSE)
 
 ***ATTENTION:** This package is unstable and still in development. Some of the
 features may not work or may work with problems.*
@@ -20,7 +20,7 @@ IMQ-CLI makes work with imq-rpc simpler. Frees you from writing boilerplate.
 As simple as:
 
 ~~~bash
-npm i -g imq-cli
+npm i -g @imqueue/cli
 ~~~
 
 ## Usage
@@ -166,4 +166,4 @@ Currently it supports both `zsh` and `bash` shells.
 
 ## License
 
-[ISC](https://github.com/imqueue/imq-cli/blob/master/LICENSE)
+[ISC](https://github.com/imqueue/cli/blob/master/LICENSE)
