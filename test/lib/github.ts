@@ -23,7 +23,7 @@ import { config as envConfig } from 'dotenv';
 
 envConfig();
 
-describe('github', function () {
+xdescribe('github', function () {
     this.timeout(30000);
 
     const token = String(process.env.GITHUB_AUTH_TOKEN);
