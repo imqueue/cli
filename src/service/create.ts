@@ -47,9 +47,9 @@ import {
     toTravisTags,
 } from '../../lib';
 import { execSync } from 'child_process';
-import { expect } from "chai";
 
 const commandExists = require('command-exists').sync;
+const DEFAULT_SERVICE_VERSION = '1.0.0-0';
 
 let config: IMQCLIConfig;
 
@@ -169,7 +169,7 @@ function ensureName(name: string) {
 // istanbul ignore next
 function ensureVersion(version: string) {
     if (!version.trim()) {
-        version = '1.0.0';
+        version = DEFAULT_SERVICE_VERSION;
     }
 
     if (!semver.valid(version)) {
@@ -752,6 +752,7 @@ async function commit(argv: Arguments) {
     const path = resolve(argv.path);
     const name = ensureName(argv.name);
     const owner = (argv.u || '').trim();
+    const pkg: any = require(resolve(path, 'package.json'));
     const cwd = process.cwd();
     let url = config.gitBaseUrl;
 
@@ -775,6 +776,11 @@ git add . && \
 git commit -am "Initial commit" && 
 git remote add origin ${url} && \
 git push origin master`);
+    console.log('Setting up version tag...');
+    execSync(`git tag -d v${pkg.version}; \
+git push origin :refs/tags/v${pkg.version}; \
+git tag -fa v${pkg.version} -m "Tagging version v${pkg.version}" && \
+git push origin master --tags`);
 
     process.chdir(cwd);
 }
@@ -813,7 +819,7 @@ export const { command, describe, builder, handler } = {
 
             .alias('V', 'service-version')
             .describe('V', 'Initial service version')
-            .default('V', '1.0.0')
+            .default('V', DEFAULT_SERVICE_VERSION)
 
             .alias('H', 'homepage')
             .describe('H', 'Homepage URL for service, if required')
