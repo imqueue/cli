@@ -24,7 +24,7 @@ import chalk from 'chalk';
 import { printError } from '../../lib';
 
 // noinspection JSUnusedGlobalSymbols
-export const { command, describe, builder, handler, promptOverride } = {
+export const { command, describe, builder, promptOverride, handler } = {
     command: 'generate <name> [path]',
     describe: 'Generates IMQ-RPC client for a specified service',
 
@@ -62,7 +62,7 @@ export const { command, describe, builder, handler, promptOverride } = {
             const exists = fs.existsSync(filePath);
 
             if (!argv.o && exists) {
-                await this.promptOverride(filePath);
+                await promptOverride(filePath);
             }
 
             await IMQClient.create(name, {
@@ -79,5 +79,5 @@ export const { command, describe, builder, handler, promptOverride } = {
         catch (err) {
             printError(err);
         }
-    }
+    },
 };
