@@ -23,6 +23,15 @@ const RX_ESCAPE = /\./g;
 
 let nodeVersions: NodeVersion[];
 
+/**
+ * Sleep given number of milliseconds
+ *
+ * @param {number} delay - sleep time in milliseconds
+ */
+export async function sleep(delay: number): Promise<void> {
+    await new Promise(resolve => setTimeout(resolve, delay));
+}
+
 export interface NodeVersion {
     version: string;
     date: string;

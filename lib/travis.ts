@@ -17,6 +17,7 @@
  */
 import * as NodeRSA from 'node-rsa';
 import { TravisClient } from '@imqueue/travis';
+import { sleep } from './node';
 
 /**
  * Returns encrypted secure key for travis sensitive data.
@@ -51,6 +52,41 @@ export async function travisEncrypt(
 
 // istanbul ignore next
 /**
+ * Tries perform travis sync
+ *
+ * @param {TravisClient} travis - authenticated client
+ * @param {number} [retry] - current retry
+ * @param {number} maxRetries - max number of retries
+ * @param {number} delay - delay in milliseconds before result return
+ */
+export async function trySyncBuilds(
+    travis: TravisClient,
+    retry: number = 0,
+    maxRetries: number = 3,
+    delay: number = 2000
+): Promise<boolean> {
+    try {
+        await travis.users.sync.post();
+        await sleep(delay);
+    } catch(err) {
+        if (retry < maxRetries) {
+            await sleep(delay);
+
+            return trySyncBuilds(
+                travis,
+                ++retry,
+                maxRetries
+            );
+        }
+
+        return false;
+    }
+
+    return true;
+}
+
+// istanbul ignore next
+/**
  * Enables builds for a given repository
  *
  * @param {string} owner
@@ -67,10 +103,7 @@ export async function enableBuilds(
     const travis = new TravisClient({ pro: isPrivate });
 
     await travis.authenticate({ github_token });
-
-    try {
-        await travis.users.sync.post();
-    } catch(err) { /* ignore */ }
+    await trySyncBuilds(travis);
 
     const hook = (await travis.hooks.get()).hooks.find((hook: any) =>
         hook.owner_name === owner && hook.name === repo);
