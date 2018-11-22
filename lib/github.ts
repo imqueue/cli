@@ -27,7 +27,7 @@ import * as Github  from '@octokit/rest';
  */
 export async function getTeam(github: Github, owner: string): Promise<any> {
     try {
-        return ((await github.orgs.getTeams({
+        return ((await (github.orgs as any).getTeams({
             org: owner
         }) || /* istanbul ignore next */{} as any)
         .data || /* istanbul ignore next */[])
@@ -109,7 +109,7 @@ export async function createRepository(
     const team = await getTeam(github, owner);
     const org = await getOrg(github, owner);
 
-    const repository = await github.repos.create({
+    const repository = await (github.repos as any).create({
         auto_init: false,
         description,
         name: repo,
@@ -118,7 +118,7 @@ export async function createRepository(
 
     if (org && team && owner !== (repository.data.owner as any).login) {
         try {
-            await github.repos.transfer({
+            await (github.repos as any).transfer({
                 new_owner: owner,
                 owner: (repository.data.owner as any).login,
                 repo,
