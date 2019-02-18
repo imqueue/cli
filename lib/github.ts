@@ -62,9 +62,9 @@ export async function getOrg(github: Github, owner: string): Promise<any> {
  * @return {Promise<Github>}
  */
 export async function getInstance(token: string): Promise<Github> {
-    const github = new Github();
-
-    await github.authenticate({ type: 'token', token });
+    const github = new Github({
+        auth: `token ${token}`
+    });
 
     return github;
 }
