@@ -870,5 +870,26 @@
       "year",
       "fullname"
     ]
+  },
+  "proprietary": {
+    "key": "proprietary",
+    "name": "Proprietary Closed Code License",
+    "spdx_id": "UNLICENSED",
+    "url": "",
+    "node_id": "",
+    "html_url": "",
+    "description": "A proprietary, closed code license",
+    "implementation": "Put a proprietary license file with a custom license condition in your source-code folder and use a proper headers in code referring to the license terms stated in license file",
+    "conditions": [],
+    "permissions": [],
+    "limitations": [],
+    "header": "Copyright (C) [year] [fullname] - All Rights Reserved\nUnauthorized copying of this file, via any medium is strictly prohibited\nProprietary and confidential\nWritten by [fullname] <[email]>",
+    "body": "Copyright (C) [year] [fullname] - All Rights Reserved\nUnauthorized copying of this file, via any medium is strictly prohibited\nProprietary and confidential\nWritten by [fullname] <[email]>",
+    "featured": true,
+    "vars": [
+      "year",
+      "fullname",
+      "email"
+    ]
   }
 }
