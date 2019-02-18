@@ -33,14 +33,16 @@ export const { command, describe, handler } = {
         try {
             const config = loadConfig();
 
-            config[argv.option] = prepareConfigValue(argv.value);
+            config[(argv as any).option] = prepareConfigValue(
+                (argv as any).value
+            );
             saveConfig(config);
 
             process.stdout.write(
                 chalk.green('Option ') +
-                chalk.cyan(`${argv.option}`) +
+                chalk.cyan(`${(argv as any).option}`) +
                 chalk.green(' is set to ') +
-                chalk.cyan(`${argv.value}`) + '\n'
+                chalk.cyan(`${(argv as any).value}`) + '\n'
             );
         }
 
