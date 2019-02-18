@@ -55,15 +55,15 @@ export const { command, describe, builder, handler } = {
                 );
             }
 
-            if (argv.option) {
+            if ((argv as any).option) {
                 return process.stdout.write(
-                    JSON.stringify(config[argv.option]) + '\n'
+                    JSON.stringify(config[(argv as any).option]) + '\n'
                 );
             }
 
             process.stdout.write(chalk.bold.green('IMQ CLI Config:') + '\n');
 
-            if (argv.json) {
+            if ((argv as any).json) {
                 return process.stdout.write(
                     chalk.cyan(JSON.stringify(config, null, 2)) + '\n'
                 );

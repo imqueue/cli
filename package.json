@@ -39,7 +39,7 @@
   "author": "imqueue.com <support@imqueue.com> (https://imqueue.com)",
   "license": "ISC",
   "dependencies": {
-    "@imqueue/rpc": "^1.2.12",
+    "@imqueue/rpc": "^1.2.13",
     "@imqueue/travis": "^1.0.0",
     "@octokit/rest": "^16.0.1",
     "chalk": "^2.4.1",
@@ -51,7 +51,7 @@
     "request": "^2.88.0",
     "semver": "^5.5.1",
     "word-wrap": "^1.2.3",
-    "yargs": "^12.0.2"
+    "yargs": "^13.2.1"
   },
   "preferGlobal": true,
   "devDependencies": {
@@ -61,11 +61,11 @@
     "@types/inquirer": "0.0.43",
     "@types/mocha": "^5.2.5",
     "@types/mock-require": "^2.0.0",
-    "@types/node": "^10.9.4",
-    "@types/node-rsa": "^0.4.3",
+    "@types/node": "^11.9.4",
+    "@types/node-rsa": "^1.0.0",
     "@types/request": "^2.47.1",
     "@types/semver": "^5.5.0",
-    "@types/sinon": "^5.0.2",
+    "@types/sinon": "^7.0.6",
     "@types/yargs": "^12.0.1",
     "chai": "^4.1.2",
     "codeclimate-test-reporter": "^0.5.0",
@@ -78,9 +78,9 @@
     "reflect-metadata": "^0.1.12",
     "sinon": "^7.1.1",
     "source-map-support": "^0.5.9",
-    "ts-node": "^7.0.1",
-    "typedoc": "^0.13.0",
-    "typescript": "^3.0.3"
+    "ts-node": "^8.0.2",
+    "typedoc": "^0.14.2",
+    "typescript": "^3.3.3"
   },
   "main": "index.js",
   "bin": {

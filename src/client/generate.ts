@@ -44,12 +44,12 @@ export const { command, describe, builder, promptOverride, handler } = {
             type: 'confirm',
             name: 'overwrite',
             default: false,
-            message: `File "${filePath}" already exists. Overwrite it?`
-        }])).overwrite;
+            message: `File "${filePath}" already exists. Overwrite it?`,
+        }] as inquirer.Questions)).overwrite;
 
         if (!write) {
             process.stdout.write(
-                chalk.yellow('File exists, overwrite disabled, exit...')
+                chalk.yellow('File exists, overwrite disabled, exit...'),
             );
             process.exit(0);
         }
@@ -58,21 +58,21 @@ export const { command, describe, builder, promptOverride, handler } = {
     async handler(argv: Arguments) {
         try {
             const { path, name } = argv;
-            const filePath = p.resolve(path, `${name}.ts`);
+            const filePath = p.resolve(path as string, `${name}.ts`);
             const exists = fs.existsSync(filePath);
 
             if (!argv.o && exists) {
                 await promptOverride(filePath);
             }
 
-            await IMQClient.create(name, {
+            await IMQClient.create(name as string, {
                 compile: false,
-                path
+                path: path as string,
             });
 
             process.stdout.write(
                 chalk.green('Successfully created. Path: ') +
-                chalk.cyan(filePath) + '\n'
+                chalk.cyan(filePath) + '\n',
             );
         }
 

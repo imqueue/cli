@@ -198,7 +198,7 @@ function ensureServiceRepo(owner: string, name: string) {
 }
 
 // istanbul ignore next
-function ensureServiceBugsPage(argv: Arguments) {
+function ensureServiceBugsPage(argv: any) {
     const owner = argv.u.trim();
     let url = argv.B.trim();
 
@@ -216,7 +216,7 @@ function ensureServiceBugsPage(argv: Arguments) {
 }
 
 // istanbul ignore next
-function ensureServiceHomePage(argv: Arguments) {
+function ensureServiceHomePage(argv: any) {
     const owner = argv.u.trim();
     let url = argv.H.trim();
 
@@ -241,7 +241,7 @@ async function ensureAuthorName(name: string) {
             name: 'authorName',
             message: 'Enter author\'s name:',
             default: os.userInfo().username
-        }]);
+        }] as inquirer.Questions);
 
         name = answer.authorName.trim() || os.userInfo().username;
     }
@@ -258,7 +258,7 @@ async function ensureAuthorEmail(email: string) {
             type: 'input',
             name: 'email',
             message: 'Enter author\'s email:'
-        }]);
+        }] as inquirer.Questions);
 
         if (!isEmail(answer.email)) {
             throw new TypeError(
@@ -273,7 +273,7 @@ async function ensureAuthorEmail(email: string) {
 }
 
 // istanbul ignore next
-async function ensureTravisTags(argv: Arguments): Promise<string[]> {
+async function ensureTravisTags(argv: any): Promise<string[]> {
     if (argv.n instanceof Array && argv.n.length) {
         return argv.n;
     }
@@ -287,7 +287,7 @@ async function ensureTravisTags(argv: Arguments): Promise<string[]> {
             message: 'Enter node version(s) for CI builds (comma-separated ' +
                 'if multiple):',
             default: 'stable, latest'
-        }]);
+        }] as inquirer.Questions);
 
         if (!answer.tags) {
             tags.push('stable', 'latest');
@@ -304,7 +304,7 @@ async function ensureTravisTags(argv: Arguments): Promise<string[]> {
 }
 
 // istanbul ignore next
-async function ensureDockerNamespace(argv: Arguments) {
+async function ensureDockerNamespace(argv: any) {
     let ns = (argv.N || '').trim();
     let dockerize = argv.D || config.useDocker;
     let answer: any;
@@ -315,7 +315,7 @@ async function ensureDockerNamespace(argv: Arguments) {
             name: 'useDocker',
             message: 'Would you like to dockerize your service?',
             default: true,
-        }]);
+        }] as inquirer.Questions);
 
         config.useDocker = argv.D = argv.dockerize = dockerize =
             answer.useDocker;
@@ -326,7 +326,7 @@ async function ensureDockerNamespace(argv: Arguments) {
             type: 'input',
             name: 'dockerNamespace',
             message: 'Enter DockerHub namespace:'
-        }]);
+        }] as inquirer.Questions);
 
         if (!isNamespace(answer.dockerNamespace.trim())) {
             throw new TypeError('Given DockerHub namespace is invalid!');
@@ -340,7 +340,7 @@ async function ensureDockerNamespace(argv: Arguments) {
 }
 
 // istanbul ignore next
-async function ensureDockerTag(argv: Arguments) {
+async function ensureDockerTag(argv: any) {
     if (argv.L.trim()) {
         return argv.L.trim();
     }
@@ -356,7 +356,7 @@ async function ensureDockerTag(argv: Arguments) {
 }
 
 // istanbul ignore next
-async function ensureDockerSecrets(argv: Arguments) {
+async function ensureDockerSecrets(argv: any) {
     const owner = argv.u.trim();
     const name = ensureName(argv.name);
 
@@ -377,7 +377,7 @@ async function ensureDockerSecrets(argv: Arguments) {
             type: 'input',
             name: 'dockerHubUser',
             message: 'Docker hub user:'
-        }]);
+        }] as inquirer.Questions);
 
         if (!answer.dockerHubUser.trim()) {
             throw new TypeError(
@@ -393,7 +393,7 @@ async function ensureDockerSecrets(argv: Arguments) {
             type: 'password',
             name: 'dockerHubPassword',
             message: 'Docker hub password:'
-        }]);
+        }] as inquirer.Questions);
 
         if (!answer.dockerHubPassword.trim()) {
             throw new TypeError(
@@ -419,8 +419,8 @@ async function ensureDockerSecrets(argv: Arguments) {
 }
 
 // istanbul ignore next
-function stripDockerization(argv: Arguments) {
-    const path = resolve(argv.path);
+function stripDockerization(argv: any) {
+    const path = resolve(argv.path as string);
     const travis = resolve(path, '.travis.yml');
     const docker = resolve(path, 'Dockerfile');
     const ignore = resolve(path, '.dockerignore');
@@ -445,7 +445,7 @@ function stripDockerization(argv: Arguments) {
 }
 
 // istanbul ignore next
-async function enableTravisBuilds(argv: Arguments) {
+async function enableTravisBuilds(argv: any) {
     console.log('Enabling travis builds...');
     let enabled = false;
 
@@ -467,7 +467,7 @@ async function enableTravisBuilds(argv: Arguments) {
 }
 
 // istanbul ignore next
-async function buildDockerCi(argv: Arguments): Promise<void> {
+async function buildDockerCi(argv: any): Promise<void> {
     const dockerNs = await ensureDockerNamespace(argv);
     const dockerize = !!(gitRepoInitialized && dockerNs && (
         argv.D || config.useDocker
@@ -499,7 +499,7 @@ async function buildDockerCi(argv: Arguments): Promise<void> {
 }
 
 // istanbul ignore next
-async function buildTags(path: string, argv: Arguments) {
+async function buildTags(path: string, argv: any) {
     const name = ensureName(argv.name);
     const author = await ensureAuthorName(argv.author);
     const email = await ensureAuthorEmail(argv.email);
@@ -618,7 +618,7 @@ function compileTemplate(path: string, tags: any) {
 }
 
 // istanbul ignore next
-async function makeService(path: string, argv: Arguments) {
+async function makeService(path: string, argv: any) {
     const tags = await buildTags(path, argv);
 
     compileTemplate(path, tags);
@@ -627,7 +627,7 @@ async function makeService(path: string, argv: Arguments) {
 }
 
 // istanbul ignore next
-async function buildFromTemplate(argv: Arguments) {
+async function buildFromTemplate(argv: any) {
     const template = await ensureTemplate(argv.template);
     const path = resolve(argv.path);
 
@@ -638,13 +638,13 @@ async function buildFromTemplate(argv: Arguments) {
 }
 
 // istanbul ignore next
-async function ensureGitRepo(argv: Arguments) {
+async function ensureGitRepo(argv: any) {
     if (!isNamespace(argv.u)) {
         const answer = await inquirer.prompt<{ gitNs: string }>([{
             type: 'input',
             name: 'gitNs',
             message: 'Enter GitHub owner (user name or organization):',
-        }]);
+        }] as inquirer.Questions);
 
         if (!isNamespace(answer.gitNs)) {
             throw new TypeError(
@@ -661,7 +661,7 @@ async function ensureGitRepo(argv: Arguments) {
 let gitRepoInitialized = false;
 
 // istanbul ignore next
-async function createGitRepo(argv: Arguments) {
+async function createGitRepo(argv: any) {
     const useGit = argv.g || config.useGit;
 
     if (!useGit && typeof config.useGit === 'undefined') {
@@ -671,7 +671,7 @@ async function createGitRepo(argv: Arguments) {
             message: 'Would you like to enable automatic GitHub integration ' +
                 'for this service?',
             default: true,
-        }]);
+        }] as inquirer.Questions);
 
         if (!answer.useGit) {
             argv.D = argv.dockerize = config.useDocker = false;
@@ -687,7 +687,7 @@ async function createGitRepo(argv: Arguments) {
             type: 'input',
             name: 'token',
             message: 'Enter your GitHub auth token:'
-        }]);
+        }] as inquirer.Questions);
 
         if (!isGuthubToken(answer.token.trim())) {
             throw new Error('Given GitHub auth token is invalid!');
@@ -705,7 +705,7 @@ async function createGitRepo(argv: Arguments) {
             name: 'isPrivate',
             message: 'Should be service created on GitHub as private repo?',
             default: true
-        }]);
+        }] as inquirer.Questions);
 
         isPrivate = answer.isPrivate;
     }
@@ -721,7 +721,7 @@ async function createGitRepo(argv: Arguments) {
 }
 
 // istanbul ignore next
-async function installPackages(argv: Arguments) {
+async function installPackages(argv: any) {
     if (!commandExists('npm')) {
         throw new Error('npm command is not installed!');
     }
@@ -748,7 +748,7 @@ async function installPackages(argv: Arguments) {
 }
 
 // istanbul ignore next
-async function commit(argv: Arguments) {
+async function commit(argv: any) {
     const path = resolve(argv.path);
     const name = ensureName(argv.name);
     const owner = (argv.u || '').trim();
@@ -878,7 +878,7 @@ export const { command, describe, builder, handler } = {
                 'Path to directory where service will be generated to');
     },
 
-    async handler(argv: Arguments) {
+    async handler(argv: any) {
         try {
             await buildFromTemplate(argv);
             await createGitRepo(argv);
