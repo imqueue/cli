@@ -106,33 +106,11 @@ export async function createRepository(
         }
     }
 
-    const team = await getTeam(github, owner);
-    const org = await getOrg(github, owner);
-
-    const repository = await (github.repos as any).create({
+    await (github.repos as any).createInOrg({
+        org: owner,
+        name: repo,
+        private: isPrivate,
         auto_init: false,
         description,
-        name: repo,
-        private: isPrivate
     });
-
-    if (org && team && owner !== (repository.data.owner as any).login) {
-        try {
-            await (github.repos as any).transfer({
-                new_owner: owner,
-                owner: (repository.data.owner as any).login,
-                repo,
-                team_ids: [team.id]
-            });
-        } catch (err) {
-            // make sure we clean up garbage
-            // istanbul ignore next
-            await github.repos.delete({
-                owner: (repository.data.owner as any).login,
-                repo
-            });
-            // istanbul ignore next
-            throw err;
-        }
-    }
 }
