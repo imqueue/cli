@@ -26,7 +26,9 @@
     "clean-doc": "rm -rf docs",
     "clean-benchmark": "rm -rf benchmark-result",
     "clean": "npm run clean-tests && npm run clean-typedefs && npm run clean-maps && npm run clean-js && npm run clean-doc && npm run clean-benchmark",
-    "doc": "rm -rf docs && typedoc --excludePrivate --excludeExternals --hideGenerator --exclude \"**/+(debug|test|node_modules|docs|coverage|benchmark|.nyc_output)/**/*\" --mode file --out ./docs . && /usr/bin/env node -e \"require('opn')('file://`pwd`/docs/index.html', { wait: false });\""
+    "doc": "rm -rf docs && typedoc --excludePrivate --excludeExternals --hideGenerator --exclude \"**/+(debug|test|node_modules|docs|coverage|benchmark|.nyc_output)/**/*\" --mode file --out ./docs . && /usr/bin/env node -e \"require('opn')('file://`pwd`/docs/index.html', { wait: false });\"",
+    "snyk-protect": "snyk protect",
+    "prepublish": "npm run snyk-protect"
   },
   "repository": {
     "type": "git",
@@ -51,7 +53,8 @@
     "request": "^2.88.0",
     "semver": "^5.5.1",
     "word-wrap": "^1.2.3",
-    "yargs": "^13.2.1"
+    "yargs": "^13.2.1",
+    "snyk": "^1.189.0"
   },
   "preferGlobal": true,
   "devDependencies": {
@@ -107,5 +110,6 @@
       "text-summary",
       "lcovonly"
     ]
-  }
+  },
+  "snyk": true
 }
