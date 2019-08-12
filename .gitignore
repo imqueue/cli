@@ -34,7 +34,6 @@ Thumbs.db
 *.swp
 .env
 
-package-lock.json
 stats.json
 benchmark-result/*
 

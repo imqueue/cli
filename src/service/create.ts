@@ -236,12 +236,13 @@ async function ensureAuthorName(name: string) {
     name = name.trim();
 
     if (!name) {
-        const answer = await inquirer.prompt<{ authorName: string }>([{
-            type: 'input',
-            name: 'authorName',
-            message: 'Enter author\'s name:',
-            default: os.userInfo().username
-        }] as inquirer.Questions);
+        const answer: { authorName: string } =
+            await inquirer.prompt<{ authorName: string }>([{
+                type: 'input',
+                name: 'authorName',
+                message: 'Enter author\'s name:',
+                default: os.userInfo().username
+            }] as inquirer.QuestionCollection);
 
         name = answer.authorName.trim() || os.userInfo().username;
     }
@@ -254,11 +255,12 @@ async function ensureAuthorEmail(email: string) {
     email = email.trim();
 
     if (!isEmail(email)) {
-        const answer = await inquirer.prompt<{ email: string }>([{
-            type: 'input',
-            name: 'email',
-            message: 'Enter author\'s email:'
-        }] as inquirer.Questions);
+        const answer: { email: string } =
+            await inquirer.prompt<{ email: string }>([{
+                type: 'input',
+                name: 'email',
+                message: 'Enter author\'s email:'
+            }] as inquirer.QuestionCollection);
 
         if (!isEmail(answer.email)) {
             throw new TypeError(
@@ -281,13 +283,14 @@ async function ensureTravisTags(argv: any): Promise<string[]> {
     let tags = (argv.n || '').split(/\s+|\s*,\s*/).filter((t: string) => t);
 
     if (!tags.length) {
-        let answer: any = await inquirer.prompt<{ tags: string }>([{
-            type: 'input',
-            name: 'tags',
-            message: 'Enter node version(s) for CI builds (comma-separated ' +
-                'if multiple):',
-            default: 'stable, latest'
-        }] as inquirer.Questions);
+        let answer: { tags: string } =
+            await inquirer.prompt<{ tags: string }>([{
+                type: 'input',
+                name: 'tags',
+                message: 'Enter node version(s) for CI builds (comma-separated ' +
+                    'if multiple):',
+                default: 'stable, latest'
+            }] as inquirer.QuestionCollection);
 
         if (!answer.tags) {
             tags.push('stable', 'latest');
@@ -307,7 +310,10 @@ async function ensureTravisTags(argv: any): Promise<string[]> {
 async function ensureDockerNamespace(argv: any) {
     let ns = (argv.N || '').trim();
     let dockerize = argv.D || config.useDocker;
-    let answer: any;
+    let answer: {
+        useDocker?: boolean;
+        dockerNamespace?: string;
+    };
 
     if (!dockerize && typeof config.useDocker === 'undefined') {
         answer = await inquirer.prompt<{ useDocker: boolean }>([{
@@ -315,7 +321,7 @@ async function ensureDockerNamespace(argv: any) {
             name: 'useDocker',
             message: 'Would you like to dockerize your service?',
             default: true,
-        }] as inquirer.Questions);
+        }] as inquirer.QuestionCollection);
 
         config.useDocker = argv.D = argv.dockerize = dockerize =
             answer.useDocker;
@@ -326,9 +332,11 @@ async function ensureDockerNamespace(argv: any) {
             type: 'input',
             name: 'dockerNamespace',
             message: 'Enter DockerHub namespace:'
-        }] as inquirer.Questions);
+        }] as inquirer.QuestionCollection);
 
-        if (!isNamespace(answer.dockerNamespace.trim())) {
+        if (answer.dockerNamespace &&
+            !isNamespace(answer.dockerNamespace.trim())
+        ) {
             throw new TypeError('Given DockerHub namespace is invalid!');
         }
 
@@ -373,11 +381,12 @@ async function ensureDockerSecrets(argv: any) {
     const repo = `${owner}/${name}`;
 
     if (!dockerHubUser) {
-        const answer = await inquirer.prompt<{ dockerHubUser: string}>([{
-            type: 'input',
-            name: 'dockerHubUser',
-            message: 'Docker hub user:'
-        }] as inquirer.Questions);
+        const answer: { dockerHubUser: string} =
+            await inquirer.prompt<{ dockerHubUser: string}>([{
+                type: 'input',
+                name: 'dockerHubUser',
+                message: 'Docker hub user:'
+            }] as inquirer.QuestionCollection);
 
         if (!answer.dockerHubUser.trim()) {
             throw new TypeError(
@@ -389,11 +398,12 @@ async function ensureDockerSecrets(argv: any) {
     }
 
     if (!dockerHubPassword) {
-        const answer = await inquirer.prompt<{ dockerHubPassword: string }>([{
-            type: 'password',
-            name: 'dockerHubPassword',
-            message: 'Docker hub password:'
-        }] as inquirer.Questions);
+        const answer: { dockerHubPassword: string } =
+            await inquirer.prompt<{ dockerHubPassword: string }>([{
+                type: 'password',
+                name: 'dockerHubPassword',
+                message: 'Docker hub password:'
+            }] as inquirer.QuestionCollection);
 
         if (!answer.dockerHubPassword.trim()) {
             throw new TypeError(
@@ -640,11 +650,12 @@ async function buildFromTemplate(argv: any) {
 // istanbul ignore next
 async function ensureGitRepo(argv: any) {
     if (!isNamespace(argv.u)) {
-        const answer = await inquirer.prompt<{ gitNs: string }>([{
-            type: 'input',
-            name: 'gitNs',
-            message: 'Enter GitHub owner (user name or organization):',
-        }] as inquirer.Questions);
+        const answer: { gitNs: string } =
+            await inquirer.prompt<{ gitNs: string }>([{
+                type: 'input',
+                name: 'gitNs',
+                message: 'Enter GitHub owner (user name or organization):',
+            }] as inquirer.QuestionCollection);
 
         if (!isNamespace(answer.gitNs)) {
             throw new TypeError(
@@ -665,13 +676,14 @@ async function createGitRepo(argv: any) {
     const useGit = argv.g || config.useGit;
 
     if (!useGit && typeof config.useGit === 'undefined') {
-        const answer = await inquirer.prompt<{ useGit: boolean }>([{
-            type: 'confirm',
-            name: 'useGit',
-            message: 'Would you like to enable automatic GitHub integration ' +
-                'for this service?',
-            default: true,
-        }] as inquirer.Questions);
+        const answer: { useGit: boolean } =
+            await inquirer.prompt<{ useGit: boolean }>([{
+                type: 'confirm',
+                name: 'useGit',
+                message: 'Would you like to enable automatic GitHub integration ' +
+                    'for this service?',
+                default: true,
+            }] as inquirer.QuestionCollection);
 
         if (!answer.useGit) {
             argv.D = argv.dockerize = config.useDocker = false;
@@ -683,11 +695,12 @@ async function createGitRepo(argv: any) {
     let token = (argv.T || '').trim() || config.gitHubAuthToken;
 
     if (!isGuthubToken(token)) {
-        const answer = await inquirer.prompt<{ token: string }>([{
-            type: 'input',
-            name: 'token',
-            message: 'Enter your GitHub auth token:'
-        }] as inquirer.Questions);
+        const answer: { token: string } =
+            await inquirer.prompt<{ token: string }>([{
+                type: 'input',
+                name: 'token',
+                message: 'Enter your GitHub auth token:'
+            }] as inquirer.QuestionCollection);
 
         if (!isGuthubToken(answer.token.trim())) {
             throw new Error('Given GitHub auth token is invalid!');
@@ -700,12 +713,13 @@ async function createGitRepo(argv: any) {
     let isPrivate = argv.p || config.gitRepoPrivate;
 
     if (!isPrivate && typeof config.gitRepoPrivate === 'undefined') {
-        const answer = await inquirer.prompt<{ isPrivate: boolean }>([{
-            type: 'confirm',
-            name: 'isPrivate',
-            message: 'Should be service created on GitHub as private repo?',
-            default: true
-        }] as inquirer.Questions);
+        const answer: { isPrivate: boolean } =
+            await inquirer.prompt<{ isPrivate: boolean }>([{
+                type: 'confirm',
+                name: 'isPrivate',
+                message: 'Should be service created on GitHub as private repo?',
+                default: true
+            }] as inquirer.QuestionCollection);
 
         isPrivate = answer.isPrivate;
     }

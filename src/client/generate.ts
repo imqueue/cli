@@ -40,12 +40,13 @@ export const { command, describe, builder, promptOverride, handler } = {
     },
 
     async promptOverride(filePath: string) {
-        const write = (await inquirer.prompt<{ overwrite: boolean }>([{
-            type: 'confirm',
-            name: 'overwrite',
-            default: false,
-            message: `File "${filePath}" already exists. Overwrite it?`,
-        }] as inquirer.Questions)).overwrite;
+        const write = ((await inquirer.prompt<{ overwrite: boolean }>([{
+                type: 'confirm',
+                name: 'overwrite',
+                default: false,
+                message: `File "${filePath}" already exists. Overwrite it?`,
+            }] as inquirer.QuestionCollection)) as { overwrite: boolean }
+        ).overwrite;
 
         if (!write) {
             process.stdout.write(
