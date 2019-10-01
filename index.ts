@@ -17,25 +17,30 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import * as yargs from 'yargs';
-import { VERSION } from './lib';
+import { VERSION, checkForUpdate } from './lib';
 
-yargs
-    .usage('IMQ Command Line Interface' +
-        `\nVersion: ${VERSION}` +
-        '\n\nUsage: $0 <command>')
-    .version(VERSION)
-    .commandDir('src')
-    .demandCommand()
-    .wrap(yargs.terminalWidth())
-    .help()
-    .argv
-;
+(async () => {
+    await checkForUpdate();
 
-const commands = (<any>yargs).getCommandInstance().getCommands();
+    yargs
+        .usage('IMQ Command Line Interface' +
+            `\nVersion: ${VERSION}` +
+            '\n\nUsage: $0 <command>')
+        .version(VERSION)
+        .commandDir('src')
+        .demandCommand()
+        .wrap(yargs.terminalWidth())
+        .help()
+        .argv
+    ;
 
-if (commands.length && !(
-    yargs.argv._[0] && ~commands.indexOf(yargs.argv._[0])
-)) {
-    yargs.showHelp();
-    process.exit(1);
-}
+    // noinspection TypeScriptUnresolvedFunction
+    const commands = (<any>yargs).getCommandInstance().getCommands();
+
+    if (commands.length && !(
+        yargs.argv._[0] && ~commands.indexOf(yargs.argv._[0])
+    )) {
+        yargs.showHelp();
+        process.exit(1);
+    }
+})();

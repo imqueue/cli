@@ -27,3 +27,4 @@ export * from './travis';
 export * from './template';
 export * from './github';
 export * from './node';
+export * from './autoupdate';
