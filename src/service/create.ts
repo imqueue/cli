@@ -16,7 +16,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import * as path from 'path';
-import { Argv, Arguments } from 'yargs';
+import { Argv } from 'yargs';
 import * as fs from 'fs';
 import * as os from 'os';
 import chalk from 'chalk';
@@ -122,14 +122,14 @@ async function ensureLicense(
     if (license === 'UNLICENSED') {
         header = `/*!
  * Copyright (c) ${new Date().getFullYear()} ${author} <${email}>
- * 
+ *
  * This software is private and is unlicensed. Please, contact
  * author for any licensing details.
  */`;
         text = `Copyright (c) ${new Date().getFullYear()} ${author} <${email}>
 
 This software is private and is unlicensed. Please, contact
-author for any licensing details.\n`
+author for any licensing details.\n`;
         name = license;
     } else {
         const lic: any = findLicense(license);
@@ -174,7 +174,7 @@ function ensureVersion(version: string) {
 
     if (!semver.valid(version)) {
         throw new TypeError('Given version is invalid, please, provide ' +
-            'valid semver format!')
+            'valid semver format!');
     }
 
     return version;
@@ -200,7 +200,8 @@ function ensureServiceRepo(owner: string, name: string) {
 // istanbul ignore next
 function ensureServiceBugsPage(argv: any) {
     const owner = argv.u.trim();
-    let url = argv.B.trim();
+    // noinspection TypeScriptUnresolvedVariable
+    let url = (argv as any).B.trim();
 
     if (!url && !owner) {
         return '';
@@ -218,7 +219,8 @@ function ensureServiceBugsPage(argv: any) {
 // istanbul ignore next
 function ensureServiceHomePage(argv: any) {
     const owner = argv.u.trim();
-    let url = argv.H.trim();
+    // noinspection TypeScriptUnresolvedVariable
+    let url = (argv as any).H.trim();
 
     if (!url && !owner) {
         return '';
@@ -469,7 +471,8 @@ async function enableTravisBuilds(argv: any) {
     } catch(err) { /* ignore */ }
 
     if (!enabled) {
-        console.log(chalk.red(
+        // noinspection TypeScriptValidateJSTypes
+        console.log((chalk as any).red(
             'There was a problem enabling builds for this service. Please ' +
             'go to http://travis-ci.org/ and enable builds manually.'
         ));
@@ -518,6 +521,7 @@ async function buildTags(path: string, argv: any) {
         path, argv.license, author, email, homepage, name
     );
 
+    // noinspection TypeScriptUnresolvedVariable
     return {
         SERVICE_NAME: name,
         SERVICE_CLASS_NAME: camelCase(name),
@@ -541,26 +545,28 @@ function createServiceFile(path: string, tags: any) {
 
     touch(resolve(path, 'src', `${tags.SERVICE_CLASS_NAME}.ts`),
 `${tags.LICENSE_HEADER}
-import {
-    IMQService,
-    expose,
-    profile,
-} from '@imqueue/rpc';
+import { expose, IMQService, lock, logged, profile } from '@imqueue/rpc';
 
 export class ${tags.SERVICE_CLASS_NAME} extends IMQService {
-    // Implement your service methods here, example:
     /**
-     * Returns "Hello!" string.
-     * This method is just an example of implementation. Please, remove it
-     * and write your service methods instead.
-     * 
-     * @return {string}
+     * Service package data
      */
+    private pkg = require(\`${__dirname}/../package.json\`);
+
+    /**
+     * Returns current version of running service
+     *
+     * @return {{ name: string, version: string }} - version of the service
+     */
+    @logged()
+    @lock()
     @profile()
     @expose()
-    public hello(): string {
-        return "Hello!";
+    public version(): { name: string, version: string } {
+        return { name: this.pkg.name, version: this.pkg.version };
     }
+
+    // Implement your service methods below this line
 }
 `);
 }
@@ -582,15 +588,16 @@ describe('${tags.SERVICE_CLASS_NAME}', () => {
             .equals('function');
     });
 
-    // implement tests for your service methods here...
-    // test below is just an example, remove it when it is not required anymore
-    describe('hello()', () => {
+    describe('version()', () => {
         const service = new ${tags.SERVICE_CLASS_NAME}();
+        const pkg = require('../../package.json');
+
         it('should be a function', () => {
-            expect(typeof service.hello).equals('function');
+            expect(typeof service.version).equals('function');
         });
-        it('should return "Hello!" string', () => {
-            expect(service.hello()).equals('Hello!');
+
+        it('should return proper version string', () => {
+            expect(service.version()).equals(pkg.version);
         });
     });
 });
@@ -736,14 +743,16 @@ async function createGitRepo(argv: any) {
 
 // istanbul ignore next
 async function installPackages(argv: any) {
-    if (!commandExists('npm')) {
+    if (!commandExists('npm' as any)) {
         throw new Error('npm command is not installed!');
     }
 
     const cwd = process.cwd();
     const path = resolve(argv.path);
     const pkg: any = require(resolve(path, 'package.json'));
+    // noinspection TypeScriptUnresolvedVariable
     const deps = Object.keys(pkg.dependencies);
+    // noinspection TypeScriptUnresolvedVariable
     const devDeps = Object.keys(pkg.devDependencies);
 
     process.chdir(path);
@@ -780,7 +789,7 @@ async function commit(argv: any) {
 
     process.chdir(path);
 
-    if (!commandExists('git')) {
+    if (!commandExists('git' as any)) {
         throw new Error('Git command expected, but is not installed!');
     }
 
@@ -898,6 +907,7 @@ export const { command, describe, builder, handler } = {
             await createGitRepo(argv);
             await buildDockerCi(argv);
 
+            // noinspection TypeScriptUnresolvedVariable
             if (!argv.noInstall) {
                 await installPackages(argv);
             }
@@ -906,11 +916,12 @@ export const { command, describe, builder, handler } = {
                 await commit(argv);
             }
 
-            console.log(chalk.green('Service successfully created!'));
+            // noinspection TypeScriptValidateJSTypes
+            console.log((chalk as any).green('Service successfully created!'));
         }
 
         catch (err) {
-            if (argv.path && (argv.path !== '.' || argv.path !== './')) {
+            if (argv.path && !~['', '.', './'].indexOf(argv.path.trim())) {
                 // cleanup service dir
                 rmdir(resolve(argv.path));
             }
