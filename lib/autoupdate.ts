@@ -56,6 +56,8 @@ function update() {
     try {
         console.log('Updating, please, wait...');
         execSync(`npm i -g ${pkg.name}`);
+        console.log('Update success, please, re-run your command again.');
+        process.exit(0);
     } catch (err) {
         console.error(`UPDATE ERROR:`, err);
     }

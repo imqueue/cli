@@ -551,7 +551,7 @@ export class ${tags.SERVICE_CLASS_NAME} extends IMQService {
     /**
      * Service package data
      */
-    private pkg = require(\`${__dirname}/../package.json\`);
+    private pkg = require('../package.json');
 
     /**
      * Returns current version of running service
@@ -596,8 +596,12 @@ describe('${tags.SERVICE_CLASS_NAME}', () => {
             expect(typeof service.version).equals('function');
         });
 
-        it('should return proper version string', () => {
-            expect(service.version()).equals(pkg.version);
+        it('should return proper name string', async () => {
+            expect((await service.version()).name).equals(pkg.name);
+        });
+
+        it('should return proper version string', async () => {
+            expect((await service.version()).version).equals(pkg.version);
         });
     });
 });
