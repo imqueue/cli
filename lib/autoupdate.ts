@@ -20,6 +20,7 @@ import * as inquirer from 'inquirer';
 
 const pkg = require('../package.json');
 
+// istanbul ignore next
 /**
  * Performs check if local version is latest
  */
@@ -49,6 +50,7 @@ export async function checkForUpdate() {
     }
 }
 
+// istanbul ignore next
 /**
  * Executes update command for this package
  */
