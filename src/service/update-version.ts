@@ -31,8 +31,6 @@ let ROOT_DIRECTORY = process.cwd();
  * NOTE: Creating new console to avoid output from imported services
  */
 const logger = new Console(process.stdout, process.stderr);
-console.log = function () { }
-
 
 /**
  * Checks if directory contains service
@@ -43,19 +41,26 @@ console.log = function () { }
 function isFolderContainsService(
     servicePath: string,
 ): boolean {
+    const originalLogger = console.log;
+
     try {
+        console.log = () => {};
         process.chdir(servicePath);
+
         const service = require(servicePath);
+
         for (const [prop, func] of Object.entries(service)) {
             if (!prop.includes('Service')) { continue; }
 
+            // noinspection TypeScriptUnresolvedVariable
             return (func as any).__proto__.name === BASE_SERVICE_NAME;
         }
 
         process.chdir(ROOT_DIRECTORY);
-    } catch (err) {
-        // ignore
-    }
+    } catch (err) { /* ignore */ }
+
+    console.log = originalLogger;
+
     return false;
 }
 
@@ -68,6 +73,7 @@ function isFolderContainsService(
  */
 function walkThroughFolders(paths: string[], args: Arguments) {
     for (const path of paths) {
+        // noinspection TypeScriptValidateTypes
         logger.log(chalk.blue('\nService:', path));
         execGitFlow(path, args);
     }
@@ -76,6 +82,7 @@ function walkThroughFolders(paths: string[], args: Arguments) {
 /**
  * Changes current branch to passed
  * @param {string} servicePath - path to directory, which contains service
+ * @param {string} branch
  * @returns {SpawnSyncReturns<Buffer>}
  */
 function gitCheckout(
@@ -97,7 +104,7 @@ function gitCheckout(
 function gitPull(
     servicePath: string,
 ): SpawnSyncReturns<Buffer> {
-    logger.log('Execution git pull...')
+    logger.log('Execution git pull...');
     return spawnSync(`git`, ['pull'], {
         cwd: servicePath,
         stdio: 'pipe',
@@ -129,7 +136,7 @@ function changeVersion(
 function gitPush(
     servicePath: string,
 ): SpawnSyncReturns<Buffer> {
-    logger.log('Execution git push...')
+    logger.log('Execution git push...');
     return spawnSync('git', ['push', '--follow-tags'], {
         cwd: servicePath,
         stdio: 'pipe',
@@ -146,6 +153,7 @@ function handleSpawnResponse(
     response: SpawnSyncReturns<Buffer>,
 ): number | null {
     if (response.status !== 0 || response.error && response.stderr) {
+        // noinspection TypeScriptValidateTypes
         logger.log(chalk.red(response.stderr.toString()));
     }
 
@@ -182,6 +190,7 @@ function execGitFlow(
 
     response = gitPush(servicePath);
     if (handleSpawnResponse(response)) { return; }
+    // noinspection TypeScriptValidateTypes
     logger.log(chalk.green('Done!'));
 }
 
