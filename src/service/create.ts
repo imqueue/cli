@@ -197,6 +197,7 @@ function ensureServiceRepo(owner: string, name: string) {
   },\n`;
 }
 
+// istanbul ignore next
 function ensureServicePages(argv: any): {
     home: string;
     bugs: string;
