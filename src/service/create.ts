@@ -197,40 +197,27 @@ function ensureServiceRepo(owner: string, name: string) {
   },\n`;
 }
 
-// istanbul ignore next
-function ensureServiceBugsPage(argv: any) {
+function ensureServicePages(argv: any): {
+    home: string;
+    bugs: string;
+} {
     const owner = argv.u.trim();
     // noinspection TypeScriptUnresolvedVariable
-    let url = (argv as any).B.trim();
+    let url = argv.B.trim();
+    let home = '';
+    let bugs = '';
 
     if (!url && !owner) {
-        return '';
+        home = bugs = '';
+    } else if (!url && owner) {
+        bugs = `https://github.com/${owner}/${dashed(argv.name)}/issues`;
+        home = `https://github.com/${owner}/${dashed(argv.name)}`;
     }
 
-    if (!url && owner) {
-        url = `https://github.com/${owner}/${dashed(argv.name)}/issues`;
-    }
-
-    return `\n  "bugs": {
-    "url": "${url}"
-  },\n`;
-}
-
-// istanbul ignore next
-function ensureServiceHomePage(argv: any) {
-    const owner = argv.u.trim();
-    // noinspection TypeScriptUnresolvedVariable
-    let url = (argv as any).H.trim();
-
-    if (!url && !owner) {
-        return '';
-    }
-
-    if (!url && owner) {
-        url = `https://github.com/${owner}/${dashed(argv.name)}`;
-    }
-
-    return `\n  "homepage": "${url}",\n`;
+    return {
+        bugs: bugs ? `\n  "bugs": {\n    "url": "${bugs}"\n  },\n` : '',
+        home: home ? `\n  "homepage": "${home}",\n` : '',
+    };
 }
 
 // istanbul ignore next
@@ -516,9 +503,9 @@ async function buildTags(path: string, argv: any) {
     const name = ensureName(argv.name);
     const author = await ensureAuthorName(argv.author);
     const email = await ensureAuthorEmail(argv.email);
-    const homepage = ensureServiceHomePage(argv);
+    const { home, bugs } = ensureServicePages(argv);
     const license = await ensureLicense(
-        path, argv.license, author, email, homepage, name
+        path, argv.license, author, email, home, name
     );
 
     // noinspection TypeScriptUnresolvedVariable
@@ -528,8 +515,8 @@ async function buildTags(path: string, argv: any) {
         SERVICE_VERSION: ensureVersion(argv.serviceVersion),
         SERVICE_DESCRIPTION: ensureDescription(argv.description, name),
         SERVICE_REPO: ensureServiceRepo(argv.u, name),
-        SERVICE_BUGS: ensureServiceBugsPage(argv),
-        SERVICE_HOMEPAGE: homepage,
+        SERVICE_BUGS: bugs,
+        SERVICE_HOMEPAGE: home,
         SERVICE_AUTHOR_NAME: author,
         SERVICE_AUTHOR_EMAIL: `<${email}>`,
         LICENSE_HEADER: license.header,
