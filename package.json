@@ -59,7 +59,7 @@
     "@types/inquirer": "^6.5.0",
     "@types/mocha": "^5.2.5",
     "@types/mock-require": "^2.0.0",
-    "@types/node": "^12.12.3",
+    "@types/node": "^12.12.5",
     "@types/node-rsa": "^1.0.0",
     "@types/request": "^2.47.1",
     "@types/semver": "^6.2.0",
