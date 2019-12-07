@@ -544,14 +544,19 @@ export class ${tags.SERVICE_CLASS_NAME} extends IMQService {
     /**
      * Returns current version of running service
      *
-     * @return {{ name: string, version: string }} - version of the service
+     * @return {{
+     *     name: string,
+     *     version: string,
+     *     repository: string
+     * }} - version of the service
      */
     @logged()
     @lock()
     @profile()
     @expose()
-    public version(): { name: string, version: string } {
-        return { name: this.pkg.name, version: this.pkg.version };
+    public version(): { name: string; version: string; repository: string } {
+        const { name, version, repository } = this.pkg
+        return { name, version, repository: repository.url };
     }
 
     // Implement your service methods below this line

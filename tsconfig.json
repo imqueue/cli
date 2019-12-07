@@ -16,6 +16,7 @@
     "lib": [
       "dom",
       "es2017"
-    ]
+    ],
+    "allowSyntheticDefaultImports": true
   }
 }
