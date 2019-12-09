@@ -15,7 +15,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import chalk from 'chalk';
+import * as chalk from 'chalk';
 
 // that is just a printing function, no need to do specific tests
 // istanbul ignore next

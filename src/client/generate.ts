@@ -20,7 +20,7 @@ import { IMQClient } from '@imqueue/rpc';
 import * as fs from 'fs';
 import * as p from 'path';
 import * as inquirer from 'inquirer';
-import chalk from 'chalk';
+import * as chalk from 'chalk';
 import { printError } from '../../lib';
 
 // noinspection JSUnusedGlobalSymbols
