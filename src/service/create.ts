@@ -555,7 +555,7 @@ export class ${tags.SERVICE_CLASS_NAME} extends IMQService {
     @profile()
     @expose()
     public version(): { name: string; version: string; repository: string } {
-        const { name, version, repository } = this.pkg
+        const { name, version, repository } = this.pkg;
         return { name, version, repository: repository.url };
     }
 
