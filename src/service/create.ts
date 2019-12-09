@@ -19,7 +19,7 @@ import * as path from 'path';
 import { Argv } from 'yargs';
 import * as fs from 'fs';
 import * as os from 'os';
-import chalk from 'chalk';
+import * as chalk from 'chalk';
 import * as semver from 'semver';
 import * as inquirer from 'inquirer';
 import {

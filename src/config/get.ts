@@ -16,7 +16,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import { Argv, Arguments } from 'yargs';
-import chalk from 'chalk';
+import * as chalk from 'chalk';
 import { printError, loadConfig } from '../../lib';
 
 let PROGRAM: string = '';
