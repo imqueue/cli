@@ -15,7 +15,9 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import * as Github  from '@octokit/rest';
+import * as Github from '@octokit/rest';
+
+const RX_DEPRECATION = /Deprecation:/;
 
 /**
  * Returns a team data for given organization, using github API
@@ -27,6 +29,7 @@ import * as Github  from '@octokit/rest';
  */
 export async function getTeam(github: Github, owner: string): Promise<any> {
     try {
+        // noinspection TypeScriptUnresolvedFunction
         return ((await (github.orgs as any).getTeams({
             org: owner
         }) || /* istanbul ignore next */{} as any)
@@ -62,11 +65,7 @@ export async function getOrg(github: Github, owner: string): Promise<any> {
  * @return {Promise<Github>}
  */
 export async function getInstance(token: string): Promise<Github> {
-    const github = new Github({
-        auth: `token ${token}`
-    });
-
-    return github;
+    return new Github({ auth: `token ${token}` });
 }
 
 /**
@@ -98,10 +97,11 @@ export async function createRepository(
 
         // istanbul ignore else
         if (repository && repository.data && repository.data.name === repo) {
+            // noinspection ExceptionCaughtLocallyJS
             throw new Error('Repository already exists!');
         }
     } catch(err) {
-        if (err.code !== 404) {
+        if (err.code !== 404 && !RX_DEPRECATION.test(err.message)) {
             throw err;
         }
     }
