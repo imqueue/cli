@@ -39,7 +39,7 @@
   "author": "imqueue.com <support@imqueue.com> (https://imqueue.com)",
   "license": "ISC",
   "dependencies": {
-    "@imqueue/rpc": "^1.10.0",
+    "@imqueue/rpc": "^1.10.2",
     "@imqueue/travis": "^1.0.0",
     "@octokit/rest": "16.35.0",
     "chalk": "^3.0.0",
