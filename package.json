@@ -1,6 +1,6 @@
 {
   "name": "@imqueue/cli",
-  "version": "1.9.2",
+  "version": "1.9.3",
   "description": "Command Line Interface for IMQ",
   "keywords": [
     "command-line-tool",
