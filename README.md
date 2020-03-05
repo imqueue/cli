@@ -167,6 +167,47 @@ imq completions off
 
 Currently it supports both `zsh` and `bash` shells.
 
+## Controlling Local Services
+
+For comfortable local development @imqueue provides couple of useful 
+command-line tools, allowing developers to manage local set of services.
+Like starting/stopping/restarting them with a single command line or managing
+services logs.
+
+Please, note, there are many different ways to manage local services.
+You may consider pulling and starting pre-build docker images, or even
+use docker compose for managing them, or may utilize such tools as
+vagrant to organize local environment setup. BTW, you may suggest to 
+run your services locally on host OS, which is really useful scenario
+during development and the tools below will dramatically improve your
+experience, especially, when the number of services to manage significant.
+
+### imqctl
+
+~~~
+Usage: imqctl <command> [-p path] [-s services] [-hu]
+  <command> is one of start|stop|restart
+  [-p path] - path to a directory with services repositories, by default is 
+              current directory
+  [-s services] - comma-separated services list (repositories names),
+                  if not passed will scan path for a services presence
+  [-u] - if passed service will be updated using 'git pull' before start
+  [-c] - calm down services start - wait before staring next
+  [-v] - verbose mode, shows command execution time
+  [-h] - print this usage information
+~~~
+
+### imqlog
+
+~~~
+Usage: ./bin/log.sh [-c] [service1, ...serviceN]
+  [service1, ...serviceN] - list of service repositories directories names to 
+                            combile logs for, if omitted all existing logs are
+                            combined.
+  [-c] - clean previous logs
+  [-h] - print this usage information
+~~~
+
 ## License
 
 [ISC](https://github.com/imqueue/cli/blob/master/LICENSE)

@@ -39,7 +39,7 @@
   "author": "imqueue.com <support@imqueue.com> (https://imqueue.com)",
   "license": "ISC",
   "dependencies": {
-    "@imqueue/rpc": "^1.10.4",
+    "@imqueue/rpc": "^1.10.5",
     "@imqueue/travis": "^1.0.0",
     "@octokit/rest": "16.35.0",
     "chalk": "^3.0.0",
@@ -82,7 +82,9 @@
   },
   "main": "index.js",
   "bin": {
-    "imq": "index.js"
+    "imq": "index.js",
+    "imqctl": "bin/ctl.sh",
+    "imqlog": "bin/log.sh"
   },
   "typescript": {
     "definitions": "index.d.ts"
