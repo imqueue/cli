@@ -87,20 +87,34 @@ function start_services {
   fi
 }
 
+function trim {
+    local str="$*"
+
+    str="${str#"${str%%[![:space:]]*}"}"
+    str="${str%"${str##*[![:space:]]}"}"
+
+    printf '%s' "$str"
+}
+
 function pids_list {
-  local pid="$1"
-  local pids child_pid
+  local pid pids child_pid
+
+  pid=$(trim "$1")
 
   if [[ -z "$pid" ]]; then
     return 0
   fi
 
-  echo "$1"
+  echo "$pid"
   mapfile -t pids < <(ps --ppid "$pid" -o pid | awk 'NR>1')
 
   if [[ ! 0 -eq "${#pids[@]}" ]]; then
     for child_pid in "${pids[@]}"; do
-      pids_list "$child_pid"
+      child_pid=$(trim "$child_pid")
+
+      if [[ -n "$child_pid" ]]; then
+        pids_list "$child_pid"
+      fi
     done
   fi
 }
