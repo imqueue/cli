@@ -42,7 +42,7 @@
     "@imqueue/core": "^1.7.3",
     "@imqueue/rpc": "^1.10.7",
     "@imqueue/travis": "^1.0.0",
-    "@octokit/rest": "17.1.0",
+    "@octokit/rest": "16.42.2",
     "chalk": "^3.0.0",
     "command-exists": "^1.2.8",
     "dotenv": "^8.2.0",
