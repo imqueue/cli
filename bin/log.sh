@@ -45,19 +45,19 @@ function multitail {
 }
 
 function usage {
-  echo "Usage: $0 [-c] [service1, ...serviceN]" >&2
-  echo "  [service1, ...serviceN] - list of service repositories directories names to combile logs for, if omitted all existing logs are combined."
+  echo "Usage: $0 [-hc] [service1, ...serviceN]" >&2
+  echo "  [service1, ...serviceN] - list of service repositories directories names to combine logs for, if omitted all existing logs are combined."
   echo "  [-c] - clean previous logs" >&2
   echo "  [-h] - print this usage information" >&2
 }
 
 # parse command-line args
-while [ $# -gt 0 ]; do
+while [[ $# -gt 0 ]]; do
   unset OPTIND
   unset OPTARG
 
   while getopts hc options; do
-    case $options in
+    case ${options} in
       h) usage ; exit 0 ;;
       c) find "$workdir" -type f -name "*.log" -delete ;;
       \?|*) usage ; exit 1 ;;

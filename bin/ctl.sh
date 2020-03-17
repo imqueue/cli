@@ -55,7 +55,7 @@ function start_services {
   for svc in "${services[@]}"; do
       cd "$dir/$svc" || exit 1
 
-      if [[ 1 -eq $update ]]; then
+      if [[ 1 -eq ${update} ]]; then
         echo "Updating $svc..."
         git pull || exit 1
       fi
@@ -70,7 +70,7 @@ function start_services {
         wait_service "$svc"
       fi
 
-      printf ", master pid is %d...\n" $pid
+      printf ", master pid is %d...\n" ${pid}
       touch "$pidfile"
       echo "$svc:$pid" >> "$pidfile"
 
@@ -130,7 +130,7 @@ function stop_services {
       pid="${parts[1]}"
       present=$(in_services "$svc_name")
 
-      if [[ 0 -eq $present ]]; then
+      if [[ 0 -eq ${present} ]]; then
         echo "$svc_name:$pid" >> "${pidfile}.lock"
         continue
       fi
@@ -183,12 +183,12 @@ function in_services {
 }
 
 # parse command-line args
-while [ $# -gt 0 ]; do
+while [[ $# -gt 0 ]]; do
   unset OPTIND
   unset OPTARG
 
   while getopts hucvp:s: options; do
-    case $options in
+    case ${options} in
       p) path="$OPTARG" ;;
       s) IFS=',' read -ra services <<< "$OPTARG" ;;
       h) usage ; exit 0 ;;
@@ -217,7 +217,7 @@ if [[ 0 -eq "${#services[@]}" ]]; then
     service_name="${file_path[0]}"
     present=$(in_services "$service_name")
 
-    if [[ 0 -eq $present ]]; then
+    if [[ 0 -eq ${present} ]]; then
       services+=( "$service_name" )
     fi
   done
