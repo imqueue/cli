@@ -41,7 +41,7 @@
   "dependencies": {
     "@imqueue/core": "^1.7.3",
     "@imqueue/rpc": "^1.10.7",
-    "@imqueue/travis": "^1.0.0",
+    "@imqueue/travis": "^1.0.1",
     "@octokit/rest": "16.42.2",
     "chalk": "^3.0.0",
     "command-exists": "^1.2.8",
@@ -86,7 +86,8 @@
   "bin": {
     "imq": "index.js",
     "imqctl": "bin/ctl.sh",
-    "imqlog": "bin/log.sh"
+    "imqlog": "bin/log.sh",
+    "imqup": "bin/updep.sh"
   },
   "typescript": {
     "definitions": "index.d.ts"
