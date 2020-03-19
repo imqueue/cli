@@ -103,6 +103,7 @@ for svc in "${services[@]}"; do
     if [[ do_not_update -ne 1 ]]; then
         git pull || exit 1
         ncu -u
+        rm -rf node_modules package-lock.json
         npm i
     fi
 
