@@ -108,15 +108,17 @@ for svc in "${services[@]}"; do
     fi
 
     if [[ do_commit -eq 1 ]]; then
-        git commit -am "chore: dependencies update"
+        if [[ $(git diff --stat) != '' ]]; then
+            git commit -am "chore: dependencies update"
 
-        case "${v_type}" in
-            minor|major|patch|prerelease) ;;
-            *) v_type="prerelease"
-        esac
+            case "${v_type}" in
+                minor|major|patch|prerelease) ;;
+                *) v_type="prerelease"
+            esac
 
-        npm version "$v_type"
-        git push --follow-tags
+            npm version "$v_type"
+            git push --follow-tags
+        fi
     fi
 
     cd ${cwd}
