@@ -69,7 +69,7 @@ function isFolderContainsService(
  *
  * @param {string[]} paths - array of paths to folders with services
  * @param {Arguments} args - cli args
- * @returns {void} 
+ * @returns {void}
  */
 function walkThroughFolders(paths: string[], args: Arguments) {
     for (const path of paths) {
@@ -196,7 +196,7 @@ function execGitFlow(
 
 /**
  * Walks through folders and check if each folder contains service
- * 
+ *
  * @param {string} path - path to root folder with services
  * @returns {string[]} - array of folders with services
  */
@@ -229,8 +229,8 @@ export const { command, describe, builder, handler } = {
     describe: 'Updates services under given path with new version tag ' +
         'and automatically pushes changes to repository, triggering builds.',
 
-    builder(yargs: Argv) {
-        PROGRAM = yargs.argv.$0;
+    async builder(yargs: Argv) {
+        PROGRAM = (await yargs.argv).$0;
         return yargs
             .option('b', {
                 alias: 'branch',

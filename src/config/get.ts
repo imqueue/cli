@@ -27,8 +27,9 @@ export const { command, describe, builder, handler } = {
     describe: 'Prints value for given option from config. If option is ' +
               'not provided, will list all config options',
 
-    builder(yargs: Argv) {
-        PROGRAM = yargs.argv.$0;
+    async builder(yargs: Argv) {
+        PROGRAM = (await yargs.argv).$0;
+
         return yargs
             .option('j', {
                 alias: 'json',

@@ -91,8 +91,8 @@ export const { command, describe, builder, handler } = {
     command: 'on',
     describe: 'Enables completions for this program in your shell',
 
-    builder(yargs: Argv) {
-        PROGRAM = yargs.argv.$0;
+    async builder(yargs: Argv) {
+        PROGRAM = (await yargs.argv).$0;
         RX_EXISTS = new RegExp(`###-begin-${PROGRAM}-completions-###`);
     },
 
