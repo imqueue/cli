@@ -48,8 +48,8 @@ export const { command, describe, builder, handler } = {
     command: 'off',
     describe: 'Disables completions for this program in your shell',
 
-    builder(yargs: Argv) {
-        PROGRAM = yargs.argv.$0;
+    async builder(yargs: Argv) {
+        PROGRAM = (await yargs.argv).$0;
         RX_REPLACE = new RegExp(`###-begin-${PROGRAM}-completions-###`
             + '[\\s\\S]*?' + `###-end-${PROGRAM}-completions-###`);
     },

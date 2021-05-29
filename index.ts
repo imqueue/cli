@@ -22,7 +22,7 @@ import { VERSION, checkForUpdate } from './lib';
 (async () => {
     await checkForUpdate();
 
-    yargs
+    const argv: any = await yargs
         .usage('IMQ Command Line Interface' +
             `\nVersion: ${VERSION}` +
             '\n\nUsage: $0 <command>')
@@ -34,11 +34,10 @@ import { VERSION, checkForUpdate } from './lib';
         .argv
     ;
 
-    // noinspection TypeScriptUnresolvedFunction
-    const commands = (<any>yargs).getCommandInstance().getCommands();
+    const commands = (yargs as any).getCommandInstance().getCommands();
 
     if (commands.length && !(
-        yargs.argv._[0] && ~commands.indexOf(yargs.argv._[0])
+        argv._[0] && ~commands.indexOf(argv._[0])
     )) {
         yargs.showHelp();
         process.exit(1);
