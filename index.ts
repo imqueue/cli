@@ -16,30 +16,24 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import * as yargs from 'yargs';
+import yargs from 'yargs'
+import { hideBin } from 'yargs/helpers'
+
 import { VERSION, checkForUpdate } from './lib';
 
 (async () => {
+    const y = yargs(hideBin(process.argv));
+
     await checkForUpdate();
 
-    const argv: any = await yargs
-        .usage('IMQ Command Line Interface' +
+    await y.usage('IMQ Command Line Interface' +
             `\nVersion: ${VERSION}` +
             '\n\nUsage: $0 <command>')
         .version(VERSION)
         .commandDir('src')
         .demandCommand()
-        .wrap(yargs.terminalWidth())
+        .wrap(y.terminalWidth())
         .help()
         .argv
     ;
-
-    const commands = (yargs as any).getCommandInstance().getCommands();
-
-    if (commands.length && !(
-        argv._[0] && ~commands.indexOf(argv._[0])
-    )) {
-        yargs.showHelp();
-        process.exit(1);
-    }
 })();
