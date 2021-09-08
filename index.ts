@@ -16,9 +16,8 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import yargs from 'yargs'
-import { hideBin } from 'yargs/helpers'
-
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
 import { VERSION, checkForUpdate } from './lib';
 
 (async () => {
