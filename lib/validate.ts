@@ -18,7 +18,7 @@
 
 const RX_EMAIL = /^[-a-z0-9.]+@[-a-z0-9.]+$/i;
 const RX_NS = /^[-_a-z-0-9]+$/i;
-const RX_TOKEN = /^[a-f0-9]{40}$/;
+const RX_TOKEN = /^.+$/;
 
 /**
  * Checks if a given string email-like
