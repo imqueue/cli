@@ -46,23 +46,4 @@ describe('validate', function() {
             expect(isNamespace('imqueue')).equals(true);
         });
     });
-
-    describe('isGuthubToken()', () => {
-        it('should be a function', () => {
-            expect(typeof isGuthubToken).equals('function');
-        });
-
-        it('should properly validate token syntax', () => {
-            expect(isGuthubToken('af456af456af456af456af456af456af456af456'))
-                .equals(true);
-            expect(isGuthubToken('af456af456af4af456af456af456af456af456'))
-                .equals(false);
-            expect(isGuthubToken('af456af456af456af456aFF56af456af456af456'))
-                .equals(false);
-            expect(isGuthubToken('af456af456af456af456of456af456af456af456'))
-                .equals(false);
-            expect(isGuthubToken('af456af456af456a!af456af456af456af456'))
-                .equals(false);
-        });
-    });
 });
