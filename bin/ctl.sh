@@ -106,7 +106,11 @@ function pids_list {
   fi
 
   echo "$pid"
-  mapfile -t pids < <(ps --ppid "$pid" -o pid | awk 'NR>1')
+
+  pids=()
+  while IFS= read -r line; do
+    pids+=("$line")
+  done < <(ps -ax -o pid,ppid | awk -v ppid="$pid" '$2 == ppid {print $1}')
 
   if [[ ! 0 -eq "${#pids[@]}" ]]; then
     for child_pid in "${pids[@]}"; do
@@ -135,7 +139,10 @@ function stop_services {
         continue
       fi
 
-      mapfile -t pids < <(pids_list "$pid")
+      pids=()
+      while IFS= read -r line; do
+        pids+=("$line")
+      done < <(pids_list "$pid")
 
       echo "Stopping ${svc_name} by pids ${pids[*]}"
       kill -s TERM "${pids[@]}" &> /dev/null
@@ -205,22 +212,49 @@ while [[ $# -gt 0 ]]; do
 done
 
 # load services from path if they were not provided by command-line option
+
 if [[ 0 -eq "${#services[@]}" ]]; then
-  mapfile -t service_entries < <(find \
-    "$path"/*/src \
-    -type f \
-    -name "*.ts" \
-    -exec grep -lP 'extends\s+IMQ(Service|Client)\s*\{' {} +)
+  # MacOSX patch, as long as it does not compatible with linux's grep -P
+  if [[ -x perl ]]; then
+    service_entries=()
 
-  for file in "${service_entries[@]}"; do
-    IFS='/' read -ra file_path <<< "${file#${path}/}"
-    service_name="${file_path[0]}"
-    present=$(in_services "$service_name")
+    while IFS= read -r -d '' file; do
+      service_entries+=("$file")
+    done < <(find \
+      "$path"/*/src \
+      -type f \
+      -name "*.ts" \
+      -exec perl -lne \
+        'print $ARGV if /extends\s+IMQ(Service|Client)\s*\{/' \
+        {} + 2>/dev/null | tr '\n' '\0'
+    )
 
-    if [[ 0 -eq ${present} ]]; then
-      services+=( "$service_name" )
-    fi
-  done
+    for file in "${service_entries[@]}"; do
+      IFS='/' read -ra file_path <<< "${file#${path}/}"
+      service_name="${file_path[0]}"
+      present=$(in_services "$service_name")
+
+      if [[ 0 -eq ${present} ]]; then
+        services+=( "$service_name" )
+      fi
+    done
+  else
+    mapfile -t service_entries < <(find \
+      "$path"/*/src \
+      -type f \
+      -name "*.ts" \
+      -exec grep -lP 'extends\s+IMQ(Service|Client)\s*\{' {} +)
+
+    for file in "${service_entries[@]}"; do
+      IFS='/' read -ra file_path <<< "${file#${path}/}"
+      service_name="${file_path[0]}"
+      present=$(in_services "$service_name")
+
+      if [[ 0 -eq ${present} ]]; then
+        services+=( "$service_name" )
+      fi
+    done
+  fi
 fi
 
 # make sure workdir exists to store pids

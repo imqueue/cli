@@ -21,10 +21,11 @@ function multitail {
   args=( "$@" )
 
   if [[ -z "${args[*]}" ]]; then
-    mapfile -t logs < <(find \
-    "$workdir" \
-    -type f \
-    -name "*.log")
+	  logs=()
+
+    while IFS= read -r logfile; do
+      logs+=("$logfile")
+    done < <(find "$workdir" -type f -name "*.log")
 
     for logfile in "${logs[@]}"; do
       tail -f -n +1 "$logfile" &

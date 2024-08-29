@@ -68,21 +68,46 @@ done
 
 # load services from path if they were not provided by command-line option
 if [[ 0 -eq "${#services[@]}" ]]; then
-    mapfile -t service_entries < <(find \
-        "$path"/*/src \
-        -type f \
-        -name "*.ts" \
-        -exec grep -lP 'extends\s+IMQ(Service|Client)\s*\{' {} +)
+    if [[ -x perl ]]; then
+        service_entries=()
 
-    for file in "${service_entries[@]}"; do
-        IFS='/' read -ra file_path <<< "${file#${path}/}"
-        service_name="${file_path[0]}"
-        present=$(in_services "$service_name")
+        while IFS= read -r -d '' file; do
+          service_entries+=("$file")
+        done < <(find \
+            "$path"/*/src \
+            -type f \
+            -name "*.ts" \
+            -exec perl -lne \
+              'print $ARGV if /extends\s+IMQ(Service|Client)\s*\{/' \
+              {} + 2>/dev/null | tr '\n' '\0'
+        )
 
-        if [[ 0 -eq ${present} ]]; then
-            services+=( "$service_name" )
-        fi
-    done
+        for file in "${service_entries[@]}"; do
+            IFS='/' read -ra file_path <<< "${file#${path}/}"
+            service_name="${file_path[0]}"
+            present=$(in_services "$service_name")
+
+            if [[ 0 -eq ${present} ]]; then
+                services+=( "$service_name" )
+            fi
+        done
+    else
+        mapfile -t service_entries < <(find \
+            "$path"/*/src \
+            -type f \
+            -name "*.ts" \
+            -exec grep -lP 'extends\s+IMQ(Service|Client)\s*\{' {} +)
+
+        for file in "${service_entries[@]}"; do
+            IFS='/' read -ra file_path <<< "${file#${path}/}"
+            service_name="${file_path[0]}"
+            present=$(in_services "$service_name")
+
+            if [[ 0 -eq ${present} ]]; then
+                services+=( "$service_name" )
+            fi
+        done
+    fi
 fi
 
 if ! [[ -x "$(command -v npm-check-updates)" ]]; then
