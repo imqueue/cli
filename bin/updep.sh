@@ -68,7 +68,7 @@ done
 
 # load services from path if they were not provided by command-line option
 if [[ 0 -eq "${#services[@]}" ]]; then
-    if [[ -x perl ]]; then
+    if command -v perl >/dev/null 2>&1; then
         service_entries=()
 
         while IFS= read -r -d '' file; do
