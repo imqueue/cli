@@ -215,7 +215,7 @@ done
 
 if [[ 0 -eq "${#services[@]}" ]]; then
   # MacOSX patch, as long as it does not compatible with linux's grep -P
-  if [[ -x perl ]]; then
+  if command -v perl >/dev/null 2>&1; then
     service_entries=()
 
     while IFS= read -r -d '' file; do
