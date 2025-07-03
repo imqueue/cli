@@ -3,10 +3,8 @@
 [![Build Status](https://travis-ci.com/imqueue/cli.svg?branch=master)](https://travis-ci.com/imqueue/cli)
 [![codebeat badge](https://codebeat.co/badges/0824c9af-d6fa-47ac-bc44-eb51d7b37eba)](https://codebeat.co/projects/github-com-imqueue-cli-master)
 [![Coverage Status](https://coveralls.io/repos/github/imqueue/cli/badge.svg?branch=master)](https://coveralls.io/github/imqueue/cli?branch=master)
-[![David](https://img.shields.io/david/imqueue/cli.svg)](https://david-dm.org/imqueue/cli)
-[![David](https://img.shields.io/david/dev/imqueue/cli.svg)](https://david-dm.org/imqueue/cli?type=dev)
 [![Known Vulnerabilities](https://snyk.io/test/github/imqueue/cli/badge.svg?targetFile=package.json)](https://snyk.io/test/github/imqueue/cli?targetFile=package.json)
-[![License](https://img.shields.io/badge/license-ISC-blue.svg)](https://rawgit.com/imqueue/cli/master/LICENSE)
+[![License](https://img.shields.io/badge/license-GPL-blue.svg)](https://rawgit.com/imqueue/cli/master/LICENSE)
 
 ## Why?
 
