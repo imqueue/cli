@@ -25,9 +25,9 @@ import * as path from 'path';
 import { Argv } from 'yargs';
 import * as fs from 'fs';
 import * as os from 'os';
-import * as chalk from 'chalk';
+import chalk from 'chalk';
 import * as semver from 'semver';
-import * as inquirer from 'inquirer';
+import inquirer, { QuestionCollection } from 'inquirer';
 import {
     IMQCLIConfig,
     loadConfig,
@@ -238,7 +238,7 @@ async function ensureAuthorName(name: string) {
                 name: 'authorName',
                 message: 'Enter author\'s name:',
                 default: os.userInfo().username
-            }] as inquirer.QuestionCollection);
+            }] as QuestionCollection);
 
         name = answer.authorName.trim() || os.userInfo().username;
     }
@@ -256,7 +256,7 @@ async function ensureAuthorEmail(email: string) {
                 type: 'input',
                 name: 'email',
                 message: 'Enter author\'s email:'
-            }] as inquirer.QuestionCollection);
+            }] as QuestionCollection);
 
         if (!isEmail(answer.email)) {
             throw new TypeError(
@@ -286,7 +286,7 @@ async function ensureTravisTags(argv: any): Promise<string[]> {
                 message: 'Enter node version(s) for CI builds (comma-separated ' +
                     'if multiple):',
                 default: 'stable, latest'
-            }] as inquirer.QuestionCollection);
+            }] as QuestionCollection);
 
         if (!answer.tags) {
             tags.push('stable', 'latest');
@@ -317,7 +317,7 @@ async function ensureDockerNamespace(argv: any) {
             name: 'useDocker',
             message: 'Would you like to dockerize your service?',
             default: true,
-        }] as inquirer.QuestionCollection);
+        }] as QuestionCollection);
 
         config.useDocker = argv.D = argv.dockerize = dockerize =
             answer.useDocker;
@@ -328,7 +328,7 @@ async function ensureDockerNamespace(argv: any) {
             type: 'input',
             name: 'dockerNamespace',
             message: 'Enter DockerHub namespace:'
-        }] as inquirer.QuestionCollection);
+        }] as QuestionCollection);
 
         if (answer.dockerNamespace &&
             !isNamespace(answer.dockerNamespace.trim())
@@ -382,7 +382,7 @@ async function ensureDockerSecrets(argv: any) {
                 type: 'input',
                 name: 'dockerHubUser',
                 message: 'Docker hub user:'
-            }] as inquirer.QuestionCollection);
+            }] as QuestionCollection);
 
         if (!answer.dockerHubUser.trim()) {
             throw new TypeError(
@@ -399,7 +399,7 @@ async function ensureDockerSecrets(argv: any) {
                 type: 'password',
                 name: 'dockerHubPassword',
                 message: 'Docker hub password:'
-            }] as inquirer.QuestionCollection);
+            }] as QuestionCollection);
 
         if (!answer.dockerHubPassword.trim()) {
             throw new TypeError(
@@ -665,7 +665,7 @@ async function ensureGitRepo(argv: any) {
                 type: 'input',
                 name: 'gitNs',
                 message: 'Enter GitHub owner (user name or organization):',
-            }] as inquirer.QuestionCollection);
+            }] as QuestionCollection);
 
         if (!isNamespace(answer.gitNs)) {
             throw new TypeError(
@@ -693,7 +693,7 @@ async function createGitRepo(argv: any) {
                 message: 'Would you like to enable automatic GitHub integration ' +
                     'for this service?',
                 default: true,
-            }] as inquirer.QuestionCollection);
+            }] as QuestionCollection);
 
         if (!answer.useGit) {
             argv.D = argv.dockerize = config.useDocker = false;
@@ -710,7 +710,7 @@ async function createGitRepo(argv: any) {
                 type: 'input',
                 name: 'token',
                 message: 'Enter your GitHub auth token:'
-            }] as inquirer.QuestionCollection);
+            }] as QuestionCollection);
 
         if (!isGuthubToken(answer.token.trim())) {
             throw new Error('Given GitHub auth token is invalid!');
@@ -729,7 +729,7 @@ async function createGitRepo(argv: any) {
                 name: 'isPrivate',
                 message: 'Should be service created on GitHub as private repo?',
                 default: true
-            }] as inquirer.QuestionCollection);
+            }] as QuestionCollection);
 
         isPrivate = answer.isPrivate;
     }

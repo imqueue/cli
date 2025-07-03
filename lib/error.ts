@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import * as chalk from 'chalk';
+import chalk from 'chalk';
 
 // that is just a printing function, no need to do specific tests
 // istanbul ignore next

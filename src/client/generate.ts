@@ -25,8 +25,8 @@ import { Argv, Arguments } from 'yargs';
 import { IMQClient } from '@imqueue/rpc';
 import * as fs from 'fs';
 import * as p from 'path';
-import * as inquirer from 'inquirer';
-import * as chalk from 'chalk';
+import inquirer, { QuestionCollection } from 'inquirer';
+import chalk from 'chalk';
 import { printError } from '../../lib';
 
 // noinspection JSUnusedGlobalSymbols
@@ -51,7 +51,7 @@ export const { command, describe, builder, promptOverride, handler } = {
                 name: 'overwrite',
                 default: false,
                 message: `File "${filePath}" already exists. Overwrite it?`,
-            }] as inquirer.QuestionCollection)) as { overwrite: boolean }
+            }] as QuestionCollection)) as { overwrite: boolean }
         ).overwrite;
 
         if (!write) {

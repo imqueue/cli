@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import * as Github from '@octokit/rest';
+import { Octokit as Github } from '@octokit/rest';
 
 const RX_DEPRECATION = /Deprecation:/;
 

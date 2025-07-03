@@ -22,7 +22,7 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import { execSync } from 'child_process';
-import * as inquirer from 'inquirer';
+import inquirer, { QuestionCollection } from 'inquirer';
 
 const pkg = require('../package.json');
 
@@ -45,7 +45,7 @@ export async function checkForUpdate() {
                 message: `New version ${remoteVersion} of ${
                     pkg.name} available. Would you like to update?`,
                 default: true,
-            }] as inquirer.QuestionCollection);
+            }] as QuestionCollection);
 
             if (answer.update) {
                 update();

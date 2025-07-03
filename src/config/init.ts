@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import * as inquirer from 'inquirer';
+import inquirer from 'inquirer';
 import {
     CONFIG_PATH,
     loadConfig,
@@ -35,7 +35,7 @@ import {
     loadTemplate,
     licensingOptions,
 } from '../../lib';
-import * as chalk from 'chalk';
+import chalk from 'chalk';
 import * as fs from 'fs';
 
 // we are going to ignore almost all code here because it's very hard to test
