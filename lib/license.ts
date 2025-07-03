@@ -22,10 +22,11 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import * as inquirer from 'inquirer';
+import autocompletePrompt from 'inquirer-autocomplete-prompt';
 
-inquirer.registerPrompt(
+(<any>inquirer).registerPrompt(
     'autocomplete',
-    require('inquirer-autocomplete-prompt')
+    autocompletePrompt,
 );
 
 const LICENSES: any = require('./licenses.json');
@@ -71,7 +72,7 @@ export async function licensingOptions(): Promise<{
     id: string,
     name: string
 }> {
-    let answer: any = await inquirer.prompt<{ addLicense: boolean }>([{
+    let answer: any = await (<any>(inquirer as any).prompt)([{
         type: 'confirm',
         name: 'addLicense',
         message: 'Would you like to use specific license for your services?',
@@ -86,7 +87,7 @@ export async function licensingOptions(): Promise<{
     const licenses: string[] = Object.keys(LICENSES)
         .map((id: string) => LICENSES[id]);
 
-    answer = await (<any>inquirer.prompt)([{
+    answer = await (<any>(inquirer as any).prompt)([{
         type: 'autocomplete',
         name: 'licenseName',
         message: 'Select license:',

@@ -28,7 +28,7 @@ import {
     writeFileSync as write
 } from 'fs';
 import { resolve, printError, IS_ZSH } from '../../lib';
-import * as chalk from 'chalk';
+import chalk from 'chalk';
 
 let PROGRAM: string = '';
 let RX_REPLACE: RegExp;

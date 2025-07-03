@@ -22,7 +22,7 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import { Argv, Arguments } from 'yargs';
-import * as chalk from 'chalk';
+import chalk from 'chalk';
 import { printError } from '../../lib';
 import { spawnSync, SpawnSyncReturns } from 'child_process';
 import { resolve } from 'path';

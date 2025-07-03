@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import * as inquirer from 'inquirer';
+import inquirer from 'inquirer';
 import {
     TPL_HOME,
     CUSTOM_TPL_HOME,
