@@ -40,7 +40,7 @@
   "license": "GPL-3.0-only",
   "dependencies": {
     "@imqueue/core": "^2.0.11",
-    "@imqueue/rpc": "^2.0.14",
+    "@imqueue/rpc": "^2.0.15",
     "@imqueue/travis": "^1.3.0",
     "@octokit/rest": "^16.42.2",
     "chalk": "^5.4.1",
