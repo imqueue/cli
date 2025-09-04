@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import inquirer from 'inquirer';
+import * as originalInquirer from 'inquirer';
 import {
     CONFIG_PATH,
     loadConfig,
@@ -37,6 +37,10 @@ import {
 } from '../../lib';
 import chalk from 'chalk';
 import * as fs from 'fs';
+
+const inquirer = (
+    originalInquirer as unknown as typeof originalInquirer.default
+);
 
 // we are going to ignore almost all code here because it's very hard to test
 // command line user interaction
