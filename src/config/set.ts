@@ -21,14 +21,14 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { Arguments } from 'yargs';
+import { type Arguments } from 'yargs';
 import chalk from 'chalk';
 import {
     printError,
     loadConfig,
     saveConfig,
-    prepareConfigValue
-} from '../../lib';
+    prepareConfigValue,
+} from '../../lib/index.js';
 
 // noinspection JSUnusedGlobalSymbols
 export const { command, describe, handler } = {
@@ -40,20 +40,19 @@ export const { command, describe, handler } = {
             const config = loadConfig();
 
             config[(argv as any).option] = prepareConfigValue(
-                (argv as any).value
+                (argv as any).value,
             );
             saveConfig(config);
 
             process.stdout.write(
                 chalk.green('Option ') +
-                chalk.cyan(`${(argv as any).option}`) +
-                chalk.green(' is set to ') +
-                chalk.cyan(`${(argv as any).value}`) + '\n'
+                    chalk.cyan(`${(argv as any).option}`) +
+                    chalk.green(' is set to ') +
+                    chalk.cyan(`${(argv as any).value}`) +
+                    '\n',
             );
+        } catch (err) {
+            printError(err as Error);
         }
-
-        catch (err) {
-            printError(err);
-        }
-    }
+    },
 };

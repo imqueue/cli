@@ -22,7 +22,11 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import { execSync } from 'child_process';
-import inquirer, { QuestionCollection } from 'inquirer';
+import inquirer, { type QuestionCollection } from 'inquirer';
+import { createRequire } from 'node:module';
+import * as semver from 'semver';
+
+const require = createRequire(import.meta.url);
 
 const pkg = require('../package.json');
 
@@ -32,20 +36,31 @@ const pkg = require('../package.json');
  */
 export async function checkForUpdate() {
     try {
+        // non-interactive runs (pipes, CI) must never hang on a prompt
+        if (!process.stdin.isTTY || !process.stdout.isTTY) {
+            return;
+        }
+
         const remoteVersion = execSync(`npm show ${pkg.name} version`)
-            .toString('utf8').trim();
+            .toString('utf8')
+            .trim();
         const localVersion = pkg.version.trim();
 
-        if (remoteVersion !== localVersion) {
+        // prompt only for a real upgrade, not when running a newer
+        // (e.g. not yet published) local version
+        if (semver.gt(remoteVersion, localVersion)) {
             const answer: { update: boolean } = await inquirer.prompt<{
                 update: boolean;
-            }>([{
-                type: 'confirm',
-                name: 'update',
-                message: `New version ${remoteVersion} of ${
-                    pkg.name} available. Would you like to update?`,
-                default: true,
-            }] as QuestionCollection);
+            }>([
+                {
+                    type: 'confirm',
+                    name: 'update',
+                    message: `New version ${remoteVersion} of ${
+                        pkg.name
+                    } available. Would you like to update?`,
+                    default: true,
+                },
+            ] as QuestionCollection);
 
             if (answer.update) {
                 update();

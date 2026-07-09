@@ -21,17 +21,18 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { Argv, Arguments } from 'yargs';
+import { type Argv, type Arguments } from 'yargs';
 import chalk from 'chalk';
-import { printError, loadConfig } from '../../lib';
+import { printError, loadConfig } from '../../lib/index.js';
 
 let PROGRAM: string = '';
 
 // noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
     command: 'get [option]',
-    describe: 'Prints value for given option from config. If option is ' +
-              'not provided, will list all config options',
+    describe:
+        'Prints value for given option from config. If option is ' +
+        'not provided, will list all config options',
 
     async builder(yargs: Argv) {
         PROGRAM = (await yargs.argv).$0;
@@ -41,8 +42,9 @@ export const { command, describe, builder, handler } = {
                 alias: 'json',
                 boolean: true,
                 default: false,
-                describe: 'Prints config in JSON format (only if ' +
-                          'option is not passed)'
+                describe:
+                    'Prints config in JSON format (only if ' +
+                    'option is not passed)',
             })
             .default('option', '')
             .describe('option', 'Config option to display value [optional]');
@@ -51,20 +53,22 @@ export const { command, describe, builder, handler } = {
     handler(argv: Arguments) {
         try {
             const config = loadConfig();
-            const options = config && Object.keys(config) || [];
+            const options = (config && Object.keys(config)) || [];
 
             if (!options.length) {
                 return process.stdout.write(
                     chalk.bold.yellow(
-                        'Config is empty. Try to init if first by running:') +
-                    '\n\n  $ ' +
-                    chalk.cyan(`${PROGRAM} config init`) + '\n\n'
+                        'Config is empty. Try to init if first by running:',
+                    ) +
+                        '\n\n  $ ' +
+                        chalk.cyan(`${PROGRAM} config init`) +
+                        '\n\n',
                 );
             }
 
             if ((argv as any).option) {
                 return process.stdout.write(
-                    JSON.stringify(config[(argv as any).option]) + '\n'
+                    JSON.stringify(config[(argv as any).option]) + '\n',
                 );
             }
 
@@ -72,20 +76,20 @@ export const { command, describe, builder, handler } = {
 
             if ((argv as any).json) {
                 return process.stdout.write(
-                    chalk.cyan(JSON.stringify(config, null, 2)) + '\n'
+                    chalk.cyan(JSON.stringify(config, null, 2)) + '\n',
                 );
             }
 
             for (let option of options) {
                 process.stdout.write(
-                    chalk.yellow(`${option}`) + ' = ' +
-                    chalk.cyan(JSON.stringify(config[option])) + '\n'
+                    chalk.yellow(`${option}`) +
+                        ' = ' +
+                        chalk.cyan(JSON.stringify(config[option])) +
+                        '\n',
                 );
             }
+        } catch (err) {
+            printError(err as Error);
         }
-
-        catch (err) {
-            printError(err);
-        }
-    }
+    },
 };

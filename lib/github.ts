@@ -35,12 +35,13 @@ const RX_DEPRECATION = /Deprecation:/;
  */
 export async function getTeam(github: Github, owner: string): Promise<any> {
     try {
-        // noinspection TypeScriptUnresolvedFunction
-        return ((await (github.orgs as any).getTeams({
-            org: owner
-        }) || /* istanbul ignore next */{} as any)
-        .data || /* istanbul ignore next */[])
-        .shift();
+        return (
+            (
+                (await github.teams.list({
+                    org: owner,
+                })) || /* istanbul ignore next */ ({} as any)
+            ).data || /* istanbul ignore next */ []
+        ).shift();
     } catch (err) {
         return null;
     }
@@ -57,9 +58,7 @@ export async function getTeam(github: Github, owner: string): Promise<any> {
 export async function getOrg(github: Github, owner: string): Promise<any> {
     try {
         return (await github.orgs.get({ org: owner })).data;
-    }
-
-    catch (err) {
+    } catch (err) {
         return null;
     }
 }
@@ -71,7 +70,7 @@ export async function getOrg(github: Github, owner: string): Promise<any> {
  * @return {Promise<Github>}
  */
 export async function getInstance(token: string): Promise<Github> {
-    return new Github({ auth: `token ${token}` });
+    return new Github({ auth: token });
 }
 
 /**
@@ -89,8 +88,9 @@ export async function createRepository(
     description: string,
     isPrivate: boolean = true,
 ) {
-    const [owner, repo]  = (url.split(':').reverse().shift() ||
-        /* istanbul ignore next */'').split('/');
+    const [owner, repo] = (
+        url.split(':').reverse().shift() || /* istanbul ignore next */ ''
+    ).split('/');
 
     if (!(repo && owner)) {
         throw new TypeError(`Given github url "${url}" is invalid!`);
@@ -106,13 +106,15 @@ export async function createRepository(
             // noinspection ExceptionCaughtLocallyJS
             throw new Error('Repository already exists!');
         }
-    } catch(err) {
-        if (err.code !== 404 && !RX_DEPRECATION.test(err.message)) {
+    } catch (err) {
+        const status = (err as any).status ?? (err as any).code;
+
+        if (status !== 404 && !RX_DEPRECATION.test((err as Error).message)) {
             throw err;
         }
     }
 
-    await (github.repos as any).createInOrg({
+    await github.repos.createInOrg({
         org: owner,
         name: repo,
         private: isPrivate,

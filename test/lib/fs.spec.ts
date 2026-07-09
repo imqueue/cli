@@ -21,22 +21,29 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import '../mocks';
-import { expect } from 'chai';
+import { describe, it, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import '../mocks/index.js';
 import * as fs from 'fs';
-import { uuid } from '@imqueue/rpc';
+import { randomUUID as uuid } from 'node:crypto';
 import * as p from 'path';
-import { mkdirp, touch, rmdir, cpr } from '../../lib';
+import { mkdirp, touch, rmdir, cpr } from '../../lib/index.js';
 
 const TEMP_DIR: string = p.resolve('.', '.imq-cli-test');
 
 describe('fs', () => {
-    before(() => { fs.mkdirSync(TEMP_DIR) });
-    after(() => { try { rmdir(TEMP_DIR) } catch (e) {} });
+    before(() => {
+        fs.mkdirSync(TEMP_DIR);
+    });
+    after(() => {
+        try {
+            rmdir(TEMP_DIR);
+        } catch (e) {}
+    });
 
     describe('cpr()', () => {
         it('should be a function', () => {
-            expect(typeof cpr).equals('function');
+            assert.equal(typeof cpr, 'function');
         });
 
         it('should copy directory contents recursively', () => {
@@ -50,10 +57,16 @@ describe('fs', () => {
 
             cpr(src, dst);
 
-            expect(fs.statSync(dst).isDirectory()).to.be.true;
-            expect(fs.statSync(p.resolve(dst, 'dir')).isDirectory()).to.be.true;
-            expect(fs.statSync(p.resolve(dst, 'file')).isFile()).to.be.true;
-            expect(fs.statSync(p.resolve(dst, 'dir/file')).isFile()).to.be.true;
+            assert.equal(fs.statSync(dst).isDirectory(), true);
+            assert.equal(
+                fs.statSync(p.resolve(dst, 'dir')).isDirectory(),
+                true,
+            );
+            assert.equal(fs.statSync(p.resolve(dst, 'file')).isFile(), true);
+            assert.equal(
+                fs.statSync(p.resolve(dst, 'dir/file')).isFile(),
+                true,
+            );
         });
 
         it('should copy properly', () => {
@@ -68,16 +81,22 @@ describe('fs', () => {
 
             cpr(src, dst);
 
-            expect(fs.statSync(dst).isDirectory()).to.be.true;
-            expect(fs.statSync(p.resolve(dst, 'dir')).isDirectory()).to.be.true;
-            expect(fs.statSync(p.resolve(dst, 'file')).isFile()).to.be.true;
-            expect(fs.statSync(p.resolve(dst, 'dir/file')).isFile()).to.be.true;
+            assert.equal(fs.statSync(dst).isDirectory(), true);
+            assert.equal(
+                fs.statSync(p.resolve(dst, 'dir')).isDirectory(),
+                true,
+            );
+            assert.equal(fs.statSync(p.resolve(dst, 'file')).isFile(), true);
+            assert.equal(
+                fs.statSync(p.resolve(dst, 'dir/file')).isFile(),
+                true,
+            );
         });
     });
 
     describe('mkdirp()', () => {
         it('should be a function', () => {
-            expect(typeof mkdirp).equals('function');
+            assert.equal(typeof mkdirp, 'function');
         });
 
         it('should create path recursively', () => {
@@ -86,8 +105,8 @@ describe('fs', () => {
 
             mkdirp(dirTwo);
 
-            expect(fs.existsSync(dirOne)).to.be.true;
-            expect(fs.existsSync(dirTwo)).to.be.true;
+            assert.equal(fs.existsSync(dirOne), true);
+            assert.equal(fs.existsSync(dirTwo), true);
 
             fs.rmdirSync(dirTwo);
             fs.rmdirSync(dirOne);
@@ -96,7 +115,7 @@ describe('fs', () => {
 
     describe('touch()', () => {
         it('should be a function', () => {
-            expect(typeof touch).equals('function');
+            assert.equal(typeof touch, 'function');
         });
 
         it('should create file if not exist', () => {
@@ -105,14 +124,14 @@ describe('fs', () => {
             touch(file, 'initial');
             touch(file, 'changed');
 
-            expect(fs.existsSync(file)).to.be.true;
-            expect(fs.readFileSync(file).toString()).equals('initial');
+            assert.equal(fs.existsSync(file), true);
+            assert.equal(fs.readFileSync(file).toString(), 'initial');
         });
     });
 
     describe('rmdir()', () => {
         it('should be a function', () => {
-            expect(typeof rmdir).equals('function');
+            assert.equal(typeof rmdir, 'function');
         });
 
         it('should remove directory with all it contents', () => {
@@ -130,11 +149,11 @@ describe('fs', () => {
 
             rmdir(target);
 
-            expect(fs.existsSync(dirDir)).to.be.false;
-            expect(fs.existsSync(dirFile)).to.be.false;
-            expect(fs.existsSync(dir)).to.be.false;
-            expect(fs.existsSync(file)).to.be.false;
-            expect(fs.existsSync(target)).to.be.false;
+            assert.equal(fs.existsSync(dirDir), false);
+            assert.equal(fs.existsSync(dirFile), false);
+            assert.equal(fs.existsSync(dir), false);
+            assert.equal(fs.existsSync(file), false);
+            assert.equal(fs.existsSync(target), false);
         });
     });
 });

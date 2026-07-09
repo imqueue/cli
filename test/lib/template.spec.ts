@@ -21,19 +21,21 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import '../mocks';
-import { expect } from 'chai';
+import { describe, it, after } from 'node:test';
+import assert from 'node:assert/strict';
+import '../mocks/index.js';
 import {
     wrap,
     checkGit,
     loadTemplates,
     updateTemplates,
     loadTemplate,
-} from '../../lib';
+} from '../../lib/index.js';
 
 describe('template', () => {
     describe('wrap()', () => {
-        const text = 'Lorem ipsum dolor sit amet, consectetur adipiscing ' +
+        const text =
+            'Lorem ipsum dolor sit amet, consectetur adipiscing ' +
             'elit, sed do eiusmod tempor incididunt ut labore et dolore ' +
             'magna aliqua. Ut enim ad minim veniam, quis nostrud ' +
             'exercitation ullamco laboris nisi ut aliquip ex ea ' +
@@ -44,63 +46,65 @@ describe('template', () => {
             'laborum.';
 
         it('should be a function', () => {
-            expect(typeof wrap).equals('function');
+            assert.equal(typeof wrap, 'function');
         });
 
         it('should wrap text to 80 chars by default with no indent', () => {
             const wrappedLines = wrap(text).split(/\r?\n/);
             for (let line of wrappedLines) {
-                expect(line.length).lte(80);
+                assert.ok(line.length <= 80);
             }
         });
 
         it('should wrap text to given  of number chars with no indent', () => {
             const wrappedLines = wrap(text, 90, '').split(/\r?\n/);
             for (let line of wrappedLines) {
-                expect(line.length).lte(90);
+                assert.ok(line.length <= 90);
             }
         });
 
         it('should wrap text using given indentation', () => {
             const wrappedLines = wrap(text, 80, '     ').split(/\r?\n/);
             for (let line of wrappedLines) {
-                expect(line.substr(0, 5)).equals('     ');
+                assert.equal(line.substr(0, 5), '     ');
             }
         });
     });
 
     describe('checkGit()', () => {
-        after(() => { (<any>global).checkGitResult = true });
+        after(() => {
+            (<any>global).checkGitResult = true;
+        });
         it('should be a function', () => {
-            expect(typeof checkGit).equals('function');
+            assert.equal(typeof checkGit, 'function');
         });
 
         it('should not throw if git command exists', () => {
             (<any>global).checkGitResult = true;
-            expect(() => checkGit()).not.to.throw(Error);
+            assert.doesNotThrow(() => checkGit());
         });
 
         it('should throw if git command does not exist', () => {
             (<any>global).checkGitResult = false;
-            expect(() => checkGit()).throws(Error);
+            assert.throws(() => checkGit());
         });
     });
 
     describe('loadTemplates()', () => {
         it('should be a function', () => {
-            expect(typeof loadTemplates).equals('function');
+            assert.equal(typeof loadTemplates, 'function');
         });
     });
 
     describe('updateTemplates()', () => {
         it('should be a function', () => {
-            expect(typeof updateTemplates).equals('function');
+            assert.equal(typeof updateTemplates, 'function');
         });
     });
 
     describe('loadTemplate()', () => {
         it('should be a function', () => {
-            expect(typeof loadTemplate).equals('function');
+            assert.equal(typeof loadTemplate, 'function');
         });
     });
 });

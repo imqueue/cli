@@ -21,22 +21,21 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import '../mocks';
-import { expect } from 'chai';
-import { uuid } from '@imqueue/rpc';
-import * as github from '../../lib/github';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import '../mocks/index.js';
+import { randomUUID as uuid } from 'node:crypto';
+import * as github from '../../lib/github.js';
 import { config as envConfig } from 'dotenv';
 
 envConfig();
 
-xdescribe('github', function () {
-    this.timeout(30000);
-
+describe.skip('github', () => {
     const token = String(process.env.GITHUB_AUTH_TOKEN);
 
     describe('getInstance()', () => {
         it('should be a function', () => {
-            expect(typeof github.getInstance).equals('function');
+            assert.equal(typeof github.getInstance, 'function');
         });
 
         it('should not throw if valid token given', async () => {
@@ -48,7 +47,7 @@ xdescribe('github', function () {
                 error = err;
             }
 
-            expect(error).to.be.null;
+            assert.equal(error, null);
         });
 
         it('should trow if invalid token given', async () => {
@@ -60,55 +59,55 @@ xdescribe('github', function () {
                 error = err;
             }
 
-            expect(error).not.to.be.null;
+            assert.notEqual(error, null);
         });
     });
 
     describe('getTeam()', () => {
         it('should be a function', () => {
-            expect(typeof github.getTeam).equals('function');
+            assert.equal(typeof github.getTeam, 'function');
         });
 
         it('should return team object for a logged-in user', async () => {
             const git = await github.getInstance(token);
             const team = await github.getTeam(git, 'imqueue');
 
-            expect(team).to.be.ok;
-            expect(team.id).not.to.be.undefined;
+            assert.ok(team);
+            assert.notEqual(team.id, undefined);
         });
 
         it('should return null if there is no team', async () => {
             const git = await github.getInstance(token);
             const team = await github.getTeam(git, 'Mikhus');
 
-            expect(team).to.be.null;
+            assert.equal(team, null);
         });
     });
 
     describe('getOrg()', () => {
         it('should be a function', () => {
-            expect(typeof github.getOrg).equals('function');
+            assert.equal(typeof github.getOrg, 'function');
         });
 
         it('should return organization if it exists', async () => {
             const git = await github.getInstance(token);
             const org = await github.getOrg(git, 'imqueue');
 
-            expect(org).to.be.ok;
-            expect(org.name).equals('imqueue');
+            assert.ok(org);
+            assert.equal(org.name, 'imqueue');
         });
 
         it('should return null if there is no team', async () => {
             const git = await github.getInstance(token);
             const org = await github.getOrg(git, 'Mikhus');
 
-            expect(org).to.be.null;
+            assert.equal(org, null);
         });
     });
 
     describe('createRepository()', () => {
         it('should be a function', () => {
-            expect(typeof github.createRepository).equals('function');
+            assert.equal(typeof github.createRepository, 'function');
         });
 
         it('should create repository in user space if asked', async () => {
@@ -120,14 +119,16 @@ xdescribe('github', function () {
             try {
                 await github.createRepository(url, token, 'IMQ-CLI test repo');
                 const data = await git.repos.get({ owner, repo });
-                expect(data).to.be.ok;
-                expect(data.name).equals(repo);
-                expect(data.owner.login).equals(owner);
+                assert.ok(data);
+                assert.equal(data.name, repo);
+                assert.equal(data.owner.login, owner);
             } catch (err) {}
             try {
                 // cleanup
                 await git.repos.delete({ owner, repo });
-            } catch (err) { console.error(err); }
+            } catch (err) {
+                console.error(err);
+            }
         });
 
         it('should create repository in org space if asked', async () => {
@@ -138,27 +139,34 @@ xdescribe('github', function () {
 
             try {
                 await github.createRepository(
-                    url, token, 'IMQ-CLI test repo', false
+                    url,
+                    token,
+                    'IMQ-CLI test repo',
+                    false,
                 );
                 const data = await git.repos.get({ owner, repo });
-                expect(data).to.be.ok;
-                expect(data.name).equals(repo);
-                expect(data.owner.login).equals(owner);
+                assert.ok(data);
+                assert.equal(data.name, repo);
+                assert.equal(data.owner.login, owner);
             } catch (err) {}
             try {
                 // cleanup
                 await git.repos.delete({ owner, repo });
-            } catch (err) { console.error(err); }
+            } catch (err) {
+                console.error(err);
+            }
         });
 
         it('should throw if invalid url given', async () => {
             try {
                 await github.createRepository(
-                    'j032', token, 'IMQ-CLI test repo'
+                    'j032',
+                    token,
+                    'IMQ-CLI test repo',
                 );
             } catch (err) {
-                expect(err).instanceof(TypeError);
-                expect(err.message).match(/url .*? is invalid/);
+                assert.ok(err instanceof TypeError);
+                assert.match(err.message, /url .*? is invalid/);
             }
         });
 
@@ -172,13 +180,15 @@ xdescribe('github', function () {
                 await github.createRepository(url, token, 'IMQ-CLI test repo');
                 await github.createRepository(url, token, 'IMQ-CLI test repo');
             } catch (err) {
-                expect(err).instanceof(Error);
-                expect(err.message).equals('Repository already exists!');
+                assert.ok(err instanceof Error);
+                assert.equal(err.message, 'Repository already exists!');
             }
             try {
                 // cleanup
                 await git.repos.delete({ owner, repo });
-            } catch (err) { console.error(err); }
+            } catch (err) {
+                console.error(err);
+            }
         });
     });
 });

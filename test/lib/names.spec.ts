@@ -21,39 +21,40 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import '../mocks';
-import { expect } from 'chai';
-import { dashed, camelCase } from '../../lib';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import '../mocks/index.js';
+import { dashed, camelCase } from '../../lib/index.js';
 
 describe('names', () => {
     describe('dashed()', () => {
         it('should be a function', () => {
-            expect(typeof dashed).equals('function');
+            assert.equal(typeof dashed, 'function');
         });
 
         it('should properly transform given name to dashed string', () => {
-            expect(dashed('camelCase')).equals('camel-case');
-            expect(dashed('CamelCase')).equals('camel-case');
-            expect(dashed('Camel-Case')).equals('camel-case');
-            expect(dashed('Camel_Case')).equals('camel-case');
-            expect(dashed('_camelCase')).equals('-camel-case');
-            expect(dashed('-CamelCase')).equals('-camel-case');
-            expect(dashed(' CamelCase')).equals('camel-case');
-            expect(dashed(' CamelCase ')).equals('camel-case');
+            assert.equal(dashed('camelCase'), 'camel-case');
+            assert.equal(dashed('CamelCase'), 'camel-case');
+            assert.equal(dashed('Camel-Case'), 'camel-case');
+            assert.equal(dashed('Camel_Case'), 'camel-case');
+            assert.equal(dashed('_camelCase'), '-camel-case');
+            assert.equal(dashed('-CamelCase'), '-camel-case');
+            assert.equal(dashed(' CamelCase'), 'camel-case');
+            assert.equal(dashed(' CamelCase '), 'camel-case');
         });
     });
 
     describe('camelCase()', () => {
         it('should be a function', () => {
-            expect(typeof camelCase).equals('function');
+            assert.equal(typeof camelCase, 'function');
         });
 
         it('should properly transform given name to dashed string', () => {
-            expect(camelCase('camel-case')).equals('CamelCase');
-            expect(camelCase('-camel-case')).equals('-CamelCase');
-            expect(camelCase(' camel-case')).equals('CamelCase');
-            expect(camelCase(' camel-case ')).equals('CamelCase');
-            expect(camelCase('camel_case/string')).equals('CamelCaseString');
+            assert.equal(camelCase('camel-case'), 'CamelCase');
+            assert.equal(camelCase('-camel-case'), '-CamelCase');
+            assert.equal(camelCase(' camel-case'), 'CamelCase');
+            assert.equal(camelCase(' camel-case '), 'CamelCase');
+            assert.equal(camelCase('camel_case/string'), 'CamelCaseString');
         });
     });
 });

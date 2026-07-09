@@ -21,7 +21,6 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import * as request from 'request';
 import * as semver from 'semver';
 
 const RX_VERSION_CLEAN = /^v/;
@@ -70,28 +69,30 @@ export function semverCompare(a: string, b: string) {
  * @return {Promise<NodeVersion[]>}
  */
 export async function getNodeVersions(
-    force: boolean = false
+    force: boolean = false,
 ): Promise<NodeVersion[]> {
     // istanbul ignore if
     if (!force && nodeVersions) {
         return nodeVersions;
     }
 
-    return new Promise<NodeVersion[]>((resolve, reject) => {
-        request('https://nodejs.org/dist/index.json', (err, res) => {
-            // istanbul ignore if
-            if (err) return reject(err);
+    const res = await fetch('https://nodejs.org/dist/index.json');
 
-            nodeVersions = (JSON.parse(res.body) ||
-                /* istanbul ignore next */[])
-                .sort((a: NodeVersion, b: NodeVersion) => semverCompare(
-                    a.version.replace(RX_VERSION_CLEAN, ''),
-                    b.version.replace(RX_VERSION_CLEAN, '')
-                ));
+    // istanbul ignore if
+    if (!res.ok) {
+        throw new Error(`Failed to fetch node versions: HTTP ${res.status}`);
+    }
 
-            resolve(nodeVersions);
-        });
-    });
+    nodeVersions = (
+        ((await res.json()) as NodeVersion[]) || /* istanbul ignore next */ []
+    ).sort((a: NodeVersion, b: NodeVersion) =>
+        semverCompare(
+            a.version.replace(RX_VERSION_CLEAN, ''),
+            b.version.replace(RX_VERSION_CLEAN, ''),
+        ),
+    );
+
+    return nodeVersions;
 }
 
 /**
@@ -106,26 +107,33 @@ export async function nodeVersion(tag: string) {
     switch (tag) {
         case 'node':
         case 'latest': {
-            return (((versions || /* istanbul ignore next */[])[0] ||
-                /* istanbul ignore next */<any>{})
-                .version || /* istanbul ignore next */'')
-                .replace(RX_VERSION_CLEAN, '');
+            return (
+                (
+                    (versions || /* istanbul ignore next */ [])[0] ||
+                    /* istanbul ignore next */ <any>{}
+                ).version || /* istanbul ignore next */ ''
+            ).replace(RX_VERSION_CLEAN, '');
         }
         case 'stable':
         case 'lts':
         case 'lts/*': {
-            return ((versions.find(version => !!version.lts) ||
-                /* istanbul ignore next */<any>{})
-                .version || /* istanbul ignore next */'')
-                .replace(RX_VERSION_CLEAN, '');
+            return (
+                (
+                    versions.find(version => !!version.lts) ||
+                    /* istanbul ignore next */ <any>{}
+                ).version || /* istanbul ignore next */ ''
+            ).replace(RX_VERSION_CLEAN, '');
         }
         default: {
-            return ((versions.find(version =>
-                new RegExp(`^v${tag.replace(RX_ESCAPE, '\\.')}`)
-                    .test(version.version)
-                ) /* istanbul ignore next */|| <any>{})
-                .version || /* istanbul ignore next */'')
-                .replace(RX_VERSION_CLEAN, '');
+            return (
+                (
+                    versions.find(version =>
+                        new RegExp(`^v${tag.replace(RX_ESCAPE, '\\.')}`).test(
+                            version.version,
+                        ),
+                    ) /* istanbul ignore next */ || <any>{}
+                ).version || /* istanbul ignore next */ ''
+            ).replace(RX_VERSION_CLEAN, '');
         }
     }
 }
@@ -149,9 +157,17 @@ export async function toTravisTags(tags: string | string[]): Promise<string[]> {
 
     for (let tag of tags) {
         switch (tag) {
-            case 'stable': case 'lts': travisTags.push('lts/*');
-            case 'latest': travisTags.push('node'); break;
-            default: travisTags.push(tag); break;
+            case 'stable':
+            case 'lts':
+                travisTags.push('lts/*');
+                travisTags.push('node');
+                break;
+            case 'latest':
+                travisTags.push('node');
+                break;
+            default:
+                travisTags.push(tag);
+                break;
         }
     }
 

@@ -22,7 +22,7 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import * as p from 'path';
-import { OS_HOME } from './constants';
+import { OS_HOME } from './constants.js';
 
 /**
  * Resolves given path to an absolute canonical path

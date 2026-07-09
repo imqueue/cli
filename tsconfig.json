@@ -1,22 +1,30 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "target": "es2024",
+    "lib": ["es2024", "esnext.decorators"],
+    "moduleDetection": "force",
+
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "verbatimModuleSyntax": true,
+
+    "types": ["node"],
+
+    "isolatedModules": true,
+
     "declaration": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "removeComments": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "moduleResolution": "node",
     "sourceMap": true,
     "inlineSources": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "target": "es2017",
-    "lib": [
-      "dom",
-      "es2017"
-    ],
-    "allowSyntheticDefaultImports": true
+    "removeComments": false,
+    "newLine": "lf",
+
+    "skipLibCheck": true,
+
+    "strict": true,
+    "strictPropertyInitialization": false,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true
   }
 }

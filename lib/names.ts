@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-const RX_NON_ALLOWED = /[^-a-z0-9]/ig;
+const RX_NON_ALLOWED = /[^-a-z0-9]/gi;
 const RX_CAP = /([A-Z])/g;
 const RX_DBL = /--/g;
 const RX_FIRST = /^-/;
@@ -41,8 +41,7 @@ export function dashed(name: string): string {
         .replace(RX_NON_ALLOWED, '-')
         .replace(RX_CAP, m => `-${m.toLowerCase()}`)
         .replace(RX_DBL, '-')
-        .replace(RX_FIRST, '')
-    ;
+        .replace(RX_FIRST, '');
 
     if (!RX_LETTER.test(name[0])) {
         dashed = `-${dashed}`;
@@ -60,8 +59,11 @@ export function dashed(name: string): string {
 export function camelCase(name: string): string {
     name = name.trim();
 
-    return (!RX_LETTER.test(name[0]) ? name[0] : '') + name
-        .split(RX_SPLIT)
-        .map(s => s.substr(0, 1).toUpperCase() + s.substr(1))
-        .join('');
+    return (
+        (!RX_LETTER.test(name[0]) ? name[0] : '') +
+        name
+            .split(RX_SPLIT)
+            .map(s => s.substr(0, 1).toUpperCase() + s.substr(1))
+            .join('')
+    );
 }

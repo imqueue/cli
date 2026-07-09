@@ -21,43 +21,42 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import '../mocks';
-import { expect } from 'chai';
-import { travisEncrypt } from '../../lib';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import '../mocks/index.js';
+import { travisEncrypt } from '../../lib/index.js';
 
-describe('travis', function() {
-    this.timeout(30000);
-
+describe('travis', () => {
     describe('travisEncrypt()', () => {
         it('should be a function', () => {
-            expect(typeof travisEncrypt).equals('function');
+            assert.equal(typeof travisEncrypt, 'function');
         });
 
-        xit('should not throw on existing public repo', async () => {
+        it.skip('should not throw on existing public repo', async () => {
             let error: any = null;
             try {
                 await travisEncrypt('imqueue/cli', 'a=b');
-            }
-            catch (err) {
+            } catch (err) {
                 error = err;
             }
-            expect(error).equals(null);
+            assert.equal(error, null);
         });
 
         it('should throw if wrong repo or credentials', async () => {
             let error: any = null;
             try {
                 await travisEncrypt('!@#$/%^&*', 'a=b');
-            }
-            catch (err) {
+            } catch (err) {
                 error = err;
             }
-            expect(error).to.be.instanceOf(Error);
+            assert.ok(error instanceof Error);
         });
 
-        xit('should return string value', async () => {
-            expect(typeof await travisEncrypt('imqueue/cli', 'a=b'))
-                .equals('string');
+        it.skip('should return string value', async () => {
+            assert.equal(
+                typeof (await travisEncrypt('imqueue/cli', 'a=b')),
+                'string',
+            );
         });
     });
 });

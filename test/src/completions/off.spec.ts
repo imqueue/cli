@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: config check
+ * IMQ-CLI Unit Tests: completions off
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
@@ -21,16 +21,17 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import '../../mocks';
-import { expect } from 'chai';
-import * as config from '../../../src/config/check';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import '../../mocks/index.js';
+import * as client from '../../../src/completions/off.js';
 
-describe('config check', () => {
+describe('completions off', () => {
     it('should be a valid command definition', () => {
-        expect(typeof config.command).equals('string');
-        expect(config.command).contains('check');
-        expect(typeof config.describe).equals('string');
-        expect(config.describe).not.to.be.empty;
-        expect(typeof config.handler).equals('function');
+        assert.equal(typeof client.command, 'string');
+        assert.ok(client.command.includes('off'));
+        assert.equal(typeof client.describe, 'string');
+        assert.notEqual(client.describe.length, 0);
+        assert.equal(typeof client.handler, 'function');
     });
 });

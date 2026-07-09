@@ -21,13 +21,13 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { Argv } from 'yargs';
+import { type Argv } from 'yargs';
 import {
     existsSync as exists,
     readFileSync as read,
-    writeFileSync as write
+    writeFileSync as write,
 } from 'fs';
-import { resolve, printError, IS_ZSH } from '../../lib';
+import { resolve, printError, IS_ZSH } from '../../lib/index.js';
 import chalk from 'chalk';
 
 let PROGRAM: string = '';
@@ -43,9 +43,12 @@ let RX_REPLACE: RegExp;
 function printSuccess(rcFilename: string) {
     process.stdout.write(
         chalk.green('Completions removed from ') +
-        chalk.cyan(`${rcFilename}`) + '\n' +
-        'To have these changes to take effect, please, run:\n\n' +
-        '  $ ' + chalk.cyan(`source ${rcFilename}`) + '\n\n'
+            chalk.cyan(`${rcFilename}`) +
+            '\n' +
+            'To have these changes to take effect, please, run:\n\n' +
+            '  $ ' +
+            chalk.cyan(`source ${rcFilename}`) +
+            '\n\n',
     );
 }
 
@@ -56,8 +59,11 @@ export const { command, describe, builder, handler } = {
 
     async builder(yargs: Argv) {
         PROGRAM = (await yargs.argv).$0;
-        RX_REPLACE = new RegExp(`###-begin-${PROGRAM}-completions-###`
-            + '[\\s\\S]*?' + `###-end-${PROGRAM}-completions-###`);
+        RX_REPLACE = new RegExp(
+            `###-begin-${PROGRAM}-completions-###` +
+                '[\\s\\S]*?' +
+                `###-end-${PROGRAM}-completions-###`,
+        );
     },
 
     handler() {
@@ -66,18 +72,17 @@ export const { command, describe, builder, handler } = {
             const rcFile = resolve(rcFilename);
 
             if (exists(rcFile)) {
-                const rcText = read(rcFile, { encoding: 'utf8' })
-                    .replace(RX_REPLACE, '')
-                    .trim() + '\n';
+                const rcText =
+                    read(rcFile, { encoding: 'utf8' })
+                        .replace(RX_REPLACE, '')
+                        .trim() + '\n';
 
                 write(rcFile, rcText, { encoding: 'utf8' });
             }
 
             printSuccess(rcFilename);
+        } catch (err) {
+            printError(err as Error);
         }
-
-        catch (err) {
-            printError(err);
-        }
-    }
+    },
 };

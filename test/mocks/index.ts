@@ -21,7 +21,30 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-export * from './constants';
-export * from './logger';
-export * from './redis';
-export * from './command-exists';
+// sandbox all cli file locations before anything loads lib/constants
+process.env.IMQ_CLI_HOME = '/tmp';
+
+const { mock } = await import('node:test');
+const { commandExistsMock } = await import('./command-exists.js');
+const { Redis } = await import('./redis.js');
+
+// preloaded via `node --import ./test/mocks/index.js` so mocks are
+// registered before any test file graph links (see package.json scripts)
+mock.module('command-exists', {
+    cache: false,
+    defaultExport: commandExistsMock,
+});
+mock.module('ioredis', {
+    cache: false,
+    defaultExport: {
+        __esModule: true,
+        default: Redis,
+        Redis,
+    },
+    namedExports: {
+        Redis,
+    },
+});
+
+export * from './logger.js';
+export * from './redis.js';

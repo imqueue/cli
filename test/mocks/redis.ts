@@ -21,12 +21,11 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import * as mock from 'mock-require';
-import { EventEmitter } from 'events';
-import * as crypto from 'crypto';
+import { EventEmitter } from 'node:events';
+import { createHash, type Hash } from 'node:crypto';
 
 function sha1(str: string) {
-    let sha: crypto.Hash = crypto.createHash('sha1');
+    const sha: Hash = createHash('sha1');
     sha.update(str);
     return sha.digest('hex');
 }
@@ -71,7 +70,9 @@ export class RedisClientMock extends EventEmitter {
             RedisClientMock.__keys[key] !== undefined
         ) {
             const cb = args.pop();
-            typeof cb === 'function' && cb(null, 0);
+            if (typeof cb === 'function') {
+                cb(null, 0);
+            }
             return true;
         }
 
@@ -81,11 +82,15 @@ export class RedisClientMock extends EventEmitter {
             if (units === 'EX') {
                 expire *= 1000;
             }
-            setTimeout(() => { delete RedisClientMock.__keys[key] }, expire);
+            setTimeout(() => {
+                delete RedisClientMock.__keys[key];
+            }, expire);
         }
 
         const cb = args.pop();
-        typeof cb === 'function' && cb(null, 1);
+        if (typeof cb === 'function') {
+            cb(null, 1);
+        }
         return true;
     }
 
@@ -93,7 +98,9 @@ export class RedisClientMock extends EventEmitter {
         const [key] = args;
         const val = RedisClientMock.__keys[key];
         const cb = args.pop();
-        typeof cb === 'function' && cb(null, val);
+        if (typeof cb === 'function') {
+            cb(null, val);
+        }
         return val;
     }
 
@@ -102,7 +109,7 @@ export class RedisClientMock extends EventEmitter {
         const self = RedisClientMock;
         const key = args.shift();
         let result = 0;
-        if (/:watch:lock$/.test(key)) {
+        if (key.endsWith(':watch:lock')) {
             if (typeof self.__keys[key] === 'undefined') {
                 self.__keys[key] = args.shift();
                 result = 1;
@@ -129,12 +136,15 @@ export class RedisClientMock extends EventEmitter {
         const [key, timeout, cb] = args;
         const q = RedisClientMock.__queues__[key] || [];
         if (!q.length) {
-            this.__rt && clearTimeout(this.__rt);
+            if (this.__rt) {
+                clearTimeout(this.__rt);
+            }
 
             return new Promise(resolve => {
-                this.__rt = setTimeout(() => resolve(this.brpop(
-                    key, timeout, cb,
-                )), timeout || 100);
+                this.__rt = setTimeout(
+                    () => resolve(this.brpop(key, timeout, cb)),
+                    timeout || 100,
+                );
             });
         } else {
             const result = [key, q.shift()];
@@ -149,23 +159,28 @@ export class RedisClientMock extends EventEmitter {
         from: string,
         to: string,
         timeout: number,
-        cb?: Function
+        cb?: Function,
     ): Promise<string> {
-        const fromQ = RedisClientMock.__queues__[from] =
-            RedisClientMock.__queues__[from] || [];
-        const toQ = RedisClientMock.__queues__[to] =
-            RedisClientMock.__queues__[to] || [];
+        const fromQ = (RedisClientMock.__queues__[from] =
+            RedisClientMock.__queues__[from] || []);
+        const toQ = (RedisClientMock.__queues__[to] =
+            RedisClientMock.__queues__[to] || []);
         if (!fromQ.length) {
-            this.__rt && clearTimeout(this.__rt);
+            if (this.__rt) {
+                clearTimeout(this.__rt);
+            }
 
             return new Promise(resolve => {
-                this.__rt = setTimeout(() => resolve(this.brpoplpush(
-                    from, to, timeout, cb,
-                )), timeout || 100);
+                this.__rt = setTimeout(
+                    () => resolve(this.brpoplpush(from, to, timeout, cb)),
+                    timeout || 100,
+                );
             });
         } else {
             toQ.push(fromQ.shift());
-            cb && cb(null, '1');
+            if (cb) {
+                cb(null, '1');
+            }
 
             return '1';
         }
@@ -178,8 +193,8 @@ export class RedisClientMock extends EventEmitter {
         stop: number,
         cb?: Function,
     ): boolean {
-        const q = RedisClientMock.__queues__[key] =
-            RedisClientMock.__queues__[key] || [];
+        const q = (RedisClientMock.__queues__[key] =
+            RedisClientMock.__queues__[key] || []);
         const result = q.splice(start, stop);
         this.cbExecute(cb, null, result);
         return result;
@@ -210,13 +225,17 @@ export class RedisClientMock extends EventEmitter {
         if (cmd === 'LOAD') {
             const hash = sha1(scriptOrHash);
             RedisClientMock.__scripts[hash] = scriptOrHash;
-            isCb && cb(null, hash);
+            if (isCb) {
+                cb(null, hash);
+            }
             return hash;
         }
         if (cmd === 'EXISTS') {
             const hash = RedisClientMock.__scripts[scriptOrHash] !== undefined;
 
-            isCb && cb(null, hash);
+            if (isCb) {
+                cb(null, hash);
+            }
 
             return [Number(hash)];
         }
@@ -233,13 +252,12 @@ export class RedisClientMock extends EventEmitter {
 
         if (cmd === 'LIST') {
             const result = Object.keys(self.__clientList)
-            .map((name: string, id: number) => `id=${id} name=${name}`)
-            .join('\n');
+                .map((name: string, id: number) => `id=${id} name=${name}`)
+                .join('\n');
 
             this.cbExecute(cb, null, result);
             return result;
-        }
-        else if (cmd === 'SETNAME') {
+        } else if (cmd === 'SETNAME') {
             this.__name = name;
             self.__clientList[name] = true;
         }
@@ -291,7 +309,7 @@ export class RedisClientMock extends EventEmitter {
         const [key, score, value, cb] = args;
         const timeout = score - Date.now();
         setTimeout(() => {
-            const toKey = key.split(/:/).slice(0,2).join(':');
+            const toKey = key.split(/:/).slice(0, 2).join(':');
             this.lpush(toKey, value);
         }, timeout);
         this.cbExecute(cb);
@@ -320,13 +338,4 @@ export class RedisClientMock extends EventEmitter {
     }
 }
 
-const Redis = RedisClientMock;
-
-mock('ioredis', { Redis, default: Redis });
-
-// @ts-ignore
-export * from 'ioredis';
-
-export { Redis };
-
-export default Redis;
+export const Redis = RedisClientMock;
