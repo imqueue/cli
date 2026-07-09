@@ -21,13 +21,16 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { Argv, Arguments } from 'yargs';
+import { type Argv, type Arguments } from 'yargs';
 import chalk from 'chalk';
-import { printError } from '../../lib';
-import { spawnSync, SpawnSyncReturns } from 'child_process';
+import { printError } from '../../lib/index.js';
+import { spawnSync, type SpawnSyncReturns } from 'child_process';
 import { resolve } from 'path';
 import { readdirSync } from 'fs';
 import { Console } from 'console';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
 
 const BASE_SERVICE_NAME = 'IMQService';
 let PROGRAM: string = '';
@@ -44,9 +47,7 @@ const logger = new Console(process.stdout, process.stderr);
  * @returns {boolean} -
  *              returns true if directory contains service, or false instead
  */
-function isFolderContainsService(
-    servicePath: string,
-): boolean {
+function isFolderContainsService(servicePath: string): boolean {
     const originalLogger = console.log;
 
     try {
@@ -56,14 +57,18 @@ function isFolderContainsService(
         const service = require(servicePath);
 
         for (const [prop, func] of Object.entries(service)) {
-            if (!prop.includes('Service')) { continue; }
+            if (!prop.includes('Service')) {
+                continue;
+            }
 
             // noinspection TypeScriptUnresolvedVariable
             return (func as any).__proto__.name === BASE_SERVICE_NAME;
         }
 
         process.chdir(ROOT_DIRECTORY);
-    } catch (err) { /* ignore */ }
+    } catch (err) {
+        /* ignore */
+    }
 
     console.log = originalLogger;
 
@@ -107,9 +112,7 @@ function gitCheckout(
  * @param {string} servicePath - path to directory, which contains service
  * @returns {SpawnSyncReturns<Buffer>}
  */
-function gitPull(
-    servicePath: string,
-): SpawnSyncReturns<Buffer> {
+function gitPull(servicePath: string): SpawnSyncReturns<Buffer> {
     logger.log('Execution git pull...');
     return spawnSync(`git`, ['pull'], {
         cwd: servicePath,
@@ -139,9 +142,7 @@ function changeVersion(
  * @param {string} servicePath - path to directory, which contains service
  * @returns {SpawnSyncReturns<Buffer>}
  */
-function gitPush(
-    servicePath: string,
-): SpawnSyncReturns<Buffer> {
+function gitPush(servicePath: string): SpawnSyncReturns<Buffer> {
     logger.log('Execution git push...');
     return spawnSync('git', ['push', '--follow-tags'], {
         cwd: servicePath,
@@ -158,7 +159,7 @@ function gitPush(
 function handleSpawnResponse(
     response: SpawnSyncReturns<Buffer>,
 ): number | null {
-    if (response.status !== 0 || response.error && response.stderr) {
+    if (response.status !== 0 || (response.error && response.stderr)) {
         // noinspection TypeScriptValidateTypes
         logger.log(chalk.red(response.stderr.toString()));
     }
@@ -176,26 +177,31 @@ function handleSpawnResponse(
  * @param {Arguments} args - cli args
  * @returns {void}
  */
-function execGitFlow(
-    servicePath: string,
-    args: Arguments,
-): void {
+function execGitFlow(servicePath: string, args: Arguments): void {
     let response: SpawnSyncReturns<Buffer>;
 
     response = gitCheckout(servicePath, args.branch as string);
 
-    if (handleSpawnResponse(response)) { return; }
+    if (handleSpawnResponse(response)) {
+        return;
+    }
 
     response = gitPull(servicePath);
 
-    if (handleSpawnResponse(response)) { return; }
+    if (handleSpawnResponse(response)) {
+        return;
+    }
 
     response = changeVersion(servicePath, args.npmVersion as string);
 
-    if (handleSpawnResponse(response)) { return; }
+    if (handleSpawnResponse(response)) {
+        return;
+    }
 
     response = gitPush(servicePath);
-    if (handleSpawnResponse(response)) { return; }
+    if (handleSpawnResponse(response)) {
+        return;
+    }
     // noinspection TypeScriptValidateTypes
     logger.log(chalk.green('Done!'));
 }
@@ -206,9 +212,7 @@ function execGitFlow(
  * @param {string} path - path to root folder with services
  * @returns {string[]} - array of folders with services
  */
-function getServicesFolders(
-    path: string,
-): string[] {
+function getServicesFolders(path: string): string[] {
     const folders: string[] = [];
     path = resolve(path);
 
@@ -218,11 +222,11 @@ function getServicesFolders(
     } else {
         for (const dir of readdirSync(path)) {
             const pathToService = resolve(path, dir);
-            const containsService = isFolderContainsService(
-                pathToService,
-            );
+            const containsService = isFolderContainsService(pathToService);
 
-            if (containsService) { folders.push(pathToService) }
+            if (containsService) {
+                folders.push(pathToService);
+            }
         }
     }
 
@@ -232,7 +236,8 @@ function getServicesFolders(
 // noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
     command: 'update-version <path> [branch] [version]',
-    describe: 'Updates services under given path with new version tag ' +
+    describe:
+        'Updates services under given path with new version tag ' +
         'and automatically pushes changes to repository, triggering builds.',
 
     async builder(yargs: Argv) {
@@ -246,7 +251,8 @@ export const { command, describe, builder, handler } = {
             .option('n', {
                 alias: 'npm-version',
                 default: 'prerelease',
-                describe: 'NPM version to update (major|minor|patch|prerelease).'
+                describe:
+                    'NPM version to update (major|minor|patch|prerelease).',
             })
             .describe('path', 'Path to directory containing services.');
     },
@@ -256,7 +262,7 @@ export const { command, describe, builder, handler } = {
             const folders = getServicesFolders(argv.path as string);
             walkThroughFolders(folders, argv);
         } catch (err) {
-            printError(err);
+            printError(err as Error);
         }
-    }
+    },
 };

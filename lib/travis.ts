@@ -21,9 +21,9 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import * as NodeRSA from 'node-rsa';
+import NodeRSA from 'node-rsa';
 import { TravisClient } from '@imqueue/travis';
-import { sleep } from './node';
+import { sleep } from './node.js';
 
 /**
  * Returns encrypted secure key for travis sensitive data.
@@ -37,7 +37,7 @@ import { sleep } from './node';
 export async function travisEncrypt(
     repository: string,
     data: string,
-    github_token?: string
+    github_token?: string,
 ): Promise<string> {
     const travis = new TravisClient({ pro: !!github_token });
 
@@ -69,20 +69,16 @@ export async function trySyncBuilds(
     travis: TravisClient,
     retry: number = 0,
     maxRetries: number = 3,
-    delay: number = 2000
+    delay: number = 2000,
 ): Promise<boolean> {
     try {
         await travis.users.sync.post();
         await sleep(delay);
-    } catch(err) {
+    } catch (err) {
         if (retry < maxRetries) {
             await sleep(delay);
 
-            return trySyncBuilds(
-                travis,
-                ++retry,
-                maxRetries
-            );
+            return trySyncBuilds(travis, ++retry, maxRetries);
         }
 
         return false;
@@ -104,15 +100,16 @@ export async function enableBuilds(
     owner: string,
     repo: string,
     github_token: string,
-    isPrivate: boolean
+    isPrivate: boolean,
 ) {
     const travis = new TravisClient({ pro: isPrivate });
 
     await travis.authenticate({ github_token });
     await trySyncBuilds(travis);
 
-    const hook = (await travis.hooks.get()).hooks.find((hook: any) =>
-        hook.owner_name === owner && hook.name === repo);
+    const hook = (await travis.hooks.get()).hooks.find(
+        (hook: any) => hook.owner_name === owner && hook.name === repo,
+    );
 
     if (!hook) {
         return false;
@@ -120,7 +117,7 @@ export async function enableBuilds(
         return true;
     }
 
-    await travis.hooks(hook.id).put({ hook: { id: hook.id, active: true }});
+    await travis.hooks(hook.id).put({ hook: { id: hook.id, active: true } });
 
     return true;
 }

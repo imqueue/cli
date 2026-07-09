@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: error
+ * IMQ-CLI Unit Tests: config set
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
@@ -21,14 +21,17 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import '../mocks';
-import { expect } from 'chai';
-import { printError } from '../../lib';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import '../../mocks/index.js';
+import * as client from '../../../src/config/set.js';
 
-describe('error', () => {
-    describe('printError()', () => {
-        it('should be a function', () => {
-            expect(typeof printError).equals('function');
-        });
+describe('config set', () => {
+    it('should be a valid command definition', () => {
+        assert.equal(typeof client.command, 'string');
+        assert.ok(client.command.includes('set'));
+        assert.equal(typeof client.describe, 'string');
+        assert.notEqual(client.describe.length, 0);
+        assert.equal(typeof client.handler, 'function');
     });
 });

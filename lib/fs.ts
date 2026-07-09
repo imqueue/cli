@@ -23,7 +23,7 @@
  */
 import * as fs from 'fs';
 import * as p from 'path';
-import { resolve } from '.';
+import { resolve } from './index.js';
 
 /**
  * Copy contents from source directory to destination directory
@@ -46,9 +46,7 @@ export function cpr(from: string, to: string) {
 
         if (fs.statSync(fromPath).isDirectory()) {
             cpr(fromPath, toPath);
-        }
-
-        else {
+        } else {
             fs.copyFileSync(fromPath, toPath);
         }
     });
@@ -63,7 +61,7 @@ export function rmdir(path: string) {
     let files = [];
 
     // istanbul ignore else
-    if( fs.existsSync(path) ) {
+    if (fs.existsSync(path)) {
         files = fs.readdirSync(path);
 
         files.forEach(file => {
@@ -88,10 +86,8 @@ export function rmdir(path: string) {
 export function mkdirp(path: string): void {
     try {
         fs.mkdirSync(path);
-    }
-
-    catch (err) {
-        if (err.code === 'ENOENT') {
+    } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
             mkdirp(p.dirname(path));
             return mkdirp(path);
         }
@@ -113,7 +109,7 @@ export function mkdirp(path: string): void {
 export function touch(
     path: string,
     // istanbul ignore next
-    content: string = ''
+    content: string = '',
 ): void {
     if (!fs.existsSync(path)) {
         mkdirp(p.dirname(path));

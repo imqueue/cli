@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: service create
+ * IMQ-CLI Unit Tests: client generate
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
@@ -21,16 +21,17 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import '../../mocks';
-import { expect } from 'chai';
-import * as client from '../../../src/service/create';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import '../../mocks/index.js';
+import * as client from '../../../src/client/generate.js';
 
-describe('service create', () => {
+describe('client generate', () => {
     it('should be a valid command definition', () => {
-        expect(typeof client.command).equals('string');
-        expect(client.command).contains('create');
-        expect(typeof client.describe).equals('string');
-        expect(client.describe).not.to.be.empty;
-        expect(typeof client.handler).equals('function');
+        assert.equal(typeof client.command, 'string');
+        assert.ok(client.command.includes('generate'));
+        assert.equal(typeof client.describe, 'string');
+        assert.notEqual(client.describe.length, 0);
+        assert.equal(typeof client.handler, 'function');
     });
 });

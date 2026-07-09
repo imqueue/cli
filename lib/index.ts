@@ -21,16 +21,16 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-export * from './constants';
-export * from './validate';
-export * from './names';
-export * from './error';
-export * from './config';
-export * from './license';
-export * from './fs';
-export * from './path';
-export * from './travis';
-export * from './template';
-export * from './github';
-export * from './node';
-export * from './autoupdate';
+export * from './constants.js';
+export * from './validate.js';
+export * from './names.js';
+export * from './error.js';
+export * from './config.js';
+export * from './license.js';
+export * from './fs.js';
+export * from './path.js';
+export * from './travis.js';
+export * from './template.js';
+export * from './github.js';
+export * from './node.js';
+export * from './autoupdate.js';

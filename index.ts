@@ -24,21 +24,29 @@
  */
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { VERSION, checkForUpdate } from './lib';
+import { VERSION, checkForUpdate } from './lib/index.js';
+import * as client from './src/client.js';
+import * as completions from './src/completions.js';
+import * as config from './src/config.js';
+import * as service from './src/service.js';
 
 (async () => {
     const y = yargs(hideBin(process.argv));
 
     await checkForUpdate();
 
-    await y.usage('IMQ Command Line Interface' +
-            `\nVersion: ${VERSION}` +
-            '\n\nUsage: $0 <command>')
+    await y
+        .usage(
+            'IMQ Command Line Interface' +
+                `\nVersion: ${VERSION}` +
+                '\n\nUsage: $0 <command>',
+        )
         .version(VERSION)
-        .commandDir('src')
+        .command(client as any)
+        .command(completions as any)
+        .command(config as any)
+        .command(service as any)
         .demandCommand()
         .wrap(y.terminalWidth())
-        .help()
-        .argv
-    ;
+        .help().argv;
 })();

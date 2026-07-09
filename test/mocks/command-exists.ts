@@ -21,16 +21,10 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import * as mock from 'mock-require';
+(global as any).checkGitResult = true;
 
-(<any>global).checkGitResult = true;
-
-function _commandExists() {
-    return (<any>global).checkGitResult;
+export function commandExistsMock(): boolean {
+    return (global as any).checkGitResult;
 }
 
-(_commandExists as any).sync = _commandExists;
-
-mock('command-exists', _commandExists);
-
-export const commandExists = require('command-exists');
+(commandExistsMock as any).sync = commandExistsMock;

@@ -26,5 +26,5 @@ export const logger: any = {
     log() {},
     info() {},
     warn() {},
-    error() {}
+    error() {},
 };

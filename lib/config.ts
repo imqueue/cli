@@ -24,10 +24,10 @@
 import {
     readFileSync as read,
     writeFileSync as write,
-    existsSync as exists
+    existsSync as exists,
 } from 'fs';
-import { touch } from './fs';
-import { CONFIG_PATH } from './constants';
+import { touch } from './fs.js';
+import { CONFIG_PATH } from './constants.js';
 
 export interface IMQCLIConfig {
     [options: string]: any;
@@ -73,13 +73,13 @@ export function saveConfig(config: IMQCLIConfig) {
  * @return {boolean}
  */
 export function configEmpty() {
-   if (!exists(CONFIG_PATH)) {
-       return true;
-   }
+    if (!exists(CONFIG_PATH)) {
+        return true;
+    }
 
-   const config = loadConfig();
+    const config = loadConfig();
 
-   return !(config && Object.keys(config).length);
+    return !(config && Object.keys(config).length);
 }
 
 /**
@@ -93,10 +93,14 @@ export function configEmpty() {
 export function prepareConfigValue(value: any) {
     if (typeof value === 'string') {
         switch (value) {
-            case 'true': return true;
-            case 'false': return false;
-            case 'null': return null;
-            case 'undefined': return undefined;
+            case 'true':
+                return true;
+            case 'false':
+                return false;
+            case 'null':
+                return null;
+            case 'undefined':
+                return undefined;
         }
 
         // istanbul ignore else

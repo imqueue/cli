@@ -38,11 +38,13 @@ export function printError(err: Error, withStackTrace: boolean = false) {
         let obj = JSON.parse(message);
 
         if (obj.message && obj.errors) {
-            message = `${obj.message}: ${
-                obj.errors.map((err: any) => err.message).join('\n')
-            }`;
+            message = `${obj.message}: ${obj.errors
+                .map((err: any) => err.message)
+                .join('\n')}`;
         }
-    } catch (err) { /* ignore */ }
+    } catch (err) {
+        /* ignore */
+    }
 
     process.stderr.write(chalk.bold.red(message) + '\n');
 

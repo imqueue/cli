@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { configEmpty } from '../../lib';
+import { configEmpty } from '../../lib/index.js';
 
 // noinspection JSUnusedGlobalSymbols
 export const { command, describe, handler } = {
@@ -30,5 +30,5 @@ export const { command, describe, handler } = {
 
     handler() {
         process.exit(configEmpty() ? 1 : 0);
-    }
+    },
 };

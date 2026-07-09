@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: license
+ * IMQ-CLI Unit Tests: config init
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
@@ -21,27 +21,17 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import '../mocks';
-import { expect } from "chai";
-import { findLicense } from '../../lib';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import '../../mocks/index.js';
+import * as config from '../../../src/config/init.js';
 
-describe('license', function() {
-    describe('findLicense()', () => {
-        it('should be a function', () => {
-            expect(typeof findLicense).equals('function');
-        });
-
-        it('should return license object if proper name given', () => {
-            expect(findLicense('mit').spdx_id).equals('MIT');
-            expect(findLicense('Mit').spdx_id).equals('MIT');
-            expect(findLicense('mIt').spdx_id).equals('MIT');
-            expect(findLicense('MIT').spdx_id).equals('MIT');
-            expect(findLicense('mi').spdx_id).equals('MIT');
-            expect(findLicense('mit license').spdx_id).equals('MIT');
-        });
-
-        it('should return null if nothing found', () => {
-            expect(findLicense('dsjgiuewhd')).to.be.null;
-        });
+describe('config init', () => {
+    it('should be a valid command definition', () => {
+        assert.equal(typeof config.command, 'string');
+        assert.ok(config.command.includes('init'));
+        assert.equal(typeof config.describe, 'string');
+        assert.notEqual(config.describe.length, 0);
+        assert.equal(typeof config.handler, 'function');
     });
 });

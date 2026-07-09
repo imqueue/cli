@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Test Mocks: constants
+ * IMQ-CLI Unit Tests: completions on
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
@@ -21,19 +21,17 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import * as mock from 'mock-require';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import '../../mocks/index.js';
+import * as client from '../../../src/completions/on.js';
 
-const constants = {
-    OS_HOME: '/tmp',
-    IMQ_HOME: '/tmp/.imq',
-    CONFIG_FILENAME: 'config.json',
-    CONFIG_PATH: '/tmp/.imq/config.json',
-    IS_ZSH: Object.keys(process.env).some(key => /^ZSH/.test(key)),
-    TPL_HOME: '/tmp/.imq/templates',
-    TPL_REPO: 'git@github.com:imqueue/templates.git',
-    CUSTOM_TPL_HOME: '/tmp/.imq/custom-templates',
-};
-
-mock('../../lib/constants', constants);
-
-export * from '../../lib/constants';
+describe('completions on', () => {
+    it('should be a valid command definition', () => {
+        assert.equal(typeof client.command, 'string');
+        assert.ok(client.command.includes('on'));
+        assert.equal(typeof client.describe, 'string');
+        assert.notEqual(client.describe.length, 0);
+        assert.equal(typeof client.handler, 'function');
+    });
+});

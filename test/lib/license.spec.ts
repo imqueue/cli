@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: config get
+ * IMQ-CLI Unit Tests: license
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
@@ -21,16 +21,28 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import '../../mocks';
-import { expect } from 'chai';
-import * as client from '../../../src/config/get';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import '../mocks/index.js';
+import { findLicense } from '../../lib/index.js';
 
-describe('config get', () => {
-    it('should be a valid command definition', () => {
-        expect(typeof client.command).equals('string');
-        expect(client.command).contains('get');
-        expect(typeof client.describe).equals('string');
-        expect(client.describe).not.to.be.empty;
-        expect(typeof client.handler).equals('function');
+describe('license', function () {
+    describe('findLicense()', () => {
+        it('should be a function', () => {
+            assert.equal(typeof findLicense, 'function');
+        });
+
+        it('should return license object if proper name given', () => {
+            assert.equal(findLicense('mit').spdx_id, 'MIT');
+            assert.equal(findLicense('Mit').spdx_id, 'MIT');
+            assert.equal(findLicense('mIt').spdx_id, 'MIT');
+            assert.equal(findLicense('MIT').spdx_id, 'MIT');
+            assert.equal(findLicense('mi').spdx_id, 'MIT');
+            assert.equal(findLicense('mit license').spdx_id, 'MIT');
+        });
+
+        it('should return null if nothing found', () => {
+            assert.equal(findLicense('dsjgiuewhd'), null);
+        });
     });
 });

@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: validate
+ * IMQ-CLI Unit Tests: path
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
@@ -21,35 +21,24 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import '../mocks';
-import { expect } from "chai";
-import { isEmail, isNamespace, isGuthubToken } from '../../lib';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import '../mocks/index.js';
+import * as p from 'path';
+import { resolve, OS_HOME } from '../../lib/index.js';
 
-describe('validate', function() {
-    describe('isEmail()', () => {
+describe('path', () => {
+    describe('resolve()', () => {
         it('should be a function', () => {
-            expect(typeof isEmail).equals('function');
+            assert.equal(typeof resolve, 'function');
         });
 
-        it('should properly check given email string', () => {
-            expect(isEmail('a@b')).equals(true);
-            expect(isEmail('a.b@b.net')).equals(true);
-            expect(isEmail('a-c0@b.dot')).equals(true);
-            expect(isEmail('a#b')).equals(false);
-            expect(isEmail('ab')).equals(false);
-        });
-    });
-
-    describe('isNamespace()', () => {
-        it('should be a function', () => {
-            expect(typeof isNamespace).equals('function');
+        it('should properly resolve home directory', () => {
+            assert.equal(resolve('~'), OS_HOME);
         });
 
-        it('should properly check if a given string valid namespace', () => {
-            expect(isNamespace('f57f%')).equals(false);
-            expect(isNamespace('f57f')).equals(true);
-            expect(isNamespace('djslkdj')).equals(true);
-            expect(isNamespace('imqueue')).equals(true);
+        it('should normalize given path', () => {
+            assert.equal(resolve(`${OS_HOME}/..`), p.dirname(OS_HOME));
         });
     });
 });

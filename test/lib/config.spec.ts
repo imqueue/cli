@@ -21,29 +21,38 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import '../mocks';
-import { expect } from 'chai';
+import { describe, it, before, beforeEach, after, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+import '../mocks/index.js';
 import {
     loadConfig,
     saveConfig,
     prepareConfigValue,
     configEmpty,
     CONFIG_PATH,
-    touch
-} from '../../lib';
+    touch,
+} from '../../lib/index.js';
 import * as fs from 'fs';
 
 describe('config', () => {
     describe('loadConfig()', () => {
-        beforeEach(() => { try { fs.unlinkSync(CONFIG_PATH) } catch (e) {} });
-        afterEach(() => { try { fs.unlinkSync(CONFIG_PATH) } catch (e) {} });
+        beforeEach(() => {
+            try {
+                fs.unlinkSync(CONFIG_PATH);
+            } catch (e) {}
+        });
+        afterEach(() => {
+            try {
+                fs.unlinkSync(CONFIG_PATH);
+            } catch (e) {}
+        });
 
         it('should be a function', () => {
-            expect(typeof loadConfig).equals('function');
+            assert.equal(typeof loadConfig, 'function');
         });
 
         it('should return object even if config does not exist', () => {
-            expect(typeof loadConfig()).equals('object');
+            assert.equal(typeof loadConfig(), 'object');
         });
 
         it('should return actual object if config file exists', () => {
@@ -51,7 +60,7 @@ describe('config', () => {
 
             touch(CONFIG_PATH, JSON.stringify(config, null, 2));
 
-            expect(loadConfig()).to.deep.equal(config);
+            assert.deepEqual(loadConfig(), config);
         });
 
         it('should throw if config data broken', () => {
@@ -59,98 +68,113 @@ describe('config', () => {
 
             touch(CONFIG_PATH, config);
 
-            expect(() => loadConfig()).throws;
+            assert.throws(() => loadConfig());
         });
     });
 
     describe('saveConfig()', () => {
-        before(() => { try { fs.unlinkSync(CONFIG_PATH) } catch (e) {} });
-        after(() => { try { fs.unlinkSync(CONFIG_PATH) } catch (e) {} });
+        before(() => {
+            try {
+                fs.unlinkSync(CONFIG_PATH);
+            } catch (e) {}
+        });
+        after(() => {
+            try {
+                fs.unlinkSync(CONFIG_PATH);
+            } catch (e) {}
+        });
 
         it('should be a function', () => {
-            expect(typeof saveConfig).equals('function');
+            assert.equal(typeof saveConfig, 'function');
         });
 
         it('should save if file does not exist', () => {
             const config = { a: 1, b: 'test', c: true };
 
             saveConfig(config);
-            expect(loadConfig()).to.deep.equal(config);
+            assert.deepEqual(loadConfig(), config);
         });
 
         it('should overwrite if file exists', () => {
             const config = { a: 123, b: 'test123', c: false };
 
             saveConfig(config);
-            expect(loadConfig()).to.deep.equal(config);
+            assert.deepEqual(loadConfig(), config);
         });
     });
 
     describe('prepareConfigValue()', () => {
         it('should be a function', () => {
-            expect(typeof prepareConfigValue).equals('function');
+            assert.equal(typeof prepareConfigValue, 'function');
         });
 
         it('should return true if "true" value passed', () => {
-            expect(prepareConfigValue('true')).equals(true);
+            assert.equal(prepareConfigValue('true'), true);
         });
 
         it('should return false if "false" value passed', () => {
-            expect(prepareConfigValue('false')).equals(false);
+            assert.equal(prepareConfigValue('false'), false);
         });
 
         it('should return null if "null" value passed', () => {
-            expect(prepareConfigValue('null')).equals(null);
+            assert.equal(prepareConfigValue('null'), null);
         });
 
         it('should return undefined if "undefined" value passed', () => {
-            expect(prepareConfigValue('undefined')).equals(undefined);
+            assert.equal(prepareConfigValue('undefined'), undefined);
         });
 
         it('should return array object if "[]" value passed', () => {
-            expect(prepareConfigValue('[]')).to.be.instanceOf(Array);
+            assert.ok(prepareConfigValue('[]') instanceof Array);
         });
 
         it('should return object if "{}" value passed', () => {
-            expect(prepareConfigValue('{}')).to.be.instanceOf(Object);
+            assert.ok(prepareConfigValue('{}') instanceof Object);
         });
 
         it('should return same object if non-string passed', () => {
             const obj = { a: 1, b: true };
-            expect(prepareConfigValue(obj)).equals(obj);
+            assert.equal(prepareConfigValue(obj), obj);
         });
 
         it('should throw if broken value passed', () => {
-            expect(() => prepareConfigValue('[}')).throws;
+            assert.throws(() => prepareConfigValue('[}'));
         });
     });
 
     describe('configEmpty()', () => {
-        before(() => { try { fs.unlinkSync(CONFIG_PATH) } catch (e) {} });
-        after(() => { try { fs.unlinkSync(CONFIG_PATH) } catch (e) {} });
+        before(() => {
+            try {
+                fs.unlinkSync(CONFIG_PATH);
+            } catch (e) {}
+        });
+        after(() => {
+            try {
+                fs.unlinkSync(CONFIG_PATH);
+            } catch (e) {}
+        });
 
         it('should be a function', () => {
-            expect(typeof configEmpty).equals('function');
+            assert.equal(typeof configEmpty, 'function');
         });
 
         it('should return true if config does not exist', () => {
-            expect(configEmpty()).equals(true);
+            assert.equal(configEmpty(), true);
         });
 
         it('should return true if config exists but empty', () => {
             touch(CONFIG_PATH, '');
-            expect(configEmpty()).equals(true);
+            assert.equal(configEmpty(), true);
         });
 
-        it('should return true if config exists but contains empty object',
-        () => {
+        it('should return true if config exists but contains empty object', () => {
             fs.writeFileSync(CONFIG_PATH, '{}');
-            expect(configEmpty()).equals(true);
+            assert.equal(configEmpty(), true);
         });
 
         it('should return file if config exists and not empty', () => {
             saveConfig({ a: 1 });
-            expect(configEmpty()).equals(false);
+            assert.equal(configEmpty(), false);
         });
     });
 });

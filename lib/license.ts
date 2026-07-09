@@ -21,18 +21,18 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import * as inquirer from 'inquirer';
+import inquirer from 'inquirer';
 import autocompletePrompt from 'inquirer-autocomplete-prompt';
+import { createRequire } from 'node:module';
 
-(<any>inquirer).registerPrompt(
-    'autocomplete',
-    autocompletePrompt,
-);
+const require = createRequire(import.meta.url);
+
+(<any>inquirer).registerPrompt('autocomplete', autocompletePrompt);
 
 const LICENSES: any = require('./licenses.json');
 
 // noinspection RegExpRedundantEscape
-const RX_ESCAPE = /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g;
+const RX_ESCAPE = /[-[\]/{}()*+?.\\^$|]/g;
 
 /**
  * Finds and returns license object by a given name pattern
@@ -42,19 +42,17 @@ const RX_ESCAPE = /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g;
  */
 export function findLicense(name: string): any {
     for (let id of Object.keys(LICENSES)) {
-        if (name === id ||
+        if (
+            name === id ||
             name.toLowerCase() === id ||
-            new RegExp(`^${name.toLowerCase()}`, 'i')
-                .test(LICENSES[id].spdx_id)
+            new RegExp(`^${name.toLowerCase()}`, 'i').test(LICENSES[id].spdx_id)
         ) {
             return LICENSES[id];
         }
     }
 
     for (let id of Object.keys(LICENSES)) {
-        if (new RegExp(`^${name.toLowerCase()}`, 'i')
-            .test(LICENSES[id].name)
-        ) {
+        if (new RegExp(`^${name.toLowerCase()}`, 'i').test(LICENSES[id].name)) {
             return LICENSES[id];
         }
     }
@@ -69,41 +67,51 @@ export function findLicense(name: string): any {
  * @return {Promise<{id: string; name: string}>}
  */
 export async function licensingOptions(): Promise<{
-    id: string,
-    name: string
+    id: string;
+    name: string;
 }> {
-    let answer: any = await (<any>(inquirer as any).prompt)([{
-        type: 'confirm',
-        name: 'addLicense',
-        message: 'Would you like to use specific license for your services?',
-        default: true
-    }]);
+    let answer: any = await (<any>(inquirer as any).prompt)([
+        {
+            type: 'confirm',
+            name: 'addLicense',
+            message:
+                'Would you like to use specific license for your services?',
+            default: true,
+        },
+    ]);
     let licenseName = 'UNLICENSED';
 
     if (!answer.addLicense) {
         return { id: licenseName, name: licenseName };
     }
 
-    const licenses: string[] = Object.keys(LICENSES)
-        .map((id: string) => LICENSES[id]);
+    const licenses: string[] = Object.keys(LICENSES).map(
+        (id: string) => LICENSES[id],
+    );
 
-    answer = await (<any>(inquirer as any).prompt)([{
-        type: 'autocomplete',
-        name: 'licenseName',
-        message: 'Select license:',
-        source: async (answers: any, input: string) => {
-            return licenses.filter((license: any) => {
-                let rx = new RegExp(
-                    `^${(input || '').replace(RX_ESCAPE, "\\$&")}`, 'i'
-                );
+    answer = await (<any>(inquirer as any).prompt)([
+        {
+            type: 'autocomplete',
+            name: 'licenseName',
+            message: 'Select license:',
+            source: async (answers: any, input: string) => {
+                return licenses
+                    .filter((license: any) => {
+                        let rx = new RegExp(
+                            `^${(input || '').replace(RX_ESCAPE, '\\$&')}`,
+                            'i',
+                        );
 
-                return license.key.match(rx) || license.name.match(rx);
-            }).map((license: any) => license && license.name || '');
-        }
-    }]);
+                        return license.key.match(rx) || license.name.match(rx);
+                    })
+                    .map((license: any) => (license && license.name) || '');
+            },
+        },
+    ]);
 
-    const license: any = licenses.find((license: any) =>
-        license.name === answer.licenseName);
+    const license: any = licenses.find(
+        (license: any) => license.name === answer.licenseName,
+    );
 
     if (license) {
         licenseName = license.name;

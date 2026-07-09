@@ -21,13 +21,13 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { Argv } from 'yargs';
+import { type Argv } from 'yargs';
 import {
     existsSync as exists,
     appendFileSync as append,
-    readFileSync as read
+    readFileSync as read,
 } from 'fs';
-import { resolve, touch, printError, IS_ZSH } from '../../lib';
+import { resolve, touch, printError, IS_ZSH } from '../../lib/index.js';
 import chalk from 'chalk';
 
 let PROGRAM: string = '';
@@ -43,9 +43,12 @@ let RX_EXISTS: RegExp;
 function printAdded(rcFilename: string) {
     process.stdout.write(
         chalk.green(`Completion script added to `) +
-        chalk.cyan(rcFilename) + '\n' +
-        'To have these changes to take effect, please, run:\n\n' +
-        '  $ ' + chalk.cyan(`source ${rcFilename}`) + '\n\n'
+            chalk.cyan(rcFilename) +
+            '\n' +
+            'To have these changes to take effect, please, run:\n\n' +
+            '  $ ' +
+            chalk.cyan(`source ${rcFilename}`) +
+            '\n\n',
     );
 }
 
@@ -57,7 +60,7 @@ function printAdded(rcFilename: string) {
  * @return {string}
  */
 function getScript(zshScript: string) {
-        return `
+    return `
 ###-begin-${PROGRAM}-completions-###
 ${zshScript}
 _yargs_completions() {
@@ -84,11 +87,12 @@ complete -F _yargs_completions ${PROGRAM}
 function printExists(rcFilename: string) {
     process.stdout.write(
         chalk.yellow.bold(
-            `Completion script already exists in your ${
-                rcFilename}.`) + '\n' +
-        'If it does not work, please try one of:\n\n' +
-        chalk.cyan('  1. Reload your shell\n') +
-        chalk.cyan(`  2. Run source ${rcFilename}\n\n`)
+            `Completion script already exists in your ${rcFilename}.`,
+        ) +
+            '\n' +
+            'If it does not work, please try one of:\n\n' +
+            chalk.cyan('  1. Reload your shell\n') +
+            chalk.cyan(`  2. Run source ${rcFilename}\n\n`),
     );
 }
 
@@ -112,15 +116,11 @@ export const { command, describe, builder, handler } = {
             if (!RX_EXISTS.test(rcText)) {
                 (exists(rcFile) ? append : touch)(rcFile, getScript(zScript));
                 printAdded(rcFilename);
-            }
-
-            else {
+            } else {
                 printExists(rcFilename);
             }
+        } catch (err) {
+            printError(err as Error);
         }
-
-        catch (err) {
-            printError(err);
-        }
-    }
+    },
 };

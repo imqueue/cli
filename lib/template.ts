@@ -22,15 +22,18 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import inquirer from 'inquirer';
+import { createRequire } from 'node:module';
 import {
     TPL_HOME,
     CUSTOM_TPL_HOME,
     TPL_REPO,
     rmdir,
     resolve,
-} from '.';
+} from './index.js';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
+
+const require = createRequire(import.meta.url);
 const commandExists = require('command-exists').sync;
 const wordWrap = require('word-wrap');
 
@@ -67,9 +70,7 @@ export function checkGit() {
 export async function loadTemplates() {
     if (fs.existsSync(TPL_HOME)) {
         await updateTemplates();
-    }
-
-    else {
+    } else {
         checkGit();
         console.log('Loading IMQ templates, please, wait...');
         execSync(`git clone ${TPL_REPO} ${TPL_HOME}`);
@@ -78,7 +79,7 @@ export async function loadTemplates() {
     return fs.readdirSync(TPL_HOME).reduce((res: any, next: any) => {
         const path = resolve(TPL_HOME, next);
 
-        if (/^\./.test(next)) return res;
+        if (next.startsWith('.')) return res;
 
         if (fs.statSync(path).isDirectory()) {
             res[next] = path;
@@ -116,17 +117,20 @@ export async function updateTemplates() {
  * @return {Promise<string>}
  */
 export async function loadTemplate(url: string): Promise<string> {
-    const name = (url.split(/[\/]/).pop() || '').replace(/\.git$/, '');
+    const name = (url.split(/[/]/).pop() || '').replace(/\.git$/, '');
     const path = resolve(CUSTOM_TPL_HOME, name);
 
     if (fs.existsSync(path)) {
-        let answer = await inquirer.prompt<{ overwrite: boolean }>([{
-            type: 'confirm',
-            name: 'overwrite',
-            message: 'Seems such template was already loaded, would you like ' +
-            'to fetch it again and overwrite?',
-            default: false
-        }]);
+        let answer = await inquirer.prompt<{ overwrite: boolean }>([
+            {
+                type: 'confirm',
+                name: 'overwrite',
+                message:
+                    'Seems such template was already loaded, would you like ' +
+                    'to fetch it again and overwrite?',
+                default: false,
+            },
+        ]);
 
         if (!answer.overwrite) {
             return path;

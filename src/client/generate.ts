@@ -21,13 +21,13 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { Argv, Arguments } from 'yargs';
+import { type Argv, type Arguments } from 'yargs';
 import { IMQClient } from '@imqueue/rpc';
 import * as fs from 'fs';
 import * as p from 'path';
-import inquirer, { QuestionCollection } from 'inquirer';
+import inquirer, { type QuestionCollection } from 'inquirer';
 import chalk from 'chalk';
-import { printError } from '../../lib';
+import { printError } from '../../lib/index.js';
 
 // noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, promptOverride, handler } = {
@@ -39,19 +39,22 @@ export const { command, describe, builder, promptOverride, handler } = {
             .option('o', {
                 alias: 'overwrite',
                 describe: 'Overwrite existing client without prompt',
-                boolean: true
+                boolean: true,
             })
             .describe('path', 'Directory where client file should be placed')
             .default('path', '.');
     },
 
     async promptOverride(filePath: string) {
-        const write = ((await inquirer.prompt<{ overwrite: boolean }>([{
-                type: 'confirm',
-                name: 'overwrite',
-                default: false,
-                message: `File "${filePath}" already exists. Overwrite it?`,
-            }] as QuestionCollection)) as { overwrite: boolean }
+        const write = (
+            (await inquirer.prompt<{ overwrite: boolean }>([
+                {
+                    type: 'confirm',
+                    name: 'overwrite',
+                    default: false,
+                    message: `File "${filePath}" already exists. Overwrite it?`,
+                },
+            ] as QuestionCollection)) as { overwrite: boolean }
         ).overwrite;
 
         if (!write) {
@@ -79,12 +82,11 @@ export const { command, describe, builder, promptOverride, handler } = {
 
             process.stdout.write(
                 chalk.green('Successfully created. Path: ') +
-                chalk.cyan(filePath) + '\n',
+                    chalk.cyan(filePath) +
+                    '\n',
             );
-        }
-
-        catch (err) {
-            printError(err);
+        } catch (err) {
+            printError(err as Error);
         }
     },
 };

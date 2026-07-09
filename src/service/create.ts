@@ -22,14 +22,15 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import * as path from 'path';
-import { Argv } from 'yargs';
+import { type Argv } from 'yargs';
 import * as fs from 'fs';
 import * as os from 'os';
 import chalk from 'chalk';
 import * as semver from 'semver';
-import inquirer, { QuestionCollection } from 'inquirer';
+import inquirer, { type QuestionCollection } from 'inquirer';
+import { createRequire } from 'node:module';
 import {
-    IMQCLIConfig,
+    type IMQCLIConfig,
     loadConfig,
     printError,
     loadTemplate,
@@ -51,9 +52,10 @@ import {
     isGuthubToken,
     enableBuilds,
     toTravisTags,
-} from '../../lib';
+} from '../../lib/index.js';
 import { execSync } from 'child_process';
 
+const require = createRequire(import.meta.url);
 const commandExists = require('command-exists').sync;
 const DEFAULT_SERVICE_VERSION = '1.0.0-0';
 
@@ -65,7 +67,7 @@ async function ensureTemplate(template: string) {
         return template;
     }
 
-    if (/^git@/.test(template)) {
+    if (template.startsWith('git@')) {
         // template is a git url
         return await loadTemplate(template);
     }
@@ -86,14 +88,14 @@ function updateLicenseText(
     author: string,
     email: string,
     serviceName: string,
-    homepage: string
+    homepage: string,
 ): string {
     const values: any = {
-        'year': new Date().getFullYear(),
-        'fullname': author,
-        'email': email,
-        'project': serviceName,
-        'project_url': homepage
+        year: new Date().getFullYear(),
+        fullname: author,
+        email: email,
+        project: serviceName,
+        project_url: homepage,
     };
 
     for (let varName of Object.keys(values)) {
@@ -105,13 +107,13 @@ function updateLicenseText(
 
 // istanbul ignore next
 async function ensureLicense(
-    path:string,
+    path: string,
     license: string,
     author: string,
     email: string,
     homepage: string,
-    serviceName: string
-): Promise<{ text: string, header: string, name: string, tag: string }> {
+    serviceName: string,
+): Promise<{ text: string; header: string; name: string; tag: string }> {
     let text = '';
     let header = '';
     let name = '';
@@ -141,14 +143,22 @@ author for any licensing details.\n`;
         const lic: any = findLicense(license);
         text = updateLicenseText(
             lic.body + '\n',
-            author, email, serviceName, homepage
+            author,
+            email,
+            serviceName,
+            homepage,
         );
         name = lic.name;
         tag = lic.spdx_id;
-        header = updateLicenseText(
-            lic.header|| '',
-            author, email, serviceName, homepage
-        ) || `Copyright (c) ${new Date().getFullYear()} ${author} <${email}>
+        header =
+            updateLicenseText(
+                lic.header || '',
+                author,
+                email,
+                serviceName,
+                homepage,
+            ) ||
+            `Copyright (c) ${new Date().getFullYear()} ${author} <${email}>
 
 This software is licensed under ${lic.spdx_id} license.
 Please, refer to LICENSE file in project's root directory for details.`;
@@ -156,8 +166,10 @@ Please, refer to LICENSE file in project's root directory for details.`;
     }
 
     try {
-        fs.unlinkSync(resolve(path, 'LICENSE'))
-    } catch (err) { /* ignore */ }
+        fs.unlinkSync(resolve(path, 'LICENSE'));
+    } catch (err) {
+        /* ignore */
+    }
     touch(resolve(path, 'LICENSE'), wrap(text));
 
     return { text, header, name, tag };
@@ -179,8 +191,10 @@ function ensureVersion(version: string) {
     }
 
     if (!semver.valid(version)) {
-        throw new TypeError('Given version is invalid, please, provide ' +
-            'valid semver format!');
+        throw new TypeError(
+            'Given version is invalid, please, provide ' +
+                'valid semver format!',
+        );
     }
 
     return version;
@@ -232,13 +246,16 @@ async function ensureAuthorName(name: string) {
     name = name.trim();
 
     if (!name) {
-        const answer: { authorName: string } =
-            await inquirer.prompt<{ authorName: string }>([{
+        const answer: { authorName: string } = await inquirer.prompt<{
+            authorName: string;
+        }>([
+            {
                 type: 'input',
                 name: 'authorName',
-                message: 'Enter author\'s name:',
-                default: os.userInfo().username
-            }] as QuestionCollection);
+                message: "Enter author's name:",
+                default: os.userInfo().username,
+            },
+        ] as QuestionCollection);
 
         name = answer.authorName.trim() || os.userInfo().username;
     }
@@ -251,16 +268,19 @@ async function ensureAuthorEmail(email: string) {
     email = email.trim();
 
     if (!isEmail(email)) {
-        const answer: { email: string } =
-            await inquirer.prompt<{ email: string }>([{
+        const answer: { email: string } = await inquirer.prompt<{
+            email: string;
+        }>([
+            {
                 type: 'input',
                 name: 'email',
-                message: 'Enter author\'s email:'
-            }] as QuestionCollection);
+                message: "Enter author's email:",
+            },
+        ] as QuestionCollection);
 
         if (!isEmail(answer.email)) {
             throw new TypeError(
-                'Author\'s email is required, but was not given!'
+                "Author's email is required, but was not given!",
             );
         }
 
@@ -279,20 +299,20 @@ async function ensureTravisTags(argv: any): Promise<string[]> {
     let tags = (argv.n || '').split(/\s+|\s*,\s*/).filter((t: string) => t);
 
     if (!tags.length) {
-        let answer: { tags: string } =
-            await inquirer.prompt<{ tags: string }>([{
+        let answer: { tags: string } = await inquirer.prompt<{ tags: string }>([
+            {
                 type: 'input',
                 name: 'tags',
-                message: 'Enter node version(s) for CI builds (comma-separated ' +
+                message:
+                    'Enter node version(s) for CI builds (comma-separated ' +
                     'if multiple):',
-                default: 'stable, latest'
-            }] as QuestionCollection);
+                default: 'stable, latest',
+            },
+        ] as QuestionCollection);
 
         if (!answer.tags) {
             tags.push('stable', 'latest');
-        }
-
-        else {
+        } else {
             tags = answer.tags.split(/\s+|\s*,\s*/);
         }
     }
@@ -312,32 +332,43 @@ async function ensureDockerNamespace(argv: any) {
     };
 
     if (!dockerize && typeof config.useDocker === 'undefined') {
-        answer = await inquirer.prompt<{ useDocker: boolean }>([{
-            type: 'confirm',
-            name: 'useDocker',
-            message: 'Would you like to dockerize your service?',
-            default: true,
-        }] as QuestionCollection);
+        answer = await inquirer.prompt<{ useDocker: boolean }>([
+            {
+                type: 'confirm',
+                name: 'useDocker',
+                message: 'Would you like to dockerize your service?',
+                default: true,
+            },
+        ] as QuestionCollection);
 
-        config.useDocker = argv.D = argv.dockerize = dockerize =
-            answer.useDocker;
+        config.useDocker =
+            argv.D =
+            argv.dockerize =
+            dockerize =
+                answer.useDocker;
     }
 
     if (dockerize && !isNamespace(ns)) {
-        answer = await inquirer.prompt<{ dockerNamespace: string }>([{
-            type: 'input',
-            name: 'dockerNamespace',
-            message: 'Enter DockerHub namespace:'
-        }] as QuestionCollection);
+        answer = await inquirer.prompt<{ dockerNamespace: string }>([
+            {
+                type: 'input',
+                name: 'dockerNamespace',
+                message: 'Enter DockerHub namespace:',
+            },
+        ] as QuestionCollection);
 
-        if (answer.dockerNamespace &&
+        if (
+            answer.dockerNamespace &&
             !isNamespace(answer.dockerNamespace.trim())
         ) {
             throw new TypeError('Given DockerHub namespace is invalid!');
         }
 
-        config.dockerHubNamespace = argv.N = argv.dockerNamespace = ns =
-            answer.dockerNamespace;
+        config.dockerHubNamespace =
+            argv.N =
+            argv.dockerNamespace =
+            ns =
+                answer.dockerNamespace;
     }
 
     return ns;
@@ -350,7 +381,7 @@ async function ensureDockerTag(argv: any) {
     }
 
     const tags = await ensureTravisTags(argv);
-    const version =  await nodeVersion(tags[0]);
+    const version = await nodeVersion(tags[0]);
 
     if (!version) {
         throw new TypeError('Invalid node version specified!');
@@ -377,16 +408,19 @@ async function ensureDockerSecrets(argv: any) {
     const repo = `${owner}/${name}`;
 
     if (!dockerHubUser) {
-        const answer: { dockerHubUser: string} =
-            await inquirer.prompt<{ dockerHubUser: string}>([{
+        const answer: { dockerHubUser: string } = await inquirer.prompt<{
+            dockerHubUser: string;
+        }>([
+            {
                 type: 'input',
                 name: 'dockerHubUser',
-                message: 'Docker hub user:'
-            }] as QuestionCollection);
+                message: 'Docker hub user:',
+            },
+        ] as QuestionCollection);
 
         if (!answer.dockerHubUser.trim()) {
             throw new TypeError(
-                'DockerHub username required, but was not given!'
+                'DockerHub username required, but was not given!',
             );
         }
 
@@ -394,16 +428,19 @@ async function ensureDockerSecrets(argv: any) {
     }
 
     if (!dockerHubPassword) {
-        const answer: { dockerHubPassword: string } =
-            await inquirer.prompt<{ dockerHubPassword: string }>([{
+        const answer: { dockerHubPassword: string } = await inquirer.prompt<{
+            dockerHubPassword: string;
+        }>([
+            {
                 type: 'password',
                 name: 'dockerHubPassword',
-                message: 'Docker hub password:'
-            }] as QuestionCollection);
+                message: 'Docker hub password:',
+            },
+        ] as QuestionCollection);
 
         if (!answer.dockerHubPassword.trim()) {
             throw new TypeError(
-                'DockerHub password required, but was not given!'
+                'DockerHub password required, but was not given!',
             );
         }
 
@@ -414,12 +451,14 @@ async function ensureDockerSecrets(argv: any) {
 
     return [
         await travisEncrypt(
-            repo, `DOCKER_USER="${dockerHubUser}"`,
-            argv.p ? gitHubAuthToken : undefined
+            repo,
+            `DOCKER_USER="${dockerHubUser}"`,
+            argv.p ? gitHubAuthToken : undefined,
         ),
         await travisEncrypt(
-            repo, `DOCKER_PASS="${dockerHubPassword}"`,
-            argv.p ? gitHubAuthToken : undefined
+            repo,
+            `DOCKER_PASS="${dockerHubPassword}"`,
+            argv.p ? gitHubAuthToken : undefined,
         ),
     ];
 }
@@ -434,11 +473,9 @@ function stripDockerization(argv: any) {
     if (fs.existsSync(travis)) {
         const travisYml = fs.readFileSync(travis, { encoding: 'utf8' });
 
-        fs.writeFileSync(
-            travis,
-            travisYml.replace(/services:[\s\S]+?$/, ''),
-            { encoding: 'utf8' }
-        );
+        fs.writeFileSync(travis, travisYml.replace(/services:[\s\S]+?$/, ''), {
+            encoding: 'utf8',
+        });
     }
 
     if (fs.existsSync(docker)) {
@@ -460,29 +497,36 @@ async function enableTravisBuilds(argv: any) {
             argv.u,
             ensureName(argv.name),
             config.gitHubAuthToken,
-            argv.p
+            argv.p,
         );
-    } catch(err) { /* ignore */ }
+    } catch (err) {
+        /* ignore */
+    }
 
     if (!enabled) {
         // noinspection TypeScriptValidateJSTypes
-        console.log((chalk as any).red(
-            'There was a problem enabling builds for this service. Please ' +
-            'go to http://travis-ci.org/ and enable builds manually.'
-        ));
+        console.log(
+            (chalk as any).red(
+                'There was a problem enabling builds for this service. Please ' +
+                    'go to http://travis-ci.org/ and enable builds manually.',
+            ),
+        );
     }
 }
 
 // istanbul ignore next
 async function buildDockerCi(argv: any): Promise<void> {
     const dockerNs = await ensureDockerNamespace(argv);
-    const dockerize = !!(gitRepoInitialized && dockerNs && (
-        argv.D || config.useDocker
-    ));
+    const dockerize = !!(
+        gitRepoInitialized &&
+        dockerNs &&
+        (argv.D || config.useDocker)
+    );
 
     const tags = {
         TRAVIS_NODE_TAG: (await ensureTravisTags(argv))
-            .map(t => `- ${t}`).join('\n'),
+            .map(t => `- ${t}`)
+            .join('\n'),
     };
 
     if (!dockerize) {
@@ -495,9 +539,9 @@ async function buildDockerCi(argv: any): Promise<void> {
         Object.assign(tags, {
             DOCKER_NAMESPACE: dockerNs,
             NODE_DOCKER_TAG: await ensureDockerTag(argv),
-            DOCKER_SECRETS:
-                `- secure: ${(await ensureDockerSecrets(argv))
-                    .join('\n  - secure: ')}`,
+            DOCKER_SECRETS: `- secure: ${(await ensureDockerSecrets(argv)).join(
+                '\n  - secure: ',
+            )}`,
         });
     }
 
@@ -512,7 +556,12 @@ async function buildTags(path: string, argv: any) {
     const email = await ensureAuthorEmail(argv.email);
     const { home, bugs } = ensureServicePages(argv);
     const license = await ensureLicense(
-        path, argv.license, author, email, home, name
+        path,
+        argv.license,
+        author,
+        email,
+        home,
+        name,
     );
 
     // noinspection TypeScriptUnresolvedVariable
@@ -537,8 +586,9 @@ async function buildTags(path: string, argv: any) {
 function createServiceFile(path: string, tags: any) {
     console.log('Creating main service file...');
 
-    touch(resolve(path, 'src', `${tags.SERVICE_CLASS_NAME}.ts`),
-`${tags.LICENSE_HEADER}
+    touch(
+        resolve(path, 'src', `${tags.SERVICE_CLASS_NAME}.ts`),
+        `${tags.LICENSE_HEADER}
 import { expose, IMQService, lock, logged, profile } from '@imqueue/rpc';
 
 export class ${tags.SERVICE_CLASS_NAME} extends IMQService {
@@ -567,17 +617,20 @@ export class ${tags.SERVICE_CLASS_NAME} extends IMQService {
 
     // Implement your service methods below this line
 }
-`);
+`,
+    );
 }
 
 // istanbul ignore next
 function createServiceTestFile(path: string, tags: any) {
     console.log('Creating main service test file...');
 
-    touch(resolve(path, 'test/src', `${tags.SERVICE_CLASS_NAME}.ts`),
-`${tags.LICENSE_HEADER}
+    touch(
+        resolve(path, 'test/src', `${tags.SERVICE_CLASS_NAME}.ts`),
+        `${tags.LICENSE_HEADER}
 import { expect } from 'chai';
 import { ${tags.SERVICE_CLASS_NAME} } from '../../src';
+
 
 describe('${tags.SERVICE_CLASS_NAME}', () => {
     it('should be a class of IMQService', () => {
@@ -604,16 +657,14 @@ describe('${tags.SERVICE_CLASS_NAME}', () => {
         });
     });
 });
-`);
+`,
+    );
 }
 
 // istanbul ignore next
 function compileTemplateFile(text: string, tags: any): string {
     for (let tag of Object.keys(tags)) {
-        text = text.replace(
-            new RegExp(`%${tag}`, 'g'),
-            tags[tag]
-        );
+        text = text.replace(new RegExp(`%${tag}`, 'g'), tags[tag]);
     }
 
     return text;
@@ -630,7 +681,7 @@ function compileTemplate(path: string, tags: any) {
 
         let content = compileTemplateFile(
             fs.readFileSync(filePath, { encoding: 'utf8' }),
-            tags
+            tags,
         );
 
         fs.writeFileSync(filePath, content, { encoding: 'utf8' });
@@ -660,16 +711,19 @@ async function buildFromTemplate(argv: any) {
 // istanbul ignore next
 async function ensureGitRepo(argv: any) {
     if (!isNamespace(argv.u)) {
-        const answer: { gitNs: string } =
-            await inquirer.prompt<{ gitNs: string }>([{
+        const answer: { gitNs: string } = await inquirer.prompt<{
+            gitNs: string;
+        }>([
+            {
                 type: 'input',
                 name: 'gitNs',
                 message: 'Enter GitHub owner (user name or organization):',
-            }] as QuestionCollection);
+            },
+        ] as QuestionCollection);
 
         if (!isNamespace(answer.gitNs)) {
             throw new TypeError(
-                `Given github namespace "${argv.u}" is invalid!`
+                `Given github namespace "${argv.u}" is invalid!`,
             );
         }
 
@@ -686,18 +740,22 @@ async function createGitRepo(argv: any) {
     const useGit = argv.g || config.useGit;
 
     if (!useGit && typeof config.useGit === 'undefined') {
-        const answer: { useGit: boolean } =
-            await inquirer.prompt<{ useGit: boolean }>([{
+        const answer: { useGit: boolean } = await inquirer.prompt<{
+            useGit: boolean;
+        }>([
+            {
                 type: 'confirm',
                 name: 'useGit',
-                message: 'Would you like to enable automatic GitHub integration ' +
+                message:
+                    'Would you like to enable automatic GitHub integration ' +
                     'for this service?',
                 default: true,
-            }] as QuestionCollection);
+            },
+        ] as QuestionCollection);
 
         if (!answer.useGit) {
             argv.D = argv.dockerize = config.useDocker = false;
-            return ;
+            return;
         }
     }
 
@@ -705,31 +763,40 @@ async function createGitRepo(argv: any) {
     let token = (argv.T || '').trim() || config.gitHubAuthToken;
 
     if (!isGuthubToken(token)) {
-        const answer: { token: string } =
-            await inquirer.prompt<{ token: string }>([{
+        const answer: { token: string } = await inquirer.prompt<{
+            token: string;
+        }>([
+            {
                 type: 'input',
                 name: 'token',
-                message: 'Enter your GitHub auth token:'
-            }] as QuestionCollection);
+                message: 'Enter your GitHub auth token:',
+            },
+        ] as QuestionCollection);
 
         if (!isGuthubToken(answer.token.trim())) {
             throw new Error('Given GitHub auth token is invalid!');
         }
 
-        config.gitHubAuthToken = argv.T = argv.githubToken = token =
-            answer.token.trim();
+        config.gitHubAuthToken =
+            argv.T =
+            argv.githubToken =
+            token =
+                answer.token.trim();
     }
 
     let isPrivate = argv.p || config.gitRepoPrivate;
 
     if (!isPrivate && typeof config.gitRepoPrivate === 'undefined') {
-        const answer: { isPrivate: boolean } =
-            await inquirer.prompt<{ isPrivate: boolean }>([{
+        const answer: { isPrivate: boolean } = await inquirer.prompt<{
+            isPrivate: boolean;
+        }>([
+            {
                 type: 'confirm',
                 name: 'isPrivate',
                 message: 'Should be service created on GitHub as private repo?',
-                default: true
-            }] as QuestionCollection);
+                default: true,
+            },
+        ] as QuestionCollection);
 
         isPrivate = answer.isPrivate;
     }
@@ -814,8 +881,9 @@ git push origin master --tags`);
 // noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
     command: 'create [name] [path]',
-    describe: 'Creates new service package with the given service name ' +
-              'under given path.',
+    describe:
+        'Creates new service package with the given service name ' +
+        'under given path.',
 
     builder(yargs: Argv) {
         config = loadConfig();
@@ -826,7 +894,7 @@ export const { command, describe, builder, handler } = {
             .default('a', config.author || '')
 
             .alias('e', 'email')
-            .describe('e', 'Service author\'s contact email')
+            .describe('e', "Service author's contact email")
             .default('e', config.email || '')
 
             .alias('g', 'use-git')
@@ -834,12 +902,18 @@ export const { command, describe, builder, handler } = {
             .boolean('g')
 
             .alias('u', 'github-namespace')
-            .describe('u', 'GitHub namespace (usually user name or ' +
-                'organization name)')
+            .describe(
+                'u',
+                'GitHub namespace (usually user name or ' +
+                    'organization name)',
+            )
             .default('u', (config.gitBaseUrl || '').split(':').pop() || '')
 
-            .describe('no-install', 'Do not install npm packages ' +
-                'automatically on service creation')
+            .describe(
+                'no-install',
+                'Do not install npm packages ' +
+                    'automatically on service creation',
+            )
             .boolean('no-install')
             .default('no-install', false)
 
@@ -856,13 +930,19 @@ export const { command, describe, builder, handler } = {
             .default('B', '')
 
             .alias('l', 'license')
-            .describe('l', 'License for created service, should be either ' +
-                'license name in SPDX format or path to a custom license file')
+            .describe(
+                'l',
+                'License for created service, should be either ' +
+                    'license name in SPDX format or path to a custom license file',
+            )
             .default('l', config.license || 'UNLICENSED')
 
             .alias('t', 'template')
-            .describe('t', 'Template used to create service (should be ' +
-                'either template name, git url or file system directory)')
+            .describe(
+                't',
+                'Template used to create service (should be ' +
+                    'either template name, git url or file system directory)',
+            )
             .default('t', config.template || 'default')
 
             .alias('d', 'description')
@@ -870,9 +950,12 @@ export const { command, describe, builder, handler } = {
             .default('d', '')
 
             .alias('n', 'node-versions')
-            .describe('n', 'Node version tags to use for builds, separated ' +
-                'by comma if multiple. First one will be used for docker ' +
-                'build, if dockerize option enabled.')
+            .describe(
+                'n',
+                'Node version tags to use for builds, separated ' +
+                    'by comma if multiple. First one will be used for docker ' +
+                    'build, if dockerize option enabled.',
+            )
             .default('n', '')
 
             .alias('D', 'dockerize')
@@ -880,8 +963,11 @@ export const { command, describe, builder, handler } = {
             .boolean('D')
 
             .alias('L', 'node-docker-tag')
-            .describe('L', 'Node docker tag to use as base docker image ' +
-                'for docker builds')
+            .describe(
+                'L',
+                'Node docker tag to use as base docker image ' +
+                    'for docker builds',
+            )
             .default('L', '')
 
             .alias('N', 'docker-namespace')
@@ -900,8 +986,10 @@ export const { command, describe, builder, handler } = {
             .describe('name', 'Service name to create with')
 
             .default('path', '.')
-            .describe('path',
-                'Path to directory where service will be generated to');
+            .describe(
+                'path',
+                'Path to directory where service will be generated to',
+            );
     },
 
     async handler(argv: any) {
@@ -921,15 +1009,13 @@ export const { command, describe, builder, handler } = {
 
             // noinspection TypeScriptValidateJSTypes
             console.log((chalk as any).green('Service successfully created!'));
-        }
-
-        catch (err) {
+        } catch (err) {
             if (argv.path && !~['', '.', './'].indexOf(argv.path.trim())) {
                 // cleanup service dir
                 rmdir(resolve(argv.path));
             }
 
-            printError(err);
+            printError(err as Error);
         }
-    }
+    },
 };

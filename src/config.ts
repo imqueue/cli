@@ -21,7 +21,11 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { Argv } from 'yargs';
+import { type Argv } from 'yargs';
+import * as check from './config/check.js';
+import * as get from './config/get.js';
+import * as init from './config/init.js';
+import * as set from './config/set.js';
 
 // noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder } = {
@@ -30,8 +34,11 @@ export const { command, describe, builder } = {
 
     builder(yargs: Argv) {
         return yargs
-            .commandDir('config')
+            .command(check as any)
+            .command(get as any)
+            .command(init as any)
+            .command(set as any)
             .demandCommand()
             .help();
-    }
+    },
 };
