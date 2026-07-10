@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import chalk from 'chalk';
+import { styleText } from 'node:util';
 
 // that is just a printing function, no need to do specific tests
 // istanbul ignore next
@@ -46,9 +46,9 @@ export function printError(err: Error, withStackTrace: boolean = false) {
         /* ignore */
     }
 
-    process.stderr.write(chalk.bold.red(message) + '\n');
+    process.stderr.write(styleText(['bold', 'red'], message) + '\n');
 
     if (withStackTrace && err.stack) {
-        process.stderr.write(chalk.cyan(err.stack) + '\n');
+        process.stderr.write(styleText('cyan', err.stack) + '\n');
     }
 }

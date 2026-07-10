@@ -21,6 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
+import { styleText } from 'node:util';
 import * as originalInquirer from 'inquirer';
 import {
     CONFIG_PATH,
@@ -35,7 +36,6 @@ import {
     loadTemplate,
     licensingOptions,
 } from '../../lib/index.js';
-import chalk from 'chalk';
 import * as fs from 'fs';
 
 const inquirer = originalInquirer as unknown as typeof originalInquirer.default;
@@ -149,7 +149,8 @@ export async function templateOptions(config: IMQCLIConfig) {
     if (templates[tplName]) {
         config.template = templates[tplName];
         return console.log(
-            chalk.green(
+            styleText(
+                'green',
                 `New services set to be created from template "${
                     tplName
                 }" (${config.template})`,
@@ -183,7 +184,8 @@ export async function versionSystemOptions(
     config.useGit = true;
 
     console.log(
-        chalk.cyan(
+        styleText(
+            'cyan',
             wrap(
                 '\nTo publish git repository you need to provide base url ' +
                     'where your git repositories published to. It is recommended ' +
@@ -206,13 +208,15 @@ export async function versionSystemOptions(
     ]);
 
     if (!/^[-_a-z0-9]+$/i.test(answer.url)) {
-        console.log(chalk.red('Wrong user or organization name.'));
+        console.log(styleText('red', 'Wrong user or organization name.'));
         return await versionSystemOptions(config);
     }
 
     config.gitBaseUrl = `git@github.com:${answer.url}`;
 
-    console.log(chalk.green(`Base git URL is set to "${config.gitBaseUrl}"`));
+    console.log(
+        styleText('green', `Base git URL is set to "${config.gitBaseUrl}"`),
+    );
 
     answer = await inquirer.prompt<{ saveGitHubToken: boolean }>([
         {
@@ -230,7 +234,8 @@ export async function versionSystemOptions(
     }
 
     console.log(
-        chalk.cyan(
+        styleText(
+            'cyan',
             wrap(
                 'To make GitHub integration work you must provide a valid token ' +
                     'which grants permission to create repository for a specified ' +
@@ -250,7 +255,8 @@ export async function versionSystemOptions(
 
     if (!answer.gitHubAuthToken.trim()) {
         console.log(
-            chalk.red(
+            styleText(
+                'red',
                 'Given token is empty, you will be prompted to enter it on ' +
                     'service create command',
             ),
@@ -261,7 +267,9 @@ export async function versionSystemOptions(
 
     config.gitHubAuthToken = answer.gitHubAuthToken.trim();
 
-    console.log(chalk.green('GitHub auth token stored in local config file'));
+    console.log(
+        styleText('green', 'GitHub auth token stored in local config file'),
+    );
 
     answer = await inquirer.prompt<{ isPrivate: boolean }>([
         {
@@ -276,7 +284,8 @@ export async function versionSystemOptions(
     config.gitRepoPrivate = answer.isPrivate;
 
     console.log(
-        chalk.green(
+        styleText(
+            'green',
             `Service on GitHub will be created as ${
                 config.gitRepoPrivate ? 'private' : 'public'
             } repository.`,
@@ -295,14 +304,17 @@ export async function authorName(config: IMQCLIConfig): Promise<void> {
     ]);
 
     if (!answer.author.trim()) {
-        console.log(chalk.red(`Given name is invalid, please, try again.`));
+        console.log(
+            styleText('red', `Given name is invalid, please, try again.`),
+        );
         return await authorName(config);
     }
 
     config.author = answer.author.trim();
 
     console.log(
-        chalk.green(
+        styleText(
+            'green',
             `Auto-generated code will be authored by "${config.author}"`,
         ),
     );
@@ -319,14 +331,17 @@ export async function authorEmail(config: IMQCLIConfig) {
     ]);
 
     if (!/^[-a-z0-9.]+@[-a-z0-9.]+$/i.test(answer.email.trim())) {
-        console.log(chalk.red(`Given email is invalid, please, try again.`));
+        console.log(
+            styleText('red', `Given email is invalid, please, try again.`),
+        );
         return await authorName(config);
     }
 
     config.email = answer.email.trim();
 
     console.log(
-        chalk.green(
+        styleText(
+            'green',
             `Generated code will be referred to given contact: ${config.email}`,
         ),
     );
@@ -358,14 +373,20 @@ export async function dockerCredentials(config: IMQCLIConfig): Promise<void> {
 
     if (!answer.dockerHubUser.trim()) {
         console.log(
-            chalk.red('Given docker hub user name is empty, please try again'),
+            styleText(
+                'red',
+                'Given docker hub user name is empty, please try again',
+            ),
         );
         return dockerCredentials(config);
     }
 
     if (!answer.dockerHubPassword.trim()) {
         console.log(
-            chalk.red('Given docker hub password is empty, please try again'),
+            styleText(
+                'red',
+                'Given docker hub password is empty, please try again',
+            ),
         );
         return dockerCredentials(config);
     }
@@ -374,7 +395,10 @@ export async function dockerCredentials(config: IMQCLIConfig): Promise<void> {
     config.dockerHubPassword = answer.dockerHubPassword.trim();
 
     console.log(
-        chalk.green('Docker hub credentials saved in a local config file.'),
+        styleText(
+            'green',
+            'Docker hub credentials saved in a local config file.',
+        ),
     );
 }
 
@@ -404,7 +428,8 @@ export async function dockerQuestions(config: IMQCLIConfig): Promise<void> {
 
     if (!answer.dockerHubNamespace.trim()) {
         console.log(
-            chalk.red(
+            styleText(
+                'red',
                 'Given docker hub namespace is invalid, please, try again...',
             ),
         );
@@ -441,7 +466,8 @@ export async function serviceQuestions(config: IMQCLIConfig) {
     config.license = id;
 
     console.log(
-        chalk.green(
+        styleText(
+            'green',
             `Selected "${name}" to be a license for IMQ generated code and services`,
         ),
     );
@@ -459,8 +485,11 @@ export const { command, describe, handler } = {
         try {
             if (!configEmpty()) {
                 process.stdout.write(
-                    chalk.bold.yellow('Config already initialized, path: ') +
-                        chalk.cyan(CONFIG_PATH) +
+                    styleText(
+                        ['bold', 'yellow'],
+                        'Config already initialized, path: ',
+                    ) +
+                        styleText('cyan', CONFIG_PATH) +
                         '\n',
                 );
 
@@ -479,7 +508,8 @@ export const { command, describe, handler } = {
             }
 
             console.log(
-                chalk.cyan(
+                styleText(
+                    'cyan',
                     wrap(
                         "Let's define global config options " +
                             'for IMQ command line runs. These options will be used as ' +
@@ -490,21 +520,24 @@ export const { command, describe, handler } = {
             );
 
             console.log(
-                chalk.yellow(
+                styleText(
+                    'yellow',
                     wrap(
                         '- You can skip this step by pressing ' +
                             '[^C].\n- You can proceed to this step later by running:',
                     ),
                 ),
             );
-            console.log(chalk.magenta('\n  $ imq config init\n'));
+            console.log(styleText('magenta', '\n  $ imq config init\n'));
 
             const config = loadConfig();
 
             await serviceQuestions(config);
             saveConfig(config);
 
-            console.log(chalk.magenta('IMQ-CLI successfully configured!'));
+            console.log(
+                styleText('magenta', 'IMQ-CLI successfully configured!'),
+            );
         } catch (err) {
             printError(err as Error);
             console.error(err);

@@ -22,7 +22,6 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import inquirer from 'inquirer';
-import { createRequire } from 'node:module';
 import {
     TPL_HOME,
     CUSTOM_TPL_HOME,
@@ -32,10 +31,7 @@ import {
 } from './index.js';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
-
-const require = createRequire(import.meta.url);
-const commandExists = require('command-exists').sync;
-const wordWrap = require('word-wrap');
+import { commandExists } from './node.js';
 
 /**
  * Wraps words of given text to match given char width, using given indentation
@@ -46,7 +42,24 @@ const wordWrap = require('word-wrap');
  * @return {string}
  */
 export function wrap(text: string, width = 80, indent = '') {
-    return wordWrap(text, { width, indent });
+    const lines: string[] = [];
+
+    for (const paragraph of String(text).split('\n')) {
+        let line = '';
+
+        for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+            if (line && line.length + 1 + word.length > width) {
+                lines.push(line);
+                line = word;
+            } else {
+                line = line ? `${line} ${word}` : word;
+            }
+        }
+
+        lines.push(line);
+    }
+
+    return lines.map(line => indent + line).join('\n');
 }
 
 /**

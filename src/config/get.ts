@@ -21,8 +21,8 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
+import { styleText } from 'node:util';
 import { type Argv, type Arguments } from 'yargs';
-import chalk from 'chalk';
 import { printError, loadConfig } from '../../lib/index.js';
 
 let PROGRAM: string = '';
@@ -57,11 +57,12 @@ export const { command, describe, builder, handler } = {
 
             if (!options.length) {
                 return process.stdout.write(
-                    chalk.bold.yellow(
+                    styleText(
+                        ['bold', 'yellow'],
                         'Config is empty. Try to init if first by running:',
                     ) +
                         '\n\n  $ ' +
-                        chalk.cyan(`${PROGRAM} config init`) +
+                        styleText('cyan', `${PROGRAM} config init`) +
                         '\n\n',
                 );
             }
@@ -72,19 +73,21 @@ export const { command, describe, builder, handler } = {
                 );
             }
 
-            process.stdout.write(chalk.bold.green('IMQ CLI Config:') + '\n');
+            process.stdout.write(
+                styleText(['bold', 'green'], 'IMQ CLI Config:') + '\n',
+            );
 
             if ((argv as any).json) {
                 return process.stdout.write(
-                    chalk.cyan(JSON.stringify(config, null, 2)) + '\n',
+                    styleText('cyan', JSON.stringify(config, null, 2)) + '\n',
                 );
             }
 
             for (let option of options) {
                 process.stdout.write(
-                    chalk.yellow(`${option}`) +
+                    styleText('yellow', `${option}`) +
                         ' = ' +
-                        chalk.cyan(JSON.stringify(config[option])) +
+                        styleText('cyan', JSON.stringify(config[option])) +
                         '\n',
                 );
             }

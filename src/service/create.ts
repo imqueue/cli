@@ -21,15 +21,15 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
+import { styleText } from 'node:util';
 import * as path from 'path';
 import { type Argv } from 'yargs';
 import * as fs from 'fs';
 import * as os from 'os';
-import chalk from 'chalk';
 import * as semver from 'semver';
 import inquirer, { type QuestionCollection } from 'inquirer';
-import { createRequire } from 'node:module';
 import {
+    commandExists,
     type IMQCLIConfig,
     loadConfig,
     printError,
@@ -55,8 +55,6 @@ import {
 } from '../../lib/index.js';
 import { execSync } from 'child_process';
 
-const require = createRequire(import.meta.url);
-const commandExists = require('command-exists').sync;
 const DEFAULT_SERVICE_VERSION = '1.0.0-0';
 
 let config: IMQCLIConfig;
@@ -506,7 +504,8 @@ async function enableTravisBuilds(argv: any) {
     if (!enabled) {
         // noinspection TypeScriptValidateJSTypes
         console.log(
-            (chalk as any).red(
+            styleText(
+                'red',
                 'There was a problem enabling builds for this service. Please ' +
                     'go to http://travis-ci.org/ and enable builds manually.',
             ),
@@ -813,7 +812,7 @@ async function createGitRepo(argv: any) {
 
 // istanbul ignore next
 async function installPackages(argv: any) {
-    if (!commandExists('npm' as any)) {
+    if (!commandExists('npm')) {
         throw new Error('npm command is not installed!');
     }
 
@@ -859,7 +858,7 @@ async function commit(argv: any) {
 
     process.chdir(path);
 
-    if (!commandExists('git' as any)) {
+    if (!commandExists('git')) {
         throw new Error('Git command expected, but is not installed!');
     }
 
@@ -1008,7 +1007,7 @@ export const { command, describe, builder, handler } = {
             }
 
             // noinspection TypeScriptValidateJSTypes
-            console.log((chalk as any).green('Service successfully created!'));
+            console.log(styleText('green', 'Service successfully created!'));
         } catch (err) {
             if (argv.path && !~['', '.', './'].indexOf(argv.path.trim())) {
                 // cleanup service dir

@@ -73,19 +73,19 @@ describe('template', () => {
 
     describe('checkGit()', () => {
         after(() => {
-            (<any>global).checkGitResult = true;
+            delete process.env.IMQ_CLI_MISSING_COMMANDS;
         });
         it('should be a function', () => {
             assert.equal(typeof checkGit, 'function');
         });
 
         it('should not throw if git command exists', () => {
-            (<any>global).checkGitResult = true;
+            delete process.env.IMQ_CLI_MISSING_COMMANDS;
             assert.doesNotThrow(() => checkGit());
         });
 
         it('should throw if git command does not exist', () => {
-            (<any>global).checkGitResult = false;
+            process.env.IMQ_CLI_MISSING_COMMANDS = 'git';
             assert.throws(() => checkGit());
         });
     });

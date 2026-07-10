@@ -21,6 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
+import { styleText } from 'node:util';
 import { type Argv } from 'yargs';
 import {
     existsSync as exists,
@@ -28,7 +29,6 @@ import {
     writeFileSync as write,
 } from 'fs';
 import { resolve, printError, IS_ZSH } from '../../lib/index.js';
-import chalk from 'chalk';
 
 let PROGRAM: string = '';
 let RX_REPLACE: RegExp;
@@ -42,12 +42,12 @@ let RX_REPLACE: RegExp;
  */
 function printSuccess(rcFilename: string) {
     process.stdout.write(
-        chalk.green('Completions removed from ') +
-            chalk.cyan(`${rcFilename}`) +
+        styleText('green', 'Completions removed from ') +
+            styleText('cyan', `${rcFilename}`) +
             '\n' +
             'To have these changes to take effect, please, run:\n\n' +
             '  $ ' +
-            chalk.cyan(`source ${rcFilename}`) +
+            styleText('cyan', `source ${rcFilename}`) +
             '\n\n',
     );
 }

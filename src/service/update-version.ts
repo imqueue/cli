@@ -21,8 +21,8 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
+import { styleText } from 'node:util';
 import { type Argv, type Arguments } from 'yargs';
-import chalk from 'chalk';
 import { printError } from '../../lib/index.js';
 import { spawnSync, type SpawnSyncReturns } from 'child_process';
 import { join, resolve } from 'path';
@@ -130,7 +130,7 @@ async function isFolderContainsService(servicePath: string): Promise<boolean> {
 function walkThroughFolders(paths: string[], args: Arguments) {
     for (const path of paths) {
         // noinspection TypeScriptValidateTypes
-        logger.log(chalk.blue('\nService:', path));
+        logger.log(styleText('blue', `\nService: ${path}`));
         execGitFlow(path, args);
     }
 }
@@ -207,7 +207,8 @@ function handleSpawnResponse(
     if (response.status !== 0 || response.error) {
         // noinspection TypeScriptValidateTypes
         logger.log(
-            chalk.red(
+            styleText(
+                'red',
                 response.stderr?.toString() ||
                     response.error?.message ||
                     `Command failed with status ${response.status}`,
@@ -254,7 +255,7 @@ function execGitFlow(servicePath: string, args: Arguments): void {
         return;
     }
     // noinspection TypeScriptValidateTypes
-    logger.log(chalk.green('Done!'));
+    logger.log(styleText('green', 'Done!'));
 }
 
 /**
