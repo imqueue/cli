@@ -182,8 +182,7 @@ export async function travisEncrypt(
 ): Promise<string> {
     const travis = new TravisClient({ pro: !!github_token });
 
-    // istanbul ignore next
-    if (github_token) {
+        if (github_token) {
         await travis.authenticate({ github_token });
     }
 
@@ -201,7 +200,6 @@ export async function travisEncrypt(
     ).toString('base64');
 }
 
-// istanbul ignore next
 /**
  * Tries perform travis sync
  *
@@ -232,7 +230,6 @@ export async function trySyncBuilds(
     return true;
 }
 
-// istanbul ignore next
 /**
  * Enables builds for a given repository
  *

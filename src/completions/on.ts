@@ -33,7 +33,6 @@ import { resolve, touch, printError, IS_ZSH } from '../../lib/index.js';
 let PROGRAM: string = '';
 let RX_EXISTS: RegExp;
 
-// istanbul ignore next
 /**
  * Prints add script success message to user
  *
@@ -52,7 +51,6 @@ function printAdded(rcFilename: string) {
     );
 }
 
-// istanbul ignore next
 /**
  * Returns completions script for user's shell
  *
@@ -78,7 +76,6 @@ complete -F _yargs_completions ${PROGRAM}
 ###-end-${PROGRAM}-completions-###\n`;
 }
 
-// istanbul ignore next
 /**
  * Prints script exists message to the user
  *

@@ -33,7 +33,6 @@ import { resolve, printError, IS_ZSH } from '../../lib/index.js';
 let PROGRAM: string = '';
 let RX_REPLACE: RegExp;
 
-// istanbul ignore next
 /**
  * Prints script removal success message to the user
  *

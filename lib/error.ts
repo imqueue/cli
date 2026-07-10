@@ -24,7 +24,6 @@
 import { styleText } from 'node:util';
 
 // that is just a printing function, no need to do specific tests
-// istanbul ignore next
 /**
  * Prints error message to standard error output
  *
@@ -42,7 +41,7 @@ export function printError(err: Error, withStackTrace: boolean = false) {
                 .map((err: any) => err.message)
                 .join('\n')}`;
         }
-    } catch (err) {
+    } catch {
         /* ignore */
     }
 

@@ -26,7 +26,17 @@ import assert from 'node:assert/strict';
 import '../mocks/index.js';
 import { isEmail, isNamespace, isGuthubToken } from '../../lib/index.js';
 
-describe('validate', function () {
+describe('validate', () => {
+    describe('isGuthubToken()', () => {
+        it('should accept any non-empty token string', () => {
+            assert.equal(isGuthubToken('ghp_abc123'), true);
+        });
+
+        it('should reject an empty string', () => {
+            assert.equal(isGuthubToken(''), false);
+        });
+    });
+
     describe('isEmail()', () => {
         it('should be a function', () => {
             assert.equal(typeof isEmail, 'function');

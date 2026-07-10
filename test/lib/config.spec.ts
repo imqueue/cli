@@ -39,12 +39,12 @@ describe('config', () => {
         beforeEach(() => {
             try {
                 fs.unlinkSync(CONFIG_PATH);
-            } catch (e) {}
+            } catch {}
         });
         afterEach(() => {
             try {
                 fs.unlinkSync(CONFIG_PATH);
-            } catch (e) {}
+            } catch {}
         });
 
         it('should be a function', () => {
@@ -76,12 +76,12 @@ describe('config', () => {
         before(() => {
             try {
                 fs.unlinkSync(CONFIG_PATH);
-            } catch (e) {}
+            } catch {}
         });
         after(() => {
             try {
                 fs.unlinkSync(CONFIG_PATH);
-            } catch (e) {}
+            } catch {}
         });
 
         it('should be a function', () => {
@@ -146,12 +146,12 @@ describe('config', () => {
         before(() => {
             try {
                 fs.unlinkSync(CONFIG_PATH);
-            } catch (e) {}
+            } catch {}
         });
         after(() => {
             try {
                 fs.unlinkSync(CONFIG_PATH);
-            } catch (e) {}
+            } catch {}
         });
 
         it('should be a function', () => {

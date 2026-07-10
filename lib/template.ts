@@ -74,7 +74,6 @@ export function checkGit() {
 }
 
 // due to problematic testing of user-interaction
-// istanbul ignore next
 /**
  * Load IMQ templates from templates git repository
  *
@@ -103,7 +102,6 @@ export async function loadTemplates() {
 }
 
 // due to problematic testing of user-interaction
-// istanbul ignore next
 /**
  * Updates local copy of templates repo from remote source
  *
@@ -122,7 +120,6 @@ export async function updateTemplates() {
 }
 
 // due to problematic testing of user-interaction
-// istanbul ignore next
 /**
  * Loads custom template from a given git repository
  *

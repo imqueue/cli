@@ -108,8 +108,7 @@ export function mkdirp(path: string): void {
  */
 export function touch(
     path: string,
-    // istanbul ignore next
-    content: string = '',
+        content: string = '',
 ): void {
     if (!fs.existsSync(path)) {
         mkdirp(p.dirname(path));
