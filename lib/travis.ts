@@ -182,7 +182,7 @@ export async function travisEncrypt(
 ): Promise<string> {
     const travis = new TravisClient({ pro: !!github_token });
 
-        if (github_token) {
+    if (github_token) {
         await travis.authenticate({ github_token });
     }
 

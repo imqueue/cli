@@ -113,13 +113,12 @@ export async function getNodeVersions(
         throw new Error(`Failed to fetch node versions: HTTP ${res.status}`);
     }
 
-    nodeVersions = (
-        ((await res.json()) as NodeVersion[]) || []
-    ).sort((a: NodeVersion, b: NodeVersion) =>
-        semverCompare(
-            a.version.replace(RX_VERSION_CLEAN, ''),
-            b.version.replace(RX_VERSION_CLEAN, ''),
-        ),
+    nodeVersions = (((await res.json()) as NodeVersion[]) || []).sort(
+        (a: NodeVersion, b: NodeVersion) =>
+            semverCompare(
+                a.version.replace(RX_VERSION_CLEAN, ''),
+                b.version.replace(RX_VERSION_CLEAN, ''),
+            ),
     );
 
     return nodeVersions;
@@ -137,19 +136,17 @@ export async function nodeVersion(tag: string) {
     switch (tag) {
         case 'node':
         case 'latest': {
-            return (
-                (
-                    (versions || [])[0] || <any>{}
-                ).version || ''
-            ).replace(RX_VERSION_CLEAN, '');
+            return (((versions || [])[0] || <any>{}).version || '').replace(
+                RX_VERSION_CLEAN,
+                '',
+            );
         }
         case 'stable':
         case 'lts':
         case 'lts/*': {
             return (
-                (
-                    versions.find(version => !!version.lts) || <any>{}
-                ).version || ''
+                (versions.find(version => !!version.lts) || <any>{}).version ||
+                ''
             ).replace(RX_VERSION_CLEAN, '');
         }
         default: {
