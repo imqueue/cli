@@ -26,9 +26,13 @@ import assert from 'node:assert/strict';
 import '../mocks/index.js';
 import { randomUUID as uuid } from 'node:crypto';
 import * as github from '../../lib/github.js';
-import { config as envConfig } from 'dotenv';
 
-envConfig();
+try {
+    // native replacement for dotenv; throws when no .env file exists
+    process.loadEnvFile();
+} catch {
+    /* no .env file - rely on the process environment */
+}
 
 describe.skip('github', () => {
     const token = String(process.env.GITHUB_AUTH_TOKEN);
