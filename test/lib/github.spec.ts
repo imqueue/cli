@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { describe, it } from 'node:test';
+import { afterEach, describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import '../mocks/index.js';
 import { randomUUID as uuid } from 'node:crypto';
@@ -33,6 +33,186 @@ try {
 } catch {
     /* no .env file - rely on the process environment */
 }
+
+function stubFetch(
+    handler: (url: string, init: any) => { status: number; body?: any },
+) {
+    return mock.method(globalThis, 'fetch', async (url: any, init: any) => {
+        const { status, body } = handler(String(url), init);
+
+        return {
+            ok: status >= 200 && status < 300,
+            status,
+            json: async () => {
+                if (body === undefined) {
+                    throw new Error('no body');
+                }
+                return body;
+            },
+        } as any;
+    });
+}
+
+describe('github (offline)', () => {
+    afterEach(() => mock.restoreAll());
+
+    describe('getInstance()', () => {
+        it('should throw on empty token', async () => {
+            await assert.rejects(() => github.getInstance(''), TypeError);
+        });
+
+        it('should return a client for a non-empty token', async () => {
+            const client = await github.getInstance('secret');
+
+            assert.ok(client instanceof github.Github);
+        });
+    });
+
+    describe('Github.request()', () => {
+        it('should send bearer auth and parse json replies', async () => {
+            let seen: any;
+            stubFetch((url, init) => {
+                seen = { url, init };
+                return { status: 200, body: { hello: 'world' } };
+            });
+
+            const client = new github.Github('secret');
+            const data = await client.get('/orgs/imqueue');
+
+            assert.deepEqual(data, { hello: 'world' });
+            assert.equal(seen.url, 'https://api.github.com/orgs/imqueue');
+            assert.equal(seen.init.headers.authorization, 'Bearer secret');
+        });
+
+        it('should throw GithubApiError with status on failure', async () => {
+            stubFetch(() => ({
+                status: 404,
+                body: { message: 'Not Found' },
+            }));
+
+            const client = new github.Github('secret');
+
+            await assert.rejects(
+                () => client.get('/repos/a/b'),
+                (err: any) => {
+                    assert.ok(err instanceof github.GithubApiError);
+                    assert.equal(err.status, 404);
+                    assert.equal(err.message, 'Not Found');
+                    return true;
+                },
+            );
+        });
+    });
+
+    describe('getTeam() [offline]', () => {
+        it('should return the first team', async () => {
+            stubFetch(() => ({
+                status: 200,
+                body: [{ id: 1, slug: 'devs' }, { id: 2 }],
+            }));
+
+            const client = new github.Github('secret');
+
+            assert.deepEqual(await github.getTeam(client, 'imqueue'), {
+                id: 1,
+                slug: 'devs',
+            });
+        });
+
+        it('should return null on api errors', async () => {
+            stubFetch(() => ({ status: 404, body: { message: 'nope' } }));
+
+            const client = new github.Github('secret');
+
+            assert.equal(await github.getTeam(client, 'unknown'), null);
+        });
+    });
+
+    describe('getOrg() [offline]', () => {
+        it('should return org data', async () => {
+            stubFetch(() => ({ status: 200, body: { login: 'imqueue' } }));
+
+            const client = new github.Github('secret');
+
+            assert.deepEqual(await github.getOrg(client, 'imqueue'), {
+                login: 'imqueue',
+            });
+        });
+
+        it('should return null on api errors', async () => {
+            stubFetch(() => ({ status: 404, body: { message: 'nope' } }));
+
+            const client = new github.Github('secret');
+
+            assert.equal(await github.getOrg(client, 'unknown'), null);
+        });
+    });
+
+    describe('createRepository() [offline]', () => {
+        it('should throw on invalid url', async () => {
+            await assert.rejects(
+                () => github.createRepository('j032', 'secret', 'x'),
+                TypeError,
+            );
+        });
+
+        it('should create the repository when it does not exist', async () => {
+            const calls: any[] = [];
+            stubFetch((url, init) => {
+                calls.push({ url, init });
+                if (init.method === 'GET') {
+                    return { status: 404, body: { message: 'Not Found' } };
+                }
+                return { status: 201, body: { name: 'repo' } };
+            });
+
+            await github.createRepository(
+                'git@github.com:imqueue/repo',
+                'secret',
+                'test repo',
+            );
+
+            const post = calls.find(c => c.init.method === 'POST');
+
+            assert.ok(post);
+            assert.equal(post.url, 'https://api.github.com/orgs/imqueue/repos');
+            assert.deepEqual(JSON.parse(post.init.body), {
+                name: 'repo',
+                private: true,
+                auto_init: false,
+                description: 'test repo',
+            });
+        });
+
+        it('should throw if the repository already exists', async () => {
+            stubFetch(() => ({ status: 200, body: { name: 'repo' } }));
+
+            await assert.rejects(
+                () =>
+                    github.createRepository(
+                        'git@github.com:imqueue/repo',
+                        'secret',
+                        'test repo',
+                    ),
+                { message: 'Repository already exists!' },
+            );
+        });
+
+        it('should rethrow non-404 api errors', async () => {
+            stubFetch(() => ({ status: 401, body: { message: 'Bad creds' } }));
+
+            await assert.rejects(
+                () =>
+                    github.createRepository(
+                        'git@github.com:imqueue/repo',
+                        'secret',
+                        'test repo',
+                    ),
+                { message: 'Bad creds' },
+            );
+        });
+    });
+});
 
 describe.skip('github', () => {
     const token = String(process.env.GITHUB_AUTH_TOKEN);
@@ -122,14 +302,14 @@ describe.skip('github', () => {
 
             try {
                 await github.createRepository(url, token, 'IMQ-CLI test repo');
-                const data = await git.repos.get({ owner, repo });
+                const data = await git.get(`/repos/${owner}/${repo}`);
                 assert.ok(data);
                 assert.equal(data.name, repo);
                 assert.equal(data.owner.login, owner);
             } catch (err) {}
             try {
                 // cleanup
-                await git.repos.delete({ owner, repo });
+                await git.delete(`/repos/${owner}/${repo}`);
             } catch (err) {
                 console.error(err);
             }
@@ -148,14 +328,14 @@ describe.skip('github', () => {
                     'IMQ-CLI test repo',
                     false,
                 );
-                const data = await git.repos.get({ owner, repo });
+                const data = await git.get(`/repos/${owner}/${repo}`);
                 assert.ok(data);
                 assert.equal(data.name, repo);
                 assert.equal(data.owner.login, owner);
             } catch (err) {}
             try {
                 // cleanup
-                await git.repos.delete({ owner, repo });
+                await git.delete(`/repos/${owner}/${repo}`);
             } catch (err) {
                 console.error(err);
             }
@@ -189,7 +369,7 @@ describe.skip('github', () => {
             }
             try {
                 // cleanup
-                await git.repos.delete({ owner, repo });
+                await git.delete(`/repos/${owner}/${repo}`);
             } catch (err) {
                 console.error(err);
             }
