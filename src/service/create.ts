@@ -59,7 +59,6 @@ const DEFAULT_SERVICE_VERSION = '1.0.0-0';
 
 let config: IMQCLIConfig;
 
-// istanbul ignore next
 async function ensureTemplate(template: string) {
     if (fs.existsSync(template)) {
         return template;
@@ -80,7 +79,6 @@ async function ensureTemplate(template: string) {
     return templates[template];
 }
 
-// istanbul ignore next
 function updateLicenseText(
     text: string,
     author: string,
@@ -103,7 +101,6 @@ function updateLicenseText(
     return text;
 }
 
-// istanbul ignore next
 async function ensureLicense(
     path: string,
     license: string,
@@ -165,7 +162,7 @@ Please, refer to LICENSE file in project's root directory for details.`;
 
     try {
         fs.unlinkSync(resolve(path, 'LICENSE'));
-    } catch (err) {
+    } catch {
         /* ignore */
     }
     touch(resolve(path, 'LICENSE'), wrap(text));
@@ -173,7 +170,6 @@ Please, refer to LICENSE file in project's root directory for details.`;
     return { text, header, name, tag };
 }
 
-// istanbul ignore next
 function ensureName(name: string) {
     if (!name.trim()) {
         throw new TypeError(`Service name expected, but was not given!`);
@@ -182,7 +178,6 @@ function ensureName(name: string) {
     return dashed(name.trim());
 }
 
-// istanbul ignore next
 function ensureVersion(version: string) {
     if (!version.trim()) {
         version = DEFAULT_SERVICE_VERSION;
@@ -198,12 +193,10 @@ function ensureVersion(version: string) {
     return version;
 }
 
-// istanbul ignore next
 function ensureDescription(description: string, name: string) {
     return description || `${dashed(name)} - IMQ based service`;
 }
 
-// istanbul ignore next
 function ensureServiceRepo(owner: string, name: string) {
     if (!owner) {
         return '';
@@ -215,7 +208,6 @@ function ensureServiceRepo(owner: string, name: string) {
   },\n`;
 }
 
-// istanbul ignore next
 function ensureServicePages(argv: any): {
     home: string;
     bugs: string;
@@ -239,7 +231,6 @@ function ensureServicePages(argv: any): {
     };
 }
 
-// istanbul ignore next
 async function ensureAuthorName(name: string) {
     name = name.trim();
 
@@ -261,7 +252,6 @@ async function ensureAuthorName(name: string) {
     return name;
 }
 
-// istanbul ignore next
 async function ensureAuthorEmail(email: string) {
     email = email.trim();
 
@@ -288,7 +278,6 @@ async function ensureAuthorEmail(email: string) {
     return email;
 }
 
-// istanbul ignore next
 async function ensureTravisTags(argv: any): Promise<string[]> {
     if (argv.n instanceof Array && argv.n.length) {
         return argv.n;
@@ -320,7 +309,6 @@ async function ensureTravisTags(argv: any): Promise<string[]> {
     return tags;
 }
 
-// istanbul ignore next
 async function ensureDockerNamespace(argv: any) {
     let ns = (argv.N || '').trim();
     let dockerize = argv.D || config.useDocker;
@@ -372,7 +360,6 @@ async function ensureDockerNamespace(argv: any) {
     return ns;
 }
 
-// istanbul ignore next
 async function ensureDockerTag(argv: any) {
     if (argv.L.trim()) {
         return argv.L.trim();
@@ -388,7 +375,6 @@ async function ensureDockerTag(argv: any) {
     return version;
 }
 
-// istanbul ignore next
 async function ensureDockerSecrets(argv: any) {
     const owner = argv.u.trim();
     const name = ensureName(argv.name);
@@ -461,7 +447,6 @@ async function ensureDockerSecrets(argv: any) {
     ];
 }
 
-// istanbul ignore next
 function stripDockerization(argv: any) {
     const path = resolve(argv.path as string);
     const travis = resolve(path, '.travis.yml');
@@ -485,7 +470,6 @@ function stripDockerization(argv: any) {
     }
 }
 
-// istanbul ignore next
 async function enableTravisBuilds(argv: any) {
     console.log('Enabling travis builds...');
     let enabled = false;
@@ -497,7 +481,7 @@ async function enableTravisBuilds(argv: any) {
             config.gitHubAuthToken,
             argv.p,
         );
-    } catch (err) {
+    } catch {
         /* ignore */
     }
 
@@ -513,7 +497,6 @@ async function enableTravisBuilds(argv: any) {
     }
 }
 
-// istanbul ignore next
 async function buildDockerCi(argv: any): Promise<void> {
     const dockerNs = await ensureDockerNamespace(argv);
     const dockerize = !!(
@@ -548,7 +531,6 @@ async function buildDockerCi(argv: any): Promise<void> {
     compileTemplate(resolve(argv.path), tags);
 }
 
-// istanbul ignore next
 async function buildTags(path: string, argv: any) {
     const name = ensureName(argv.name);
     const author = await ensureAuthorName(argv.author);
@@ -581,7 +563,6 @@ async function buildTags(path: string, argv: any) {
     };
 }
 
-// istanbul ignore next
 function createServiceFile(path: string, tags: any) {
     console.log('Creating main service file...');
 
@@ -620,7 +601,6 @@ export class ${tags.SERVICE_CLASS_NAME} extends IMQService {
     );
 }
 
-// istanbul ignore next
 function createServiceTestFile(path: string, tags: any) {
     console.log('Creating main service test file...');
 
@@ -660,7 +640,6 @@ describe('${tags.SERVICE_CLASS_NAME}', () => {
     );
 }
 
-// istanbul ignore next
 function compileTemplateFile(text: string, tags: any): string {
     for (let tag of Object.keys(tags)) {
         text = text.replace(new RegExp(`%${tag}`, 'g'), tags[tag]);
@@ -669,7 +648,6 @@ function compileTemplateFile(text: string, tags: any): string {
     return text;
 }
 
-// istanbul ignore next
 function compileTemplate(path: string, tags: any) {
     fs.readdirSync(path).forEach((file: string) => {
         const filePath = resolve(path, file);
@@ -687,7 +665,6 @@ function compileTemplate(path: string, tags: any) {
     });
 }
 
-// istanbul ignore next
 async function makeService(path: string, argv: any) {
     const tags = await buildTags(path, argv);
 
@@ -696,7 +673,6 @@ async function makeService(path: string, argv: any) {
     createServiceTestFile(path, tags);
 }
 
-// istanbul ignore next
 async function buildFromTemplate(argv: any) {
     const template = await ensureTemplate(argv.template);
     const path = resolve(argv.path);
@@ -707,7 +683,6 @@ async function buildFromTemplate(argv: any) {
     await makeService(path, argv);
 }
 
-// istanbul ignore next
 async function ensureGitRepo(argv: any) {
     if (!isNamespace(argv.u)) {
         const answer: { gitNs: string } = await inquirer.prompt<{
@@ -734,7 +709,6 @@ async function ensureGitRepo(argv: any) {
 
 let gitRepoInitialized = false;
 
-// istanbul ignore next
 async function createGitRepo(argv: any) {
     const useGit = argv.g || config.useGit;
 
@@ -810,7 +784,6 @@ async function createGitRepo(argv: any) {
     gitRepoInitialized = true;
 }
 
-// istanbul ignore next
 async function installPackages(argv: any) {
     if (!commandExists('npm')) {
         throw new Error('npm command is not installed!');
@@ -819,9 +792,7 @@ async function installPackages(argv: any) {
     const cwd = process.cwd();
     const path = resolve(argv.path);
     const pkg: any = require(resolve(path, 'package.json'));
-    // noinspection TypeScriptUnresolvedVariable
     const deps = Object.keys(pkg.dependencies);
-    // noinspection TypeScriptUnresolvedVariable
     const devDeps = Object.keys(pkg.devDependencies);
 
     process.chdir(path);
@@ -839,7 +810,6 @@ async function installPackages(argv: any) {
     process.chdir(cwd);
 }
 
-// istanbul ignore next
 async function commit(argv: any) {
     const path = resolve(argv.path);
     const name = ensureName(argv.name);
@@ -877,7 +847,6 @@ git push origin master --tags`);
     process.chdir(cwd);
 }
 
-// noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
     command: 'create [name] [path]',
     describe:
@@ -997,7 +966,6 @@ export const { command, describe, builder, handler } = {
             await createGitRepo(argv);
             await buildDockerCi(argv);
 
-            // noinspection TypeScriptUnresolvedVariable
             if (!argv.noInstall) {
                 await installPackages(argv);
             }

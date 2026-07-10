@@ -60,7 +60,6 @@ export function findLicense(name: string): any {
     return null;
 }
 
-// istanbul ignore next
 /**
  * Queries user for license selection
  *

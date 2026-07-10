@@ -31,7 +31,6 @@ import { Console } from 'console';
 import { pathToFileURL } from 'node:url';
 
 const BASE_SERVICE_NAME = 'IMQService';
-let PROGRAM: string = '';
 let ROOT_DIRECTORY = process.cwd();
 
 /**
@@ -129,7 +128,6 @@ async function isFolderContainsService(servicePath: string): Promise<boolean> {
  */
 function walkThroughFolders(paths: string[], args: Arguments) {
     for (const path of paths) {
-        // noinspection TypeScriptValidateTypes
         logger.log(styleText('blue', `\nService: ${path}`));
         execGitFlow(path, args);
     }
@@ -205,7 +203,6 @@ function handleSpawnResponse(
     response: SpawnSyncReturns<Buffer>,
 ): number | null {
     if (response.status !== 0 || response.error) {
-        // noinspection TypeScriptValidateTypes
         logger.log(
             styleText(
                 'red',
@@ -254,7 +251,7 @@ function execGitFlow(servicePath: string, args: Arguments): void {
     if (handleSpawnResponse(response)) {
         return;
     }
-    // noinspection TypeScriptValidateTypes
+
     logger.log(styleText('green', 'Done!'));
 }
 
@@ -284,15 +281,13 @@ async function getServicesFolders(path: string): Promise<string[]> {
     return folders;
 }
 
-// noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
     command: 'update-version <path> [branch] [version]',
     describe:
         'Updates services under given path with new version tag ' +
         'and automatically pushes changes to repository, triggering builds.',
 
-    async builder(yargs: Argv) {
-        PROGRAM = (await yargs.argv).$0;
+    builder(yargs: Argv) {
         return yargs
             .option('b', {
                 alias: 'branch',

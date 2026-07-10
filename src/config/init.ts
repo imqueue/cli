@@ -42,7 +42,6 @@ const inquirer = originalInquirer as unknown as typeof originalInquirer.default;
 
 // we are going to ignore almost all code here because it's very hard to test
 // command line user interaction
-// istanbul ignore next
 export async function selectTemplate(type: string): Promise<{
     [name: string]: string;
 }> {
@@ -102,7 +101,6 @@ export async function selectTemplate(type: string): Promise<{
     return { [name]: path };
 }
 
-// istanbul ignore next
 export async function templateOptions(config: IMQCLIConfig) {
     let answer: any = await inquirer.prompt<{ useDefault: boolean }>([
         {
@@ -161,7 +159,6 @@ export async function templateOptions(config: IMQCLIConfig) {
     }
 }
 
-// istanbul ignore next
 export async function versionSystemOptions(
     config: IMQCLIConfig,
 ): Promise<void> {
@@ -293,7 +290,6 @@ export async function versionSystemOptions(
     );
 }
 
-// istanbul ignore next
 export async function authorName(config: IMQCLIConfig): Promise<void> {
     const answer = await inquirer.prompt<{ author: string }>([
         {
@@ -320,7 +316,6 @@ export async function authorName(config: IMQCLIConfig): Promise<void> {
     );
 }
 
-// istanbul ignore next
 export async function authorEmail(config: IMQCLIConfig) {
     const answer = await inquirer.prompt<{ email: string }>([
         {
@@ -347,13 +342,11 @@ export async function authorEmail(config: IMQCLIConfig) {
     );
 }
 
-// istanbul ignore next
 export async function authorOptions(config: IMQCLIConfig) {
     await authorName(config);
     await authorEmail(config);
 }
 
-// istanbul ignore next
 export async function dockerCredentials(config: IMQCLIConfig): Promise<void> {
     const answer = await inquirer.prompt<{
         dockerHubUser: string;
@@ -402,7 +395,6 @@ export async function dockerCredentials(config: IMQCLIConfig): Promise<void> {
     );
 }
 
-// istanbul ignore next
 export async function dockerQuestions(config: IMQCLIConfig): Promise<void> {
     let answer: any = await inquirer.prompt<{ useDocker: boolean }>([
         {
@@ -457,7 +449,6 @@ export async function dockerQuestions(config: IMQCLIConfig): Promise<void> {
     await dockerCredentials(config);
 }
 
-// istanbul ignore next
 export async function serviceQuestions(config: IMQCLIConfig) {
     await authorOptions(config);
     await templateOptions(config);

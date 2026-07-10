@@ -40,7 +40,6 @@ export class RedisClientMock extends EventEmitter {
     private static __keys: any = {};
     private static __scripts: any = {};
     private __name: string = '';
-    // noinspection JSUnusedGlobalSymbols
     public connected: boolean = true;
     public status = 'ready';
 
@@ -56,12 +55,9 @@ export class RedisClientMock extends EventEmitter {
         }
     }
 
-    // noinspection JSUnusedGlobalSymbols
     public end() {}
-    // noinspection JSUnusedGlobalSymbols
     public quit() {}
 
-    // noinspection JSMethodCanBeStatic
     public async set(...args: any[]): Promise<boolean> {
         let [key, val, units, expire, nx] = args;
 
@@ -104,7 +100,6 @@ export class RedisClientMock extends EventEmitter {
         return val;
     }
 
-    // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
     public setnx(...args: any[]): number {
         const self = RedisClientMock;
         const key = args.shift();
@@ -121,7 +116,6 @@ export class RedisClientMock extends EventEmitter {
         return result;
     }
 
-    // noinspection TypescriptExplicitMemberType,JSMethodCanBeStatic
     public lpush(key: string, value: any, cb?: any): number {
         const self = RedisClientMock;
         if (!self.__queues__[key]) {
@@ -186,7 +180,6 @@ export class RedisClientMock extends EventEmitter {
         }
     }
 
-    // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
     public lrange(
         key: string,
         start: number,
@@ -200,7 +193,6 @@ export class RedisClientMock extends EventEmitter {
         return result;
     }
 
-    // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
     public scan(...args: any[]): (string | string[])[] {
         const cb = args.pop();
         const qs = RedisClientMock.__queues__;
@@ -215,7 +207,6 @@ export class RedisClientMock extends EventEmitter {
         return result;
     }
 
-    // noinspection JSMethodCanBeStatic
     public script(...args: any[]): unknown {
         const cmd = args.shift();
         const scriptOrHash = args.shift();
@@ -243,7 +234,6 @@ export class RedisClientMock extends EventEmitter {
         return [0];
     }
 
-    // noinspection JSUnusedGlobalSymbols
     public client(...args: any[]): string | boolean {
         const self = RedisClientMock;
         const cmd = args.shift();
@@ -266,7 +256,6 @@ export class RedisClientMock extends EventEmitter {
         return true;
     }
 
-    // noinspection JSMethodCanBeStatic
     public exists(...args: any[]): boolean {
         const key = args.shift();
         const result = RedisClientMock.__keys[key] !== undefined;
@@ -274,19 +263,16 @@ export class RedisClientMock extends EventEmitter {
         return result;
     }
 
-    // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
     public psubscribe(...args: any[]): number {
         this.cbExecute(args.pop(), null, 1);
         return 1;
     }
 
-    // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
     public evalsha(...args: any[]): boolean {
         this.cbExecute(args.pop());
         return true;
     }
 
-    // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
     public del(...args: any[]): number {
         const self = RedisClientMock;
         let count = 0;
@@ -304,7 +290,6 @@ export class RedisClientMock extends EventEmitter {
         return count;
     }
 
-    // noinspection JSUnusedGlobalSymbols
     public zadd(...args: any[]): boolean {
         const [key, score, value, cb] = args;
         const timeout = score - Date.now();
@@ -316,7 +301,6 @@ export class RedisClientMock extends EventEmitter {
         return true;
     }
 
-    // noinspection JSUnusedGlobalSymbols
     public disconnect(): boolean {
         delete RedisClientMock.__clientList[this.__name];
         if (this.__rt) {
@@ -326,7 +310,6 @@ export class RedisClientMock extends EventEmitter {
         return true;
     }
 
-    // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
     public config(): boolean {
         return true;
     }

@@ -38,7 +38,7 @@ describe('fs', () => {
     after(() => {
         try {
             rmdir(TEMP_DIR);
-        } catch (e) {}
+        } catch {}
     });
 
     describe('cpr()', () => {

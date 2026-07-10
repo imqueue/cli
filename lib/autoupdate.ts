@@ -30,7 +30,6 @@ const require = createRequire(import.meta.url);
 
 const pkg = require('../package.json');
 
-// istanbul ignore next
 /**
  * Performs check if local version is latest
  */
@@ -66,12 +65,11 @@ export async function checkForUpdate() {
                 update();
             }
         }
-    } catch (err) {
+    } catch {
         /* ignore */
     }
 }
 
-// istanbul ignore next
 /**
  * Executes update command for this package
  */

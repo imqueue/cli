@@ -306,7 +306,7 @@ describe.skip('github', () => {
                 assert.ok(data);
                 assert.equal(data.name, repo);
                 assert.equal(data.owner.login, owner);
-            } catch (err) {}
+            } catch {}
             try {
                 // cleanup
                 await git.delete(`/repos/${owner}/${repo}`);
@@ -332,7 +332,7 @@ describe.skip('github', () => {
                 assert.ok(data);
                 assert.equal(data.name, repo);
                 assert.equal(data.owner.login, owner);
-            } catch (err) {}
+            } catch {}
             try {
                 // cleanup
                 await git.delete(`/repos/${owner}/${repo}`);
