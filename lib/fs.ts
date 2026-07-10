@@ -104,10 +104,7 @@ export function mkdirp(path: string): void {
  * @param {string} path - path to file to create
  * @param {string} [content] - file contents to put in
  */
-export function touch(
-    path: string,
-        content: string = '',
-): void {
+export function touch(path: string, content: string = ''): void {
     if (!fs.existsSync(path)) {
         mkdirp(p.dirname(path));
         fs.writeFileSync(path, content);

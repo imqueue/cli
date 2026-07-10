@@ -166,9 +166,7 @@ export async function createRepository(
     description: string,
     isPrivate: boolean = true,
 ) {
-    const [owner, repo] = (
-        url.split(':').reverse().shift() || ''
-    ).split('/');
+    const [owner, repo] = (url.split(':').reverse().shift() || '').split('/');
 
     if (!(repo && owner)) {
         throw new TypeError(`Given github url "${url}" is invalid!`);
