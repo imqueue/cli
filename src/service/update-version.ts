@@ -25,12 +25,10 @@ import { type Argv, type Arguments } from 'yargs';
 import chalk from 'chalk';
 import { printError } from '../../lib/index.js';
 import { spawnSync, type SpawnSyncReturns } from 'child_process';
-import { resolve } from 'path';
-import { readdirSync } from 'fs';
+import { join, resolve } from 'path';
+import { readdirSync, readFileSync } from 'fs';
 import { Console } from 'console';
-import { createRequire } from 'node:module';
-
-const require = createRequire(import.meta.url);
+import { pathToFileURL } from 'node:url';
 
 const BASE_SERVICE_NAME = 'IMQService';
 let PROGRAM: string = '';
@@ -42,37 +40,84 @@ let ROOT_DIRECTORY = process.cwd();
 const logger = new Console(process.stdout, process.stderr);
 
 /**
+ * Checks if any of the given module exports is a class derived (directly
+ * or transitively) from IMQService
+ *
+ * @param {object} moduleExports - loaded module namespace or exports object
+ * @returns {boolean} - true if a service class export is found
+ */
+export function containsServiceClass(moduleExports: object): boolean {
+    for (const [prop, exported] of Object.entries(moduleExports)) {
+        if (!prop.includes('Service') || typeof exported !== 'function') {
+            continue;
+        }
+
+        let parent = Object.getPrototypeOf(exported);
+
+        while (typeof parent === 'function' && parent.name) {
+            if (parent.name === BASE_SERVICE_NAME) {
+                return true;
+            }
+
+            parent = Object.getPrototypeOf(parent);
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Resolves the entry module of a package directory to a file URL, honoring
+ * the exports map when present and falling back to main / index.js
+ *
+ * @param {string} servicePath - path to directory, which contains service
+ * @returns {string | null} - entry file URL or null if not a package
+ */
+export function resolveServiceEntry(servicePath: string): string | null {
+    try {
+        const pkg = JSON.parse(
+            readFileSync(join(servicePath, 'package.json'), 'utf8'),
+        );
+        const dot = pkg.exports?.['.'];
+        const entry =
+            (typeof dot === 'string' ? dot : (dot?.import ?? dot?.default)) ??
+            pkg.main ??
+            'index.js';
+
+        return pathToFileURL(resolve(servicePath, entry)).href;
+    } catch {
+        return null;
+    }
+}
+
+/**
  * Checks if directory contains service
  * @param {string} servicePath - path to directory, which contains service
- * @returns {boolean} -
+ * @returns {Promise<boolean>} -
  *              returns true if directory contains service, or false instead
  */
-function isFolderContainsService(servicePath: string): boolean {
+async function isFolderContainsService(servicePath: string): Promise<boolean> {
+    const entryUrl = resolveServiceEntry(servicePath);
+
+    if (!entryUrl) {
+        return false;
+    }
+
     const originalLogger = console.log;
 
     try {
-        console.log = () => {};
+        console.log = () => undefined;
         process.chdir(servicePath);
 
-        const service = require(servicePath);
+        const service = await import(entryUrl);
 
-        for (const [prop, func] of Object.entries(service)) {
-            if (!prop.includes('Service')) {
-                continue;
-            }
-
-            // noinspection TypeScriptUnresolvedVariable
-            return (func as any).__proto__.name === BASE_SERVICE_NAME;
-        }
-
+        return containsServiceClass(service);
+    } catch {
+        return false;
+    } finally {
+        console.log = originalLogger;
         process.chdir(ROOT_DIRECTORY);
-    } catch (err) {
-        /* ignore */
     }
-
-    console.log = originalLogger;
-
-    return false;
 }
 
 /**
@@ -159,9 +204,15 @@ function gitPush(servicePath: string): SpawnSyncReturns<Buffer> {
 function handleSpawnResponse(
     response: SpawnSyncReturns<Buffer>,
 ): number | null {
-    if (response.status !== 0 || (response.error && response.stderr)) {
+    if (response.status !== 0 || response.error) {
         // noinspection TypeScriptValidateTypes
-        logger.log(chalk.red(response.stderr.toString()));
+        logger.log(
+            chalk.red(
+                response.stderr?.toString() ||
+                    response.error?.message ||
+                    `Command failed with status ${response.status}`,
+            ),
+        );
     }
 
     return response.status;
@@ -210,21 +261,20 @@ function execGitFlow(servicePath: string, args: Arguments): void {
  * Walks through folders and check if each folder contains service
  *
  * @param {string} path - path to root folder with services
- * @returns {string[]} - array of folders with services
+ * @returns {Promise<string[]>} - array of folders with services
  */
-function getServicesFolders(path: string): string[] {
+async function getServicesFolders(path: string): Promise<string[]> {
     const folders: string[] = [];
     path = resolve(path);
 
     // NOTE: Check if we call update-version from service folder
-    if (isFolderContainsService(path)) {
+    if (await isFolderContainsService(path)) {
         folders.push(path);
     } else {
         for (const dir of readdirSync(path)) {
             const pathToService = resolve(path, dir);
-            const containsService = isFolderContainsService(pathToService);
 
-            if (containsService) {
+            if (await isFolderContainsService(pathToService)) {
                 folders.push(pathToService);
             }
         }
@@ -257,9 +307,9 @@ export const { command, describe, builder, handler } = {
             .describe('path', 'Path to directory containing services.');
     },
 
-    handler(argv: Arguments) {
+    async handler(argv: Arguments) {
         try {
-            const folders = getServicesFolders(argv.path as string);
+            const folders = await getServicesFolders(argv.path as string);
             walkThroughFolders(folders, argv);
         } catch (err) {
             printError(err as Error);
