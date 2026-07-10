@@ -21,8 +21,8 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import NodeRSA from 'node-rsa';
 import { TravisClient } from '@imqueue/travis';
+import { constants as cryptoConstants, publicEncrypt } from 'node:crypto';
 import { sleep } from './node.js';
 
 /**
@@ -48,12 +48,16 @@ export async function travisEncrypt(
 
     const [owner, repo] = repository.split('/');
     const pem = await travis.repos(owner, repo).key.get();
-    const rsa = new NodeRSA();
 
-    rsa.setOptions({ encryptionScheme: 'pkcs1' });
-    rsa.importKey(pem.key);
-
-    return rsa.encrypt(Buffer.from(data, 'utf8'), 'base64');
+    // travis expects RSAES-PKCS1-v1_5 encryption with the repository
+    // public key (what node-rsa's encryptionScheme: 'pkcs1' produced)
+    return publicEncrypt(
+        {
+            key: pem.key,
+            padding: cryptoConstants.RSA_PKCS1_PADDING,
+        },
+        Buffer.from(data, 'utf8'),
+    ).toString('base64');
 }
 
 // istanbul ignore next

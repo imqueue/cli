@@ -25,15 +25,10 @@
 process.env.IMQ_CLI_HOME = '/tmp';
 
 const { mock } = await import('node:test');
-const { commandExistsMock } = await import('./command-exists.js');
 const { Redis } = await import('./redis.js');
 
 // preloaded via `node --import ./test/mocks/index.js` so mocks are
 // registered before any test file graph links (see package.json scripts)
-mock.module('command-exists', {
-    cache: false,
-    defaultExport: commandExistsMock,
-});
 mock.module('ioredis', {
     cache: false,
     defaultExport: {

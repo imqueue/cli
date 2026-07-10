@@ -21,12 +21,12 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
+import { styleText } from 'node:util';
 import { type Argv, type Arguments } from 'yargs';
 import { IMQClient } from '@imqueue/rpc';
 import * as fs from 'fs';
 import * as p from 'path';
 import inquirer, { type QuestionCollection } from 'inquirer';
-import chalk from 'chalk';
 import { printError } from '../../lib/index.js';
 
 // noinspection JSUnusedGlobalSymbols
@@ -59,7 +59,7 @@ export const { command, describe, builder, promptOverride, handler } = {
 
         if (!write) {
             process.stdout.write(
-                chalk.yellow('File exists, overwrite disabled, exit...'),
+                styleText('yellow', 'File exists, overwrite disabled, exit...'),
             );
             process.exit(0);
         }
@@ -81,8 +81,8 @@ export const { command, describe, builder, promptOverride, handler } = {
             });
 
             process.stdout.write(
-                chalk.green('Successfully created. Path: ') +
-                    chalk.cyan(filePath) +
+                styleText('green', 'Successfully created. Path: ') +
+                    styleText('cyan', filePath) +
                     '\n',
             );
         } catch (err) {

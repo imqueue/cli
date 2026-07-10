@@ -21,8 +21,8 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
+import { styleText } from 'node:util';
 import { type Arguments } from 'yargs';
-import chalk from 'chalk';
 import {
     printError,
     loadConfig,
@@ -45,10 +45,10 @@ export const { command, describe, handler } = {
             saveConfig(config);
 
             process.stdout.write(
-                chalk.green('Option ') +
-                    chalk.cyan(`${(argv as any).option}`) +
-                    chalk.green(' is set to ') +
-                    chalk.cyan(`${(argv as any).value}`) +
+                styleText('green', 'Option ') +
+                    styleText('cyan', `${(argv as any).option}`) +
+                    styleText('green', ' is set to ') +
+                    styleText('cyan', `${(argv as any).value}`) +
                     '\n',
             );
         } catch (err) {

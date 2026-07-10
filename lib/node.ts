@@ -21,9 +21,42 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
+import { spawnSync } from 'node:child_process';
 import * as semver from 'semver';
 
+const RX_COMMAND_NAME = /^[\w.-]+$/;
 const RX_VERSION_CLEAN = /^v/;
+
+// noinspection JSUnusedGlobalSymbols
+/**
+ * Checks if the given executable is available on this system. Replaces the
+ * command-exists package with a native probe. The IMQ_CLI_MISSING_COMMANDS
+ * environment variable (comma-separated command names) forces a negative
+ * answer and serves as a test seam.
+ *
+ * @param {string} command - executable name to look up
+ * @return {boolean}
+ */
+export function commandExists(command: string): boolean {
+    const missing = process.env.IMQ_CLI_MISSING_COMMANDS;
+
+    if (missing && missing.split(',').includes(command)) {
+        return false;
+    }
+
+    if (!RX_COMMAND_NAME.test(command)) {
+        return false;
+    }
+
+    const probe =
+        process.platform === 'win32'
+            ? spawnSync('where', [command], { stdio: 'ignore' })
+            : spawnSync('sh', ['-c', `command -v -- ${command}`], {
+                  stdio: 'ignore',
+              });
+
+    return probe.status === 0;
+}
 const RX_ESCAPE = /\./g;
 
 let nodeVersions: NodeVersion[];

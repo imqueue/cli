@@ -21,6 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
+import { styleText } from 'node:util';
 import { type Argv } from 'yargs';
 import {
     existsSync as exists,
@@ -28,7 +29,6 @@ import {
     readFileSync as read,
 } from 'fs';
 import { resolve, touch, printError, IS_ZSH } from '../../lib/index.js';
-import chalk from 'chalk';
 
 let PROGRAM: string = '';
 let RX_EXISTS: RegExp;
@@ -42,12 +42,12 @@ let RX_EXISTS: RegExp;
  */
 function printAdded(rcFilename: string) {
     process.stdout.write(
-        chalk.green(`Completion script added to `) +
-            chalk.cyan(rcFilename) +
+        styleText('green', `Completion script added to `) +
+            styleText('cyan', rcFilename) +
             '\n' +
             'To have these changes to take effect, please, run:\n\n' +
             '  $ ' +
-            chalk.cyan(`source ${rcFilename}`) +
+            styleText('cyan', `source ${rcFilename}`) +
             '\n\n',
     );
 }
@@ -86,13 +86,14 @@ complete -F _yargs_completions ${PROGRAM}
  */
 function printExists(rcFilename: string) {
     process.stdout.write(
-        chalk.yellow.bold(
+        styleText(
+            ['bold', 'yellow'],
             `Completion script already exists in your ${rcFilename}.`,
         ) +
             '\n' +
             'If it does not work, please try one of:\n\n' +
-            chalk.cyan('  1. Reload your shell\n') +
-            chalk.cyan(`  2. Run source ${rcFilename}\n\n`),
+            styleText('cyan', '  1. Reload your shell\n') +
+            styleText('cyan', `  2. Run source ${rcFilename}\n\n`),
     );
 }
 
