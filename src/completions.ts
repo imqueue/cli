@@ -25,7 +25,6 @@ import { type Argv } from 'yargs';
 import * as off from './completions/off.js';
 import * as on from './completions/on.js';
 
-// noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder } = {
     command: 'completions',
     describe: 'Generates completions script for your shell',

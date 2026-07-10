@@ -103,8 +103,6 @@ export function prepareConfigValue(value: any) {
                 return undefined;
         }
 
-        // istanbul ignore else
-        // noinspection RegExpSingleCharAlternation,RegExpRedundantEscape
         if (/^\s*(\[|\{)/.test(value)) {
             return JSON.parse(value);
         }

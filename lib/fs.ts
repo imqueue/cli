@@ -60,7 +60,6 @@ export function cpr(from: string, to: string) {
 export function rmdir(path: string) {
     let files = [];
 
-    // istanbul ignore else
     if (fs.existsSync(path)) {
         files = fs.readdirSync(path);
 
@@ -92,7 +91,6 @@ export function mkdirp(path: string): void {
             return mkdirp(path);
         }
 
-        // istanbul ignore if
         if (!fs.statSync(path).isDirectory()) {
             throw err;
         }

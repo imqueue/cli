@@ -119,7 +119,7 @@ export async function getTeam(github: Github, owner: string): Promise<any> {
             `/orgs/${encodeURIComponent(owner)}/teams`,
         );
 
-        return (teams || /* istanbul ignore next */ []).shift() || null;
+        return (teams || []).shift() || null;
     } catch {
         return null;
     }
@@ -167,7 +167,7 @@ export async function createRepository(
     isPrivate: boolean = true,
 ) {
     const [owner, repo] = (
-        url.split(':').reverse().shift() || /* istanbul ignore next */ ''
+        url.split(':').reverse().shift() || ''
     ).split('/');
 
     if (!(repo && owner)) {
@@ -181,9 +181,7 @@ export async function createRepository(
             `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
         );
 
-        // istanbul ignore else
         if (repository && repository.name === repo) {
-            // noinspection ExceptionCaughtLocallyJS
             throw new Error('Repository already exists!');
         }
     } catch (err) {

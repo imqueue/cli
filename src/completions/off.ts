@@ -51,7 +51,6 @@ function printSuccess(rcFilename: string) {
     );
 }
 
-// noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
     command: 'off',
     describe: 'Disables completions for this program in your shell',

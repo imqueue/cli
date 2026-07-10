@@ -27,7 +27,6 @@ import * as get from './config/get.js';
 import * as init from './config/init.js';
 import * as set from './config/set.js';
 
-// noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder } = {
     command: 'config',
     describe: 'Manage IMQ CLI settings',

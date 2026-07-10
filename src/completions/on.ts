@@ -94,7 +94,6 @@ function printExists(rcFilename: string) {
     );
 }
 
-// noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
     command: 'on',
     describe: 'Enables completions for this program in your shell',

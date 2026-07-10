@@ -27,7 +27,6 @@ import * as semver from 'semver';
 const RX_COMMAND_NAME = /^[\w.-]+$/;
 const RX_VERSION_CLEAN = /^v/;
 
-// noinspection JSUnusedGlobalSymbols
 /**
  * Checks if the given executable is available on this system. Replaces the
  * command-exists package with a native probe. The IMQ_CLI_MISSING_COMMANDS
@@ -104,20 +103,18 @@ export function semverCompare(a: string, b: string) {
 export async function getNodeVersions(
     force: boolean = false,
 ): Promise<NodeVersion[]> {
-    // istanbul ignore if
     if (!force && nodeVersions) {
         return nodeVersions;
     }
 
     const res = await fetch('https://nodejs.org/dist/index.json');
 
-    // istanbul ignore if
     if (!res.ok) {
         throw new Error(`Failed to fetch node versions: HTTP ${res.status}`);
     }
 
     nodeVersions = (
-        ((await res.json()) as NodeVersion[]) || /* istanbul ignore next */ []
+        ((await res.json()) as NodeVersion[]) || []
     ).sort((a: NodeVersion, b: NodeVersion) =>
         semverCompare(
             a.version.replace(RX_VERSION_CLEAN, ''),
@@ -142,9 +139,8 @@ export async function nodeVersion(tag: string) {
         case 'latest': {
             return (
                 (
-                    (versions || /* istanbul ignore next */ [])[0] ||
-                    /* istanbul ignore next */ <any>{}
-                ).version || /* istanbul ignore next */ ''
+                    (versions || [])[0] || <any>{}
+                ).version || ''
             ).replace(RX_VERSION_CLEAN, '');
         }
         case 'stable':
@@ -152,9 +148,8 @@ export async function nodeVersion(tag: string) {
         case 'lts/*': {
             return (
                 (
-                    versions.find(version => !!version.lts) ||
-                    /* istanbul ignore next */ <any>{}
-                ).version || /* istanbul ignore next */ ''
+                    versions.find(version => !!version.lts) || <any>{}
+                ).version || ''
             ).replace(RX_VERSION_CLEAN, '');
         }
         default: {
@@ -164,8 +159,8 @@ export async function nodeVersion(tag: string) {
                         new RegExp(`^v${tag.replace(RX_ESCAPE, '\\.')}`).test(
                             version.version,
                         ),
-                    ) /* istanbul ignore next */ || <any>{}
-                ).version || /* istanbul ignore next */ ''
+                    ) || <any>{}
+                ).version || ''
             ).replace(RX_VERSION_CLEAN, '');
         }
     }

@@ -27,7 +27,6 @@ import { printError, loadConfig } from '../../lib/index.js';
 
 let PROGRAM: string = '';
 
-// noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, handler } = {
     command: 'get [option]',
     describe:
