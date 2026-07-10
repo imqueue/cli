@@ -2,7 +2,7 @@
  * IMQ-CLI library: github
  *
  * I'm Queue Software Project
- * Copyright (C) 2025  imqueue.com <support@imqueue.com>
+ * Copyright (C) 2026  imqueue.com <support@imqueue.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,9 +21,89 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { Octokit as Github } from '@octokit/rest';
-
+const GITHUB_API_URL = 'https://api.github.com';
 const RX_DEPRECATION = /Deprecation:/;
+
+/**
+ * Error thrown for non-successful GitHub API responses, carrying the HTTP
+ * status code of the response
+ */
+export class GithubApiError extends Error {
+    public constructor(
+        message: string,
+        public readonly status: number,
+    ) {
+        super(message);
+        this.name = 'GithubApiError';
+    }
+}
+
+/**
+ * Minimal GitHub REST v3 client over native fetch, covering the few
+ * endpoints this cli uses (replaces @octokit/rest)
+ */
+export class Github {
+    public constructor(private readonly token: string) {
+        if (!token) {
+            throw new TypeError(
+                'Github auth token required, but was not given!',
+            );
+        }
+    }
+
+    /**
+     * Performs a GitHub API request and returns the parsed JSON body.
+     * Throws GithubApiError with the response status on non-2xx replies.
+     *
+     * @param {string} method - HTTP method to use
+     * @param {string} path - API path, e.g. '/repos/{owner}/{repo}'
+     * @param {object} [body] - JSON-serializable request payload
+     * @return {Promise<any>}
+     */
+    public async request(
+        method: string,
+        path: string,
+        body?: object,
+    ): Promise<any> {
+        const res = await fetch(`${GITHUB_API_URL}${path}`, {
+            method,
+            headers: {
+                accept: 'application/vnd.github+json',
+                authorization: `Bearer ${this.token}`,
+                'user-agent': '@imqueue/cli',
+                'x-github-api-version': '2022-11-28',
+                ...(body ? { 'content-type': 'application/json' } : {}),
+            },
+            ...(body ? { body: JSON.stringify(body) } : {}),
+        });
+
+        const data =
+            res.status === 204
+                ? undefined
+                : await res.json().catch(() => undefined);
+
+        if (!res.ok) {
+            throw new GithubApiError(
+                (data as any)?.message || `HTTP ${res.status}`,
+                res.status,
+            );
+        }
+
+        return data;
+    }
+
+    public get(path: string): Promise<any> {
+        return this.request('GET', path);
+    }
+
+    public post(path: string, body: object): Promise<any> {
+        return this.request('POST', path, body);
+    }
+
+    public delete(path: string): Promise<any> {
+        return this.request('DELETE', path);
+    }
+}
 
 /**
  * Returns a team data for given organization, using github API
@@ -35,14 +115,12 @@ const RX_DEPRECATION = /Deprecation:/;
  */
 export async function getTeam(github: Github, owner: string): Promise<any> {
     try {
-        return (
-            (
-                (await github.teams.list({
-                    org: owner,
-                })) || /* istanbul ignore next */ ({} as any)
-            ).data || /* istanbul ignore next */ []
-        ).shift();
-    } catch (err) {
+        const teams = await github.get(
+            `/orgs/${encodeURIComponent(owner)}/teams`,
+        );
+
+        return (teams || /* istanbul ignore next */ []).shift() || null;
+    } catch {
         return null;
     }
 }
@@ -57,8 +135,8 @@ export async function getTeam(github: Github, owner: string): Promise<any> {
  */
 export async function getOrg(github: Github, owner: string): Promise<any> {
     try {
-        return (await github.orgs.get({ org: owner })).data;
-    } catch (err) {
+        return await github.get(`/orgs/${encodeURIComponent(owner)}`);
+    } catch {
         return null;
     }
 }
@@ -70,7 +148,7 @@ export async function getOrg(github: Github, owner: string): Promise<any> {
  * @return {Promise<Github>}
  */
 export async function getInstance(token: string): Promise<Github> {
-    return new Github({ auth: token });
+    return new Github(token);
 }
 
 /**
@@ -99,23 +177,24 @@ export async function createRepository(
     const github = await getInstance(token);
 
     try {
-        const repository = await github.repos.get({ owner, repo });
+        const repository = await github.get(
+            `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
+        );
 
         // istanbul ignore else
-        if (repository && repository.data && repository.data.name === repo) {
+        if (repository && repository.name === repo) {
             // noinspection ExceptionCaughtLocallyJS
             throw new Error('Repository already exists!');
         }
     } catch (err) {
-        const status = (err as any).status ?? (err as any).code;
+        const status = (err as GithubApiError).status;
 
         if (status !== 404 && !RX_DEPRECATION.test((err as Error).message)) {
             throw err;
         }
     }
 
-    await github.repos.createInOrg({
-        org: owner,
+    await github.post(`/orgs/${encodeURIComponent(owner)}/repos`, {
         name: repo,
         private: isPrivate,
         auto_init: false,
