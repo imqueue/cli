@@ -31,7 +31,6 @@ const require = createRequire(import.meta.url);
 
 const LICENSES: any = require('./licenses.json');
 
-// noinspection RegExpRedundantEscape
 const RX_ESCAPE = /[-[\]/{}()*+?.\\^$|]/g;
 
 /**

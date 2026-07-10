@@ -467,7 +467,6 @@ export async function serviceQuestions(config: IMQCLIConfig) {
     await dockerQuestions(config);
 }
 
-// noinspection JSUnusedGlobalSymbols
 export const { command, describe, handler } = {
     command: 'init',
     describe: 'Interactively initializes IMQ CLI configuration file',

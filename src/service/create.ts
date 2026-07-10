@@ -213,7 +213,6 @@ function ensureServicePages(argv: any): {
     bugs: string;
 } {
     const owner = argv.u.trim();
-    // noinspection TypeScriptUnresolvedVariable
     let url = argv.B.trim();
     let home = '';
     let bugs = '';
@@ -486,7 +485,6 @@ async function enableTravisBuilds(argv: any) {
     }
 
     if (!enabled) {
-        // noinspection TypeScriptValidateJSTypes
         console.log(
             styleText(
                 'red',
@@ -545,7 +543,6 @@ async function buildTags(path: string, argv: any) {
         name,
     );
 
-    // noinspection TypeScriptUnresolvedVariable
     return {
         SERVICE_NAME: name,
         SERVICE_CLASS_NAME: camelCase(name),
@@ -974,7 +971,6 @@ export const { command, describe, builder, handler } = {
                 await commit(argv);
             }
 
-            // noinspection TypeScriptValidateJSTypes
             console.log(styleText('green', 'Service successfully created!'));
         } catch (err) {
             if (argv.path && !~['', '.', './'].indexOf(argv.path.trim())) {

@@ -29,7 +29,6 @@ import * as p from 'path';
 import inquirer, { type QuestionCollection } from 'inquirer';
 import { printError } from '../../lib/index.js';
 
-// noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder, promptOverride, handler } = {
     command: 'generate <name> [path]',
     describe: 'Generates IMQ-RPC client for a specified service',

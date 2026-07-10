@@ -24,7 +24,6 @@
 import { type Argv } from 'yargs';
 import * as generate from './client/generate.js';
 
-// noinspection JSUnusedGlobalSymbols
 export const { command, describe, builder } = {
     command: 'client',
     describe: 'Manage IMQ client',

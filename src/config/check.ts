@@ -23,7 +23,6 @@
  */
 import { configEmpty } from '../../lib/index.js';
 
-// noinspection JSUnusedGlobalSymbols
 export const { command, describe, handler } = {
     command: 'check',
     describe: 'Exits with 0 if config initialized, with 1 otherwise',

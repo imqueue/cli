@@ -30,7 +30,6 @@ import {
     prepareConfigValue,
 } from '../../lib/index.js';
 
-// noinspection JSUnusedGlobalSymbols
 export const { command, describe, handler } = {
     command: 'set <option> <value>',
     describe: 'Updates given config option with given value',
