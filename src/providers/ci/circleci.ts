@@ -29,6 +29,9 @@ import type {
 } from '../types.js';
 import { registryShellTokens } from './common.js';
 
+// overridable for CircleCI server / integration testing
+const API = process.env.IMQ_CIRCLECI_API_URL || 'https://circleci.com/api/v2';
+
 const VCS_SLUG: Record<string, string> = {
     github: 'gh',
     gitlab: 'gl',
@@ -122,20 +125,17 @@ export const circleci: CiProvider = {
         const slug = `${VCS_SLUG[ctx.config.vcs.provider || 'github'] || 'gh'}/${ctx.config.vcs.namespace}/${ctx.name}`;
 
         for (const secret of secrets) {
-            const res = await fetch(
-                `https://circleci.com/api/v2/project/${slug}/envvar`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'circle-token': token,
-                        'content-type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        name: secret.name,
-                        value: secret.value,
-                    }),
+            const res = await fetch(`${API}/project/${slug}/envvar`, {
+                method: 'POST',
+                headers: {
+                    'circle-token': token,
+                    'content-type': 'application/json',
                 },
-            );
+                body: JSON.stringify({
+                    name: secret.name,
+                    value: secret.value,
+                }),
+            });
 
             if (!res.ok) {
                 throw new Error(

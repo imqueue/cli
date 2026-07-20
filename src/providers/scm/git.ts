@@ -45,6 +45,12 @@ export const git: ScmProvider = {
 
         console.log('Committing changes...');
         run('init');
+
+        // ensure a commit identity so `git commit`/`tag -a` never fail when
+        // the user has no global git config; use the service author/email
+        run('config', 'user.name', ctx.author || 'imqueue');
+        run('config', 'user.email', ctx.email || 'support@imqueue.com');
+
         run('add', '.');
         run('commit', '-am', 'Initial commit');
 

@@ -23,7 +23,8 @@
  */
 import type { CreateContext, VcsHostProvider } from '../types.js';
 
-const API = 'https://gitlab.com/api/v4';
+// overridable for self-managed GitLab (and integration testing)
+const API = process.env.IMQ_GITLAB_API_URL || 'https://gitlab.com/api/v4';
 
 /**
  * Performs a GitLab API request, returning parsed JSON (or undefined on 204),

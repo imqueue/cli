@@ -21,18 +21,18 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { describe, it, mock } from 'node:test';
+import { describe, it, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import '../../mocks/index.js';
 
-// mock inquirer before importing the init command so its default-export
-// `prompt` is wired correctly (regression: init used a namespace import whose
-// `.prompt` was undefined at runtime)
-const answers: Record<string, any> = {};
+// queue-based inquirer mock: each prompt() call shifts the next canned answer.
+// Mocked before importing init so its default-export `prompt` wires correctly
+// (regression: init used a namespace import whose `.prompt` was undefined).
+const queue: any[] = [];
 
 mock.module('inquirer', {
     defaultExport: {
-        prompt: async () => answers,
+        prompt: async () => (queue.length ? queue.shift() : {}),
         registerPrompt: () => undefined,
     },
 });
@@ -40,30 +40,76 @@ mock.module('inquirer', {
 const init: any = await import('../../../src/config/init.js');
 
 describe('config init prompt wiring', () => {
-    it('should call inquirer.prompt and store the author', async () => {
-        answers.author = 'Mocked Author';
-
-        const config: any = {};
-
-        await init.authorName(config);
-        assert.equal(config.author, 'Mocked Author');
+    beforeEach(() => {
+        queue.length = 0;
     });
 
-    it('should call inquirer.prompt and store a valid email', async () => {
-        answers.email = 'dev@example.io';
-
+    it('should store the prompted author and email', async () => {
         const config: any = {};
 
+        queue.push({ author: 'My Org' });
+        await init.authorName(config);
+        queue.push({ email: 'dev@example.io' });
         await init.authorEmail(config);
+
+        assert.equal(config.author, 'My Org');
         assert.equal(config.email, 'dev@example.io');
     });
 
-    it('should resolve the CI provider through a prompt', async () => {
-        answers.provider = 'circleci';
-
+    it('should pick a CI provider compatible with the vcs host', async () => {
         const config: any = { vcs: { provider: 'github' } };
 
+        queue.push({ provider: 'circleci' });
         await init.ciOptions(config);
+
         assert.equal(config.ci.provider, 'circleci');
+    });
+
+    it('should resolve a non-github vcs host generically', async () => {
+        const config: any = {};
+
+        queue.push({ provider: 'gitlab' });
+        queue.push({ namespace: 'my-group', token: 'glpat', isPrivate: true });
+        await init.vcsHostOptions(config);
+
+        assert.equal(config.vcs.provider, 'gitlab');
+        assert.equal(config.vcs.namespace, 'my-group');
+        assert.equal(config.vcs.auth.token, 'glpat');
+        assert.equal(config.useGit, true);
+    });
+
+    it('should resolve a registry with its options', async () => {
+        const config: any = {};
+
+        queue.push({ useDocker: true });
+        queue.push({ provider: 'dockerhub' });
+        queue.push({ v: 'myns' }); // namespace option
+        queue.push({ save: false });
+        await init.registryOptions(config);
+
+        assert.equal(config.useDocker, true);
+        assert.equal(config.registry.provider, 'dockerhub');
+        assert.equal(config.registry.namespace, 'myns');
+    });
+
+    it('should skip dockerization when declined', async () => {
+        const config: any = {};
+
+        queue.push({ useDocker: false });
+        await init.registryOptions(config);
+
+        assert.equal(config.useDocker, false);
+        assert.equal(config.registry, undefined);
+    });
+
+    it('should collect a valid package selection across groups', async () => {
+        const config: any = {};
+
+        queue.push({ sel: 'dd-trace' }); // tracing (exclusive)
+        queue.push({ sel: '' }); // orm (none)
+        queue.push({ sel: ['pg-cache', 'job'] }); // features
+        await init.packageOptions(config);
+
+        assert.deepEqual(config.packages, ['dd-trace', 'pg-cache', 'job']);
     });
 });

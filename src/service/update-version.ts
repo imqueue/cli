@@ -46,8 +46,10 @@ const logger = new Console(process.stdout, process.stderr);
  * @returns {boolean} - true if a service class export is found
  */
 export function containsServiceClass(moduleExports: object): boolean {
-    for (const [prop, exported] of Object.entries(moduleExports)) {
-        if (!prop.includes('Service') || typeof exported !== 'function') {
+    // check every exported class by walking its prototype chain - service
+    // classes are named after the service (e.g. Billing), not always *Service
+    for (const exported of Object.values(moduleExports)) {
+        if (typeof exported !== 'function') {
             continue;
         }
 

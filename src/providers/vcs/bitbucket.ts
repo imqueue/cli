@@ -23,7 +23,9 @@
  */
 import type { CreateContext, VcsHostProvider } from '../types.js';
 
-const API = 'https://api.bitbucket.org/2.0';
+// overridable for Bitbucket Server / integration testing
+const API =
+    process.env.IMQ_BITBUCKET_API_URL || 'https://api.bitbucket.org/2.0';
 
 /**
  * Performs a Bitbucket API request with a bearer token (workspace/repo access

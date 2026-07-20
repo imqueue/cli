@@ -292,10 +292,12 @@ export async function runCreate(
     if (state.repoCreated) {
         const vcs = vcsHosts.get(plan.config.vcs.provider as string);
         const scm = scmTools.get('git');
-        const remoteUrl = vcs.remoteUrl(
-            plan.config.vcs.namespace as string,
-            plan.name,
-        );
+        // IMQ_GIT_REMOTE_BASE overrides the push target (custom/self-hosted
+        // git or integration testing); otherwise use the host's ssh url
+        const remoteBase = process.env.IMQ_GIT_REMOTE_BASE;
+        const remoteUrl = remoteBase
+            ? `${remoteBase.replace(/\/+$/, '')}/${plan.name}.git`
+            : vcs.remoteUrl(plan.config.vcs.namespace as string, plan.name);
 
         await scm.initAndPush(plan, remoteUrl);
     }

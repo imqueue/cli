@@ -75,10 +75,12 @@ describe('service update-version', () => {
             );
         });
 
-        it('should ignore non-Service-named exports', () => {
+        it('should detect a service exported under any name', () => {
+            // services are named after the service (e.g. Billing), not always
+            // *Service, so detection must not depend on the export name
             assert.equal(
-                containsServiceClass({ Something: DirectService }),
-                false,
+                containsServiceClass({ Billing: DirectService }),
+                true,
             );
         });
     });
