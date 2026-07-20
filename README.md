@@ -1,9 +1,7 @@
 # I Message Queue CLI (@imqueue/cli)
 
-[![Build Status](https://travis-ci.com/imqueue/cli.svg?branch=master)](https://travis-ci.com/imqueue/cli)
+[![Build](https://github.com/imqueue/cli/actions/workflows/build.yml/badge.svg)](https://github.com/imqueue/cli/actions/workflows/build.yml)
 [![codebeat badge](https://codebeat.co/badges/0824c9af-d6fa-47ac-bc44-eb51d7b37eba)](https://codebeat.co/projects/github-com-imqueue-cli-master)
-[![Coverage Status](https://coveralls.io/repos/github/imqueue/cli/badge.svg?branch=master)](https://coveralls.io/github/imqueue/cli?branch=master)
-[![Known Vulnerabilities](https://snyk.io/test/github/imqueue/cli/badge.svg?targetFile=package.json)](https://snyk.io/test/github/imqueue/cli?targetFile=package.json)
 [![License](https://img.shields.io/badge/license-GPL-blue.svg)](https://rawgit.com/imqueue/cli/master/LICENSE)
 
 ## Why?
@@ -31,7 +29,6 @@ clients based on desired configuration.
 
 ~~~
 IMQ Command Line Interface
-Version: 1.0.0-dev2
 
 Usage: imq <command>
 
@@ -45,6 +42,9 @@ Options:
   --version  Show version number                                       [boolean]
   --help     Show help                                                 [boolean]
 ~~~
+
+> On every interactive run `imq` checks npm for a newer release and offers to
+> self-update. Set `IMQ_NO_UPDATE_CHECK=1` to skip that check.
 
 ### Service Management
 
@@ -119,6 +119,27 @@ Options:
   --path           Directory where client file should be placed   [default: "."]
 ~~~
 
+### Bulk Version Bump
+
+To release a new version across one or many services under a directory, use:
+
+~~~
+imq service update-version <path> [branch]
+
+Updates services under given path with a new version tag and pushes the
+changes to their repositories, triggering CI builds.
+
+Options:
+  -b, --branch       The branch to checkout and use during update
+                                                            [default: "master"]
+  -n, --npm-version  NPM version to update
+                     (major|minor|patch|prerelease)      [default: "prerelease"]
+~~~
+
+For each detected service it runs `git checkout <branch>` → `git pull` →
+`npm version <n>` → `git push --follow-tags`, stopping that service on the
+first failing step.
+
 ### Managing IMQ-CLI Configuration
 
 IMQ-CLI can be used with a pre-configured options to shorten commands usage.
@@ -149,6 +170,13 @@ will print a single requested option value.
 imq config set [option_name] [new_value]
 ~~~
 will set requested option to a given new value.
+
+~~~bash
+imq config check
+~~~
+exits with code `0` if the config is initialized and `1` otherwise, which is
+handy in scripts. The config file is written with `0600` permissions since it
+may hold secrets (GitHub token, DockerHub password).
 
 
 ### IMQ-CLI Completions For Your Shell
@@ -198,11 +226,27 @@ Usage: imqctl <command> [-p path] [-s services] [-hu]
 ### imqlog
 
 ~~~
-Usage: ./bin/log.sh [-c] [service1, ...serviceN]
+Usage: imqlog [-hc] [service1, ...serviceN]
   [service1, ...serviceN] - list of service repositories directories names to 
-                            combile logs for, if omitted all existing logs are
+                            combine logs for, if omitted all existing logs are
                             combined.
   [-c] - clean previous logs
+  [-h] - print this usage information
+~~~
+
+### imqup
+
+~~~
+Usage: imqup [-hcu] [-p path] [-s services] [-v type]
+  Performs a dependencies update on services located under a given path.
+  Before running, make sure the services are not in a dirty git state.
+  [-p path] - path to a directory with services repositories, by default is
+              current directory
+  [-s services] - comma-separated services list (repositories names),
+                  if not passed will scan path for a services presence
+  [-v type] - new version to set: major|minor|patch|prerelease (default: prerelease)
+  [-c] - commit and push the update
+  [-u] - do NOT update dependencies, perform other tasks only
   [-h] - print this usage information
 ~~~
 

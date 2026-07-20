@@ -49,11 +49,12 @@ import {
     wrap,
     rmdir,
     isNamespace,
-    isGuthubToken,
+    isGithubToken,
     enableBuilds,
     toTravisTags,
+    OS_HOME,
 } from '../../lib/index.js';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 
 const DEFAULT_SERVICE_VERSION = '1.0.0-0';
 
@@ -95,7 +96,8 @@ function updateLicenseText(
     };
 
     for (let varName of Object.keys(values)) {
-        text = text.replace(`[${varName}]`, values[varName]);
+        // replace every occurrence, not just the first
+        text = text.split(`[${varName}]`).join(String(values[varName]));
     }
 
     return text;
@@ -135,7 +137,25 @@ This software is private and is unlicensed. Please, contact
 author for any licensing details.\n`;
         name = license;
     } else {
-        const lic: any = findLicense(license);
+        let lic: any = findLicense(license);
+
+        // support a filesystem path to a custom license file
+        if (!lic && fs.existsSync(resolve(license))) {
+            lic = {
+                body: fs.readFileSync(resolve(license), { encoding: 'utf8' }),
+                name: 'CUSTOM',
+                spdx_id: 'SEE LICENSE IN LICENSE',
+                header: '',
+            };
+        }
+
+        if (!lic) {
+            throw new TypeError(
+                `Unknown license "${license}". Provide a valid SPDX ` +
+                    'id/name or a path to a license file.',
+            );
+        }
+
         text = updateLicenseText(
             lic.body + '\n',
             author,
@@ -204,7 +224,7 @@ function ensureServiceRepo(owner: string, name: string) {
 
     return `\n  "repository": {
     "type": "git",
-    "url": "git@github.com:/${owner}/${dashed(name)}"
+    "url": "git@github.com:${owner}/${dashed(name)}.git"
   },\n`;
 }
 
@@ -212,16 +232,18 @@ function ensureServicePages(argv: any): {
     home: string;
     bugs: string;
 } {
-    const owner = argv.u.trim();
-    let url = argv.B.trim();
-    let home = '';
-    let bugs = '';
+    const owner = (argv.u || '').trim();
+    const name = dashed(argv.name);
+    let home = (argv.H || '').trim();
+    let bugs = (argv.B || '').trim();
 
-    if (!url && !owner) {
-        home = bugs = '';
-    } else if (!url && owner) {
-        bugs = `https://github.com/${owner}/${dashed(argv.name)}/issues`;
-        home = `https://github.com/${owner}/${dashed(argv.name)}`;
+    // fall back to GitHub-derived urls only when not provided explicitly
+    if (!home && owner) {
+        home = `https://github.com/${owner}/${name}`;
+    }
+
+    if (!bugs && owner) {
+        bugs = `https://github.com/${owner}/${name}/issues`;
     }
 
     return {
@@ -432,18 +454,33 @@ async function ensureDockerSecrets(argv: any) {
 
     console.log('Encrypting secrets...');
 
-    return [
-        await travisEncrypt(
-            repo,
-            `DOCKER_USER="${dockerHubUser}"`,
-            argv.p ? gitHubAuthToken : undefined,
-        ),
-        await travisEncrypt(
-            repo,
-            `DOCKER_PASS="${dockerHubPassword}"`,
-            argv.p ? gitHubAuthToken : undefined,
-        ),
-    ];
+    try {
+        return [
+            await travisEncrypt(
+                repo,
+                `DOCKER_USER="${dockerHubUser}"`,
+                argv.p ? gitHubAuthToken : undefined,
+            ),
+            await travisEncrypt(
+                repo,
+                `DOCKER_PASS="${dockerHubPassword}"`,
+                argv.p ? gitHubAuthToken : undefined,
+            ),
+        ];
+    } catch {
+        // the CI encryption endpoint may be unavailable; never fail the whole
+        // service creation over it - fall back to empty secrets and let the
+        // user configure CI credentials manually
+        console.log(
+            styleText(
+                'red',
+                'Could not encrypt CI secrets (CI service unavailable). ' +
+                    'Skipping - configure CI secrets manually if needed.',
+            ),
+        );
+
+        return [];
+    }
 }
 
 function stripDockerization(argv: any) {
@@ -503,26 +540,37 @@ async function buildDockerCi(argv: any): Promise<void> {
         (argv.D || config.useDocker)
     );
 
-    const tags = {
+    // always define every docker/CI tag so template placeholders never leak
+    // through as literal %DOCKER_* text, regardless of dockerization
+    const tags: any = {
         TRAVIS_NODE_TAG: (await ensureTravisTags(argv))
             .map(t => `- ${t}`)
             .join('\n'),
+        DOCKER_NAMESPACE: '',
+        NODE_DOCKER_TAG: '',
+        DOCKER_SECRETS: '',
     };
 
     if (!dockerize) {
         stripDockerization(argv);
-        await enableTravisBuilds(argv);
     } else {
-        await enableTravisBuilds(argv);
-
         console.log('Building docker <-> CI integration...');
+
+        const secrets = await ensureDockerSecrets(argv);
+
         Object.assign(tags, {
             DOCKER_NAMESPACE: dockerNs,
             NODE_DOCKER_TAG: await ensureDockerTag(argv),
-            DOCKER_SECRETS: `- secure: ${(await ensureDockerSecrets(argv)).join(
-                '\n  - secure: ',
-            )}`,
+            DOCKER_SECRETS: secrets.length
+                ? `- secure: ${secrets.join('\n  - secure: ')}`
+                : '',
         });
+    }
+
+    // CI activation only makes sense once a repository exists, and must never
+    // be fatal (the legacy CI service may be unreachable)
+    if (gitRepoInitialized) {
+        await enableTravisBuilds(argv);
     }
 
     console.log('Updating docker and CI configs...');
@@ -707,7 +755,7 @@ async function ensureGitRepo(argv: any) {
 let gitRepoInitialized = false;
 
 async function createGitRepo(argv: any) {
-    const useGit = argv.g || config.useGit;
+    let useGit = argv.g || config.useGit;
 
     if (!useGit && typeof config.useGit === 'undefined') {
         const answer: { useGit: boolean } = await inquirer.prompt<{
@@ -723,16 +771,20 @@ async function createGitRepo(argv: any) {
             },
         ] as QuestionCollection);
 
-        if (!answer.useGit) {
-            argv.D = argv.dockerize = config.useDocker = false;
-            return;
-        }
+        useGit = answer.useGit;
+    }
+
+    // respect an explicit "no" (from prompt or a stored config.useGit === false)
+    if (!useGit) {
+        // git integration disabled - dockerization depends on a pushed repo
+        argv.D = argv.dockerize = config.useDocker = false;
+        return;
     }
 
     const url = await ensureGitRepo(argv);
     let token = (argv.T || '').trim() || config.gitHubAuthToken;
 
-    if (!isGuthubToken(token)) {
+    if (!isGithubToken(token)) {
         const answer: { token: string } = await inquirer.prompt<{
             token: string;
         }>([
@@ -743,7 +795,7 @@ async function createGitRepo(argv: any) {
             },
         ] as QuestionCollection);
 
-        if (!isGuthubToken(answer.token.trim())) {
+        if (!isGithubToken(answer.token.trim())) {
             throw new Error('Given GitHub auth token is invalid!');
         }
 
@@ -786,33 +838,22 @@ async function installPackages(argv: any) {
         throw new Error('npm command is not installed!');
     }
 
-    const cwd = process.cwd();
-    const path = resolve(argv.path);
-    const pkg: any = require(resolve(path, 'package.json'));
-    const deps = Object.keys(pkg.dependencies);
-    const devDeps = Object.keys(pkg.devDependencies);
+    const servicePath = resolve(argv.path);
 
-    process.chdir(path);
-
-    if (deps && deps.length) {
-        console.log('Installing dependencies...');
-        execSync(`npm i --save ${deps.join(' ')} 2>&1`);
-    }
-
-    if (devDeps && devDeps.length) {
-        console.log('Installing dev dependencies...');
-        execSync(`npm i --save-dev ${devDeps.join(' ')}  2>&1`);
-    }
-
-    process.chdir(cwd);
+    // install exactly what the template's package.json declares, preserving
+    // its tested version ranges instead of pulling "latest" of everything
+    console.log('Installing dependencies...');
+    execFileSync('npm', ['install'], {
+        cwd: servicePath,
+        stdio: 'inherit',
+    });
 }
 
 async function commit(argv: any) {
-    const path = resolve(argv.path);
+    const servicePath = resolve(argv.path);
     const name = ensureName(argv.name);
     const owner = (argv.u || '').trim();
-    const pkg: any = require(resolve(path, 'package.json'));
-    const cwd = process.cwd();
+    const pkg: any = require(resolve(servicePath, 'package.json'));
     let url = config.gitBaseUrl;
 
     if (!owner && !url) {
@@ -823,25 +864,47 @@ async function commit(argv: any) {
         url += `/${name}.git`;
     }
 
-    process.chdir(path);
-
     if (!commandExists('git')) {
         throw new Error('Git command expected, but is not installed!');
     }
 
-    console.log('Committing changes...');
-    execSync(`git init && \
-git add . && \
-git commit -am "Initial commit" && 
-git remote add origin ${url} && \
-git push origin master`);
-    console.log('Setting up version tag...');
-    execSync(`git tag -d v${pkg.version}; \
-git push origin :refs/tags/v${pkg.version}; \
-git tag -fa v${pkg.version} -m "Tagging version v${pkg.version}" && \
-git push origin master --tags`);
+    // run git via arg arrays (no shell) so urls/branches can't be injected
+    const git = (...args: string[]) =>
+        execFileSync('git', args, { cwd: servicePath, stdio: 'inherit' });
+    const tag = `v${pkg.version}`;
 
-    process.chdir(cwd);
+    console.log('Committing changes...');
+    git('init');
+    git('add', '.');
+    git('commit', '-am', 'Initial commit');
+
+    // honor the repo's configured default branch instead of assuming "master"
+    const branch =
+        execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+            cwd: servicePath,
+        })
+            .toString()
+            .trim() || 'main';
+
+    git('remote', 'add', 'origin', url);
+    git('push', 'origin', branch);
+
+    console.log('Setting up version tag...');
+
+    try {
+        git('tag', '-d', tag);
+    } catch {
+        /* no local tag to drop */
+    }
+
+    try {
+        git('push', 'origin', `:refs/tags/${tag}`);
+    } catch {
+        /* no remote tag to drop */
+    }
+
+    git('tag', '-fa', tag, '-m', `Tagging version ${tag}`);
+    git('push', 'origin', branch, '--tags');
 }
 
 export const { command, describe, builder, handler } = {
@@ -958,6 +1021,11 @@ export const { command, describe, builder, handler } = {
     },
 
     async handler(argv: any) {
+        const servicePath = resolve(argv.path);
+        // remember whether the target existed before this run so a failure
+        // never deletes a directory we did not create
+        const preExisted = fs.existsSync(servicePath);
+
         try {
             await buildFromTemplate(argv);
             await createGitRepo(argv);
@@ -973,9 +1041,14 @@ export const { command, describe, builder, handler } = {
 
             console.log(styleText('green', 'Service successfully created!'));
         } catch (err) {
-            if (argv.path && !~['', '.', './'].indexOf(argv.path.trim())) {
-                // cleanup service dir
-                rmdir(resolve(argv.path));
+            // only remove the directory when this command created it, and
+            // never the current working directory or the user's home
+            if (
+                !preExisted &&
+                servicePath !== resolve('.') &&
+                servicePath !== OS_HOME
+            ) {
+                rmdir(servicePath);
             }
 
             printError(err as Error);

@@ -30,7 +30,7 @@ import {
     resolve,
 } from './index.js';
 import * as fs from 'fs';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { commandExists } from './node.js';
 
 /**
@@ -85,7 +85,9 @@ export async function loadTemplates() {
     } else {
         checkGit();
         console.log('Loading IMQ templates, please, wait...');
-        execSync(`git clone ${TPL_REPO} ${TPL_HOME}`);
+        execFileSync('git', ['clone', TPL_REPO, TPL_HOME], {
+            stdio: 'inherit',
+        });
     }
 
     return fs.readdirSync(TPL_HOME).reduce((res: any, next: any) => {
@@ -108,15 +110,17 @@ export async function loadTemplates() {
  * @return {Promise<void>}
  */
 export async function updateTemplates() {
-    const cwd = process.cwd();
-
-    process.chdir(TPL_HOME);
     checkGit();
 
     console.log('Updating IMQ templates, please, wait...');
 
-    execSync('git pull');
-    process.chdir(cwd);
+    try {
+        // run in TPL_HOME via cwd (no global chdir to leak on failure)
+        execFileSync('git', ['pull'], { cwd: TPL_HOME, stdio: 'inherit' });
+    } catch {
+        // offline or pull failed - keep using the existing local copy
+        console.log('Could not update templates, using local copy for now...');
+    }
 }
 
 // due to problematic testing of user-interaction
@@ -150,7 +154,7 @@ export async function loadTemplate(url: string): Promise<string> {
     }
 
     console.log(`Loading template from repository ${url}, please, wait...`);
-    execSync(`git clone ${url} ${path}`);
+    execFileSync('git', ['clone', url, path], { stdio: 'inherit' });
 
     return path;
 }

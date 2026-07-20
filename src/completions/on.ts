@@ -108,7 +108,10 @@ export const { command, describe, builder, handler } = {
             const zScript = IS_ZSH ? 'autoload bashcompinit\nbashcompinit' : '';
             const rcFilename = IS_ZSH ? '~/.zshrc' : '~/.bashrc';
             const rcFile = resolve(rcFilename);
-            const rcText = read(rcFile, { encoding: 'utf8' });
+            // the rc file may not exist yet - treat a missing file as empty
+            const rcText = exists(rcFile)
+                ? read(rcFile, { encoding: 'utf8' })
+                : '';
 
             if (!RX_EXISTS.test(rcText)) {
                 (exists(rcFile) ? append : touch)(rcFile, getScript(zScript));

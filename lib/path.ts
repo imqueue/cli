@@ -34,7 +34,7 @@ export function resolve(...args: string[]) {
 
     for (let path of args) {
         if (path.charAt(0) === '~') {
-            path = OS_HOME + path.substr(1);
+            path = OS_HOME + path.substring(1);
         }
 
         paths.push(path);

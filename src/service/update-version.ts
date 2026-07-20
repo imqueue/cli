@@ -197,12 +197,13 @@ function gitPush(servicePath: string): SpawnSyncReturns<Buffer> {
  * Handles response from executed command
  * @param {SpawnSyncReturns<Buffer>} response -
  *                              response from executing command
- * @returns {number | null}
+ * @returns {boolean} - true if the command failed (non-zero exit, spawn
+ *                      error, or null status from a failed spawn)
  */
-function handleSpawnResponse(
-    response: SpawnSyncReturns<Buffer>,
-): number | null {
-    if (response.status !== 0 || response.error) {
+function handleSpawnResponse(response: SpawnSyncReturns<Buffer>): boolean {
+    const failed = !!response.error || response.status !== 0;
+
+    if (failed) {
         logger.log(
             styleText(
                 'red',
@@ -213,7 +214,7 @@ function handleSpawnResponse(
         );
     }
 
-    return response.status;
+    return failed;
 }
 
 /**
@@ -282,7 +283,7 @@ async function getServicesFolders(path: string): Promise<string[]> {
 }
 
 export const { command, describe, builder, handler } = {
-    command: 'update-version <path> [branch] [version]',
+    command: 'update-version <path> [branch]',
     describe:
         'Updates services under given path with new version tag ' +
         'and automatically pushes changes to repository, triggering builds.',

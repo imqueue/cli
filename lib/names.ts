@@ -63,7 +63,7 @@ export function camelCase(name: string): string {
         (!RX_LETTER.test(name[0]) ? name[0] : '') +
         name
             .split(RX_SPLIT)
-            .map(s => s.substr(0, 1).toUpperCase() + s.substr(1))
+            .map(s => s.substring(0, 1).toUpperCase() + s.substring(1))
             .join('')
     );
 }

@@ -23,7 +23,8 @@
  */
 const RX_EMAIL = /^[-a-z0-9.]+@[-a-z0-9.]+$/i;
 const RX_NS = /^[-_a-z-0-9]+$/i;
-const RX_TOKEN = /^.+$/;
+// a token is any non-empty run of non-whitespace characters
+const RX_TOKEN = /^\S+$/;
 
 /**
  * Checks if a given string email-like
@@ -46,11 +47,22 @@ export function isNamespace(ns: string) {
 }
 
 /**
- * Checks if a given string a valid GitHub auth token
+ * Checks if a given string is a valid GitHub auth token
+ *
+ * @param {string} token
+ * @return {boolean}
+ */
+export function isGithubToken(token: string) {
+    return RX_TOKEN.test(token);
+}
+
+/**
+ * @deprecated Misspelled alias of {@link isGithubToken}, kept for
+ * backward compatibility.
  *
  * @param {string} token
  * @return {boolean}
  */
 export function isGuthubToken(token: string) {
-    return RX_TOKEN.test(token);
+    return isGithubToken(token);
 }
