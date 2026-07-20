@@ -25,6 +25,7 @@ import { styleText } from 'node:util';
 import * as originalInquirer from 'inquirer';
 import {
     CONFIG_PATH,
+    DEFAULT_TEMPLATES_REF,
     loadConfig,
     saveConfig,
     configEmpty,
@@ -36,6 +37,14 @@ import {
     loadTemplate,
     licensingOptions,
 } from '../../lib/index.js';
+import {
+    ciProviders,
+    containerRegistries,
+    registerBuiltinProviders,
+    vcsHosts,
+} from '../providers/index.js';
+import { loadCatalog } from '../catalog/load.js';
+import { promptPackages, validateSelection } from '../catalog/resolve.js';
 import * as fs from 'fs';
 
 const inquirer = originalInquirer as unknown as typeof originalInquirer.default;
@@ -449,6 +458,173 @@ export async function dockerQuestions(config: IMQCLIConfig): Promise<void> {
     await dockerCredentials(config);
 }
 
+export async function genericVcsOptions(
+    config: IMQCLIConfig,
+    provider: string,
+): Promise<void> {
+    const title = vcsHosts.get(provider).title;
+    const answer = await inquirer.prompt<{
+        namespace: string;
+        token: string;
+        isPrivate: boolean;
+    }>([
+        {
+            type: 'input',
+            name: 'namespace',
+            message: `Enter ${title} namespace (user, org or workspace):`,
+        },
+        {
+            type: 'input',
+            name: 'token',
+            message: `Enter ${title} auth token (leave empty to be asked later):`,
+        },
+        {
+            type: 'confirm',
+            name: 'isPrivate',
+            message: `Should created ${title} repositories be private?`,
+            default: true,
+        },
+    ]);
+
+    config.useGit = true;
+    config.vcs = {
+        ...config.vcs,
+        provider,
+        namespace: answer.namespace.trim(),
+        private: answer.isPrivate,
+        auth: answer.token.trim()
+            ? { token: answer.token.trim() }
+            : config.vcs?.auth,
+    };
+}
+
+export async function vcsHostOptions(config: IMQCLIConfig): Promise<void> {
+    registerBuiltinProviders();
+
+    const answer = await inquirer.prompt<{ provider: string }>([
+        {
+            type: 'list',
+            name: 'provider',
+            message: 'Select VCS host for new services:',
+            choices: vcsHosts.list().map(p => ({ name: p.title, value: p.id })),
+            default: 'github',
+        },
+    ]);
+
+    config.vcs = { ...config.vcs, provider: answer.provider };
+
+    // github keeps the familiar base-url flow; other hosts use a generic one
+    if (answer.provider === 'github') {
+        await versionSystemOptions(config);
+    } else {
+        await genericVcsOptions(config, answer.provider);
+    }
+}
+
+export async function ciOptions(config: IMQCLIConfig): Promise<void> {
+    registerBuiltinProviders();
+
+    const vcs = config.vcs?.provider || 'github';
+    const choices = ciProviders
+        .list()
+        .filter(p => !p.supportedVcs.length || p.supportedVcs.includes(vcs))
+        .map(p => ({ name: p.title, value: p.id }));
+
+    const answer = await inquirer.prompt<{ provider: string }>([
+        {
+            type: 'list',
+            name: 'provider',
+            message: 'Select CI provider for new services:',
+            choices,
+            default:
+                choices.find(c => c.value === 'github-actions')?.value ||
+                choices[0]?.value,
+        },
+    ]);
+
+    config.ci = { ...config.ci, provider: answer.provider };
+}
+
+export async function registryOptions(config: IMQCLIConfig): Promise<void> {
+    const useDocker = (
+        await inquirer.prompt<{ useDocker: boolean }>([
+            {
+                type: 'confirm',
+                name: 'useDocker',
+                message: 'Would you like to dockerize created imq services?',
+                default: true,
+            },
+        ])
+    ).useDocker;
+
+    if (!useDocker) {
+        config.useDocker = false;
+        return;
+    }
+
+    registerBuiltinProviders();
+    config.useDocker = true;
+
+    const provider = (
+        await inquirer.prompt<{ provider: string }>([
+            {
+                type: 'list',
+                name: 'provider',
+                message: 'Select container registry:',
+                choices: containerRegistries
+                    .list()
+                    .map(p => ({ name: p.title, value: p.id })),
+                default: 'dockerhub',
+            },
+        ])
+    ).provider;
+
+    config.registry = { ...config.registry, provider };
+
+    for (const opt of containerRegistries.get(provider).options || []) {
+        const value = (
+            await inquirer.prompt<{ v: string }>([
+                { type: 'input', name: 'v', message: `${opt.describe}:` },
+            ])
+        ).v.trim();
+
+        (config.registry as any)[opt.key] = value;
+    }
+
+    if (provider === 'dockerhub') {
+        const save = (
+            await inquirer.prompt<{ save: boolean }>([
+                {
+                    type: 'confirm',
+                    name: 'save',
+                    message:
+                        'Store Docker Hub credentials locally to provision ' +
+                        'CI secrets without prompting?',
+                    default: false,
+                },
+            ])
+        ).save;
+
+        if (save) {
+            await dockerCredentials(config);
+            config.registry.auth = {
+                user: config.dockerHubUser,
+                password: config.dockerHubPassword,
+            };
+        }
+    }
+}
+
+export async function packageOptions(config: IMQCLIConfig): Promise<void> {
+    const catalog = loadCatalog();
+    const selection = await promptPackages(
+        catalog,
+        Array.isArray(config.packages) ? config.packages : [],
+    );
+
+    config.packages = validateSelection(selection, catalog);
+}
+
 export async function serviceQuestions(config: IMQCLIConfig) {
     await authorOptions(config);
     await templateOptions(config);
@@ -463,8 +639,12 @@ export async function serviceQuestions(config: IMQCLIConfig) {
         ),
     );
 
-    await versionSystemOptions(config);
-    await dockerQuestions(config);
+    await vcsHostOptions(config);
+    await ciOptions(config);
+    await registryOptions(config);
+    await packageOptions(config);
+
+    config.templatesRef = config.templatesRef || DEFAULT_TEMPLATES_REF;
 }
 
 export const { command, describe, handler } = {
