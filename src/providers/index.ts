@@ -28,6 +28,8 @@ import {
     vcsHosts,
 } from './registry.js';
 import { github } from './vcs/github.js';
+import { gitlab } from './vcs/gitlab.js';
+import { bitbucket } from './vcs/bitbucket.js';
 import { git } from './scm/git.js';
 import { travis } from './ci/travis.js';
 import { githubActions } from './ci/github-actions.js';
@@ -48,6 +50,8 @@ export function registerBuiltinProviders(): void {
     registered = true;
 
     vcsHosts.register(github);
+    vcsHosts.register(gitlab);
+    vcsHosts.register(bitbucket);
     scmTools.register(git);
     ciProviders.register(githubActions);
     ciProviders.register(circleci);

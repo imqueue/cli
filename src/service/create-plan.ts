@@ -41,9 +41,14 @@ import type { CreateContext } from '../providers/types.js';
 import { type ResolvedLicense, resolveLicense } from './create-scaffold.js';
 import { loadCatalog } from '../catalog/load.js';
 import { resolvePackages } from '../catalog/resolve.js';
-import { ciProviders, registerBuiltinProviders } from '../providers/index.js';
+import {
+    ciProviders,
+    registerBuiltinProviders,
+    vcsHosts,
+} from '../providers/index.js';
 
 const DEFAULT_CI = 'github-actions';
+const DEFAULT_VCS = 'github';
 
 export const DEFAULT_SERVICE_VERSION = '1.0.0-0';
 
@@ -202,59 +207,92 @@ async function resolveNodeTags(
  * enabled, prompting only interactively; throws with a clear message when a
  * required value is missing non-interactively.
  */
-async function resolveVcs(
+async function resolveVcsProvider(
     argv: any,
     structured: StructuredConfig,
     interactive: boolean,
-): Promise<{
-    provider: string;
-    namespace: string;
-    token: string;
-    private: boolean;
-}> {
+): Promise<string> {
+    registerBuiltinProviders();
+
+    let id = (argv.vcs || '').trim() || structured.vcs.provider || '';
+
+    if (!id) {
+        if (interactive) {
+            const answer = await inquirer.prompt<{ vcs: string }>([
+                {
+                    type: 'list',
+                    name: 'vcs',
+                    message: 'Select VCS host:',
+                    choices: vcsHosts
+                        .list()
+                        .map(p => ({ name: p.title, value: p.id })),
+                    default: DEFAULT_VCS,
+                },
+            ] as QuestionCollection);
+
+            id = answer.vcs;
+        } else {
+            id = DEFAULT_VCS;
+        }
+    }
+
+    if (!vcsHosts.has(id)) {
+        throw new Error(
+            `Unknown VCS host "${id}". Available: ${vcsHosts.ids().join(', ')}.`,
+        );
+    }
+
+    return id;
+}
+
+async function resolveVcs(
+    argv: any,
+    structured: StructuredConfig,
+    providerId: string,
+    interactive: boolean,
+): Promise<{ namespace: string; token: string; private: boolean }> {
+    const title = vcsHosts.get(providerId).title;
     let namespace = (argv.u || structured.vcs.namespace || '').trim();
 
     if (!isNamespace(namespace)) {
         if (!interactive) {
             throw new TypeError(
-                'GitHub namespace required, but was not given!',
+                `${title} namespace required, but was not given!`,
             );
         }
 
-        const answer = await inquirer.prompt<{ gitNs: string }>([
+        const answer = await inquirer.prompt<{ ns: string }>([
             {
                 type: 'input',
-                name: 'gitNs',
-                message: 'Enter GitHub owner (user name or organization):',
+                name: 'ns',
+                message: `Enter ${title} namespace (user, org or workspace):`,
             },
         ] as QuestionCollection);
 
-        if (!isNamespace(answer.gitNs)) {
-            throw new TypeError(
-                `Given github namespace "${answer.gitNs}" is invalid!`,
-            );
+        if (!isNamespace(answer.ns)) {
+            throw new TypeError(`Given ${title} namespace is invalid!`);
         }
 
-        namespace = answer.gitNs;
+        namespace = answer.ns;
     }
 
     let token = (argv.T || structured.vcs.auth?.token || '').trim();
 
     if (!isGithubToken(token)) {
         if (!interactive) {
-            throw new Error('GitHub auth token required, but was not given!');
+            throw new Error(`${title} auth token required, but was not given!`);
         }
 
         const answer = await inquirer.prompt<{ token: string }>([
             {
                 type: 'input',
                 name: 'token',
-                message: 'Enter your GitHub auth token:',
+                message: `Enter your ${title} auth token:`,
             },
         ] as QuestionCollection);
 
         if (!isGithubToken(answer.token.trim())) {
-            throw new Error('Given GitHub auth token is invalid!');
+            throw new Error(`Given ${title} auth token is invalid!`);
         }
 
         token = answer.token.trim();
@@ -268,8 +306,7 @@ async function resolveVcs(
                 {
                     type: 'confirm',
                     name: 'isPrivate',
-                    message:
-                        'Should be service created on GitHub as private repo?',
+                    message: `Should the ${title} repository be private?`,
                     default: true,
                 },
             ] as QuestionCollection);
@@ -280,7 +317,7 @@ async function resolveVcs(
         }
     }
 
-    return { provider: 'github', namespace, token, private: !!isPrivate };
+    return { namespace, token, private: !!isPrivate };
 }
 
 /**
@@ -368,7 +405,9 @@ async function resolveUseVcs(
     global: IMQCLIConfig,
     interactive: boolean,
 ): Promise<boolean> {
-    let useGit = argv.g || global.useGit;
+    // an explicit --vcs choice implies git integration
+    let useGit =
+        argv.g || !!(argv.vcs && String(argv.vcs).trim()) || global.useGit;
 
     if (!useGit && typeof global.useGit === 'undefined') {
         if (!interactive) {
@@ -508,9 +547,14 @@ export async function buildCreatePlan(
     let token = '';
 
     if (useVcs) {
-        const vcs = await resolveVcs(argv, structured, interactive);
+        const providerId = await resolveVcsProvider(
+            argv,
+            structured,
+            interactive,
+        );
+        const vcs = await resolveVcs(argv, structured, providerId, interactive);
 
-        vcsConfig.provider = vcs.provider;
+        vcsConfig.provider = providerId;
         vcsConfig.namespace = vcs.namespace;
         vcsConfig.private = vcs.private;
         token = vcs.token;

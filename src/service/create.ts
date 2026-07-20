@@ -125,11 +125,10 @@ export const { command, describe, builder, handler } = {
             .describe('g', 'Turns on automatic git repo creation')
             .boolean('g')
 
+            .describe('vcs', 'VCS host (github, gitlab, bitbucket)')
+
             .alias('u', 'github-namespace')
-            .describe(
-                'u',
-                'GitHub namespace (usually user name or organization name)',
-            )
+            .describe('u', 'VCS namespace (user, organization or workspace)')
             .default('u', (config.gitBaseUrl || '').split(':').pop() || '')
 
             .describe(
