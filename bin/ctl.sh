@@ -32,6 +32,8 @@ warnmsg=""
 
 function wait_service {
   local svc="$1"
+  local attempt="${2:-0}"
+  local max_attempts=60
   local logfile="$workdir/$svc.log"
   local file errfile
 
@@ -40,11 +42,13 @@ function wait_service {
   if [[ -z "$file" ]]; then
     errfile=$(grep 'UnhandledPromiseRejectionWarning:' "$logfile")
 
-    if [[ -z "$errfile" ]]; then
-      sleep 1
-      wait_service "$svc"
-    else
+    if [[ -n "$errfile" ]]; then
       warnmsg="warn: service $svc errored, please, consider watching logs..."
+    elif [[ "$attempt" -ge "$max_attempts" ]]; then
+      warnmsg="warn: timed out waiting for $svc to become ready, moving on..."
+    else
+      sleep 1
+      wait_service "$svc" $((attempt + 1))
     fi
   fi
 }

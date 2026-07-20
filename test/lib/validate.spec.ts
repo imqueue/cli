@@ -24,15 +24,26 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import '../mocks/index.js';
-import { isEmail, isNamespace, isGuthubToken } from '../../lib/index.js';
+import {
+    isEmail,
+    isNamespace,
+    isGithubToken,
+    isGuthubToken,
+} from '../../lib/index.js';
 
 describe('validate', () => {
-    describe('isGuthubToken()', () => {
-        it('should accept any non-empty token string', () => {
-            assert.equal(isGuthubToken('ghp_abc123'), true);
+    describe('isGithubToken()', () => {
+        it('should accept a non-empty token string', () => {
+            assert.equal(isGithubToken('ghp_abc123'), true);
         });
 
-        it('should reject an empty string', () => {
+        it('should reject an empty or whitespace-only string', () => {
+            assert.equal(isGithubToken(''), false);
+            assert.equal(isGithubToken('   '), false);
+        });
+
+        it('should expose the misspelled alias for compatibility', () => {
+            assert.equal(isGuthubToken('ghp_abc123'), true);
             assert.equal(isGuthubToken(''), false);
         });
     });

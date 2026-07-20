@@ -55,7 +55,7 @@ while [[ $# -gt 0 ]]; do
     unset OPTIND
     unset OPTARG
 
-    while getopts hucvp:s: options; do
+    while getopts hucv:p:s: options; do
         case ${options} in
             p) path="$OPTARG" ;;
             c) do_commit=1 ;;

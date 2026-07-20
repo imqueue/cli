@@ -25,6 +25,7 @@ import {
     readFileSync as read,
     writeFileSync as write,
     existsSync as exists,
+    chmodSync as chmod,
 } from 'fs';
 import { touch } from './fs.js';
 import { CONFIG_PATH } from './constants.js';
@@ -61,10 +62,17 @@ export function saveConfig(config: IMQCLIConfig) {
     const configText = JSON.stringify(config, null, 2) + '\n';
 
     if (!exists(CONFIG_PATH)) {
-        return touch(CONFIG_PATH, configText);
+        touch(CONFIG_PATH, configText);
+    } else {
+        write(CONFIG_PATH, configText);
     }
 
-    return write(CONFIG_PATH, configText);
+    // the config may hold secrets (tokens, docker password) - keep it private
+    try {
+        chmod(CONFIG_PATH, 0o600);
+    } catch {
+        /* best effort - not all filesystems support chmod */
+    }
 }
 
 /**

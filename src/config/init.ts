@@ -329,7 +329,7 @@ export async function authorEmail(config: IMQCLIConfig) {
         console.log(
             styleText('red', `Given email is invalid, please, try again.`),
         );
-        return await authorName(config);
+        return await authorEmail(config);
     }
 
     config.email = answer.email.trim();

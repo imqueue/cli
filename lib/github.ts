@@ -190,10 +190,23 @@ export async function createRepository(
         }
     }
 
-    await github.post(`/orgs/${encodeURIComponent(owner)}/repos`, {
+    const payload = {
         name: repo,
         private: isPrivate,
         auto_init: false,
         description,
-    });
+    };
+
+    try {
+        // works when the owner is an organization the token can write to
+        await github.post(`/orgs/${encodeURIComponent(owner)}/repos`, payload);
+    } catch (err) {
+        // a personal account is not an org (404) - create it under the
+        // authenticated user instead
+        if ((err as GithubApiError).status === 404) {
+            await github.post('/user/repos', payload);
+        } else {
+            throw err;
+        }
+    }
 }

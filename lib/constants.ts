@@ -29,16 +29,21 @@ const require = createRequire(import.meta.url);
 
 // IMQ_CLI_HOME allows tests (or callers) to sandbox all cli file locations
 export const OS_HOME: string =
-    process.env.IMQ_CLI_HOME || os.homedir() || String(process.env['HOME']);
+    process.env.IMQ_CLI_HOME ||
+    os.homedir() ||
+    process.env['HOME'] ||
+    os.tmpdir();
 export const IMQ_HOME = '~/.imq';
 export const TPL_REPO = 'git@github.com:imqueue/templates.git';
 export const TPL_HOME = resolve(IMQ_HOME, 'templates');
 export const CUSTOM_TPL_HOME = resolve(IMQ_HOME, 'custom-templates');
 export const CONFIG_FILENAME = 'config.json';
 export const CONFIG_PATH = resolve(IMQ_HOME, CONFIG_FILENAME);
-export const IS_ZSH = Object.keys(process.env).some(key =>
-    key.startsWith('ZSH'),
-);
+// detect zsh from the actual login shell rather than any ZSH* env var, which
+// tools like oh-my-zsh export (and bash subshells then inherit)
+export const IS_ZSH =
+    !!process.env['ZSH_VERSION'] ||
+    (process.env['SHELL'] || '').endsWith('zsh');
 export const VERSION = require(
     `${import.meta.dirname}/../package.json`,
 ).version;

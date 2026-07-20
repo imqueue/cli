@@ -184,6 +184,36 @@ describe('github (offline)', () => {
             });
         });
 
+        it('should fall back to /user/repos for a personal account', async () => {
+            const calls: any[] = [];
+            stubFetch((url, init) => {
+                calls.push({ url, init });
+                if (init.method === 'GET') {
+                    return { status: 404, body: { message: 'Not Found' } };
+                }
+                // personal account is not an org - org POST 404s
+                if (url.includes('/orgs/')) {
+                    return { status: 404, body: { message: 'Not Found' } };
+                }
+                return { status: 201, body: { name: 'repo' } };
+            });
+
+            await github.createRepository(
+                'git@github.com:Mikhus/repo',
+                'secret',
+                'test repo',
+            );
+
+            const posts = calls.filter(c => c.init.method === 'POST');
+
+            assert.equal(posts.length, 2);
+            assert.equal(
+                posts[0].url,
+                'https://api.github.com/orgs/Mikhus/repos',
+            );
+            assert.equal(posts[1].url, 'https://api.github.com/user/repos');
+        });
+
         it('should throw if the repository already exists', async () => {
             stubFetch(() => ({ status: 200, body: { name: 'repo' } }));
 

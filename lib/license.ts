@@ -40,18 +40,23 @@ const RX_ESCAPE = /[-[\]/{}()*+?.\\^$|]/g;
  * @return {any}
  */
 export function findLicense(name: string): any {
+    // escape regex metacharacters so inputs like "c++" or a file path can't
+    // produce an invalid pattern or match unintended entries
+    const escaped = name.toLowerCase().replace(RX_ESCAPE, '\\$&');
+    const rx = new RegExp(`^${escaped}`, 'i');
+
     for (let id of Object.keys(LICENSES)) {
         if (
             name === id ||
             name.toLowerCase() === id ||
-            new RegExp(`^${name.toLowerCase()}`, 'i').test(LICENSES[id].spdx_id)
+            rx.test(LICENSES[id].spdx_id)
         ) {
             return LICENSES[id];
         }
     }
 
     for (let id of Object.keys(LICENSES)) {
-        if (new RegExp(`^${name.toLowerCase()}`, 'i').test(LICENSES[id].name)) {
+        if (rx.test(LICENSES[id].name)) {
             return LICENSES[id];
         }
     }

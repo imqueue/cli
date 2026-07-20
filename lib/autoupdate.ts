@@ -35,12 +35,20 @@ const pkg = require('../package.json');
  */
 export async function checkForUpdate() {
     try {
+        // allow users/CI to skip the network round-trip entirely
+        if (process.env.IMQ_NO_UPDATE_CHECK) {
+            return;
+        }
+
         // non-interactive runs (pipes, CI) must never hang on a prompt
         if (!process.stdin.isTTY || !process.stdout.isTTY) {
             return;
         }
 
-        const remoteVersion = execSync(`npm show ${pkg.name} version`)
+        const remoteVersion = execSync(`npm show ${pkg.name} version`, {
+            // don't block the CLI indefinitely on a slow/unreachable registry
+            timeout: 3000,
+        })
             .toString('utf8')
             .trim();
         const localVersion = pkg.version.trim();
