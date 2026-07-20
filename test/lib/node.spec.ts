@@ -21,10 +21,26 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { describe, it } from 'node:test';
+import { describe, it, mock, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import '../mocks/index.js';
 import * as node from '../../lib/node.js';
+
+// canned nodejs.org dist index so the suite is deterministic and offline-safe
+const DIST = [
+    { version: 'v4.3.2', lts: false },
+    { version: 'v22.3.0', lts: false },
+    { version: 'v20.11.1', lts: 'Iron' },
+    { version: 'v10.24.1', lts: false },
+];
+
+function stubDist() {
+    mock.method(
+        globalThis,
+        'fetch',
+        async () => ({ ok: true, json: async () => DIST }) as any,
+    );
+}
 
 describe('node', () => {
     describe('semverCompare()', () => {
@@ -49,42 +65,42 @@ describe('node', () => {
     });
 
     describe('getNodeVersions()', () => {
+        afterEach(() => mock.restoreAll());
+
         it('should be a function', () => {
             assert.equal(typeof node.getNodeVersions, 'function');
         });
 
-        it('should return node versions', async () => {
-            const versions = await node.getNodeVersions();
+        it('should return node versions sorted descending', async () => {
+            stubDist();
+
+            const versions = await node.getNodeVersions(true);
+
             assert.ok(versions instanceof Array);
-            assert.equal(typeof versions[0].version, 'string');
             assert.match(versions[0].version, /^v\d+\.\d+\.\d+$/);
+            assert.equal(versions[0].version, 'v22.3.0');
         });
     });
 
     describe('nodeVersion()', () => {
+        afterEach(() => mock.restoreAll());
+
         it('should be a function', () => {
             assert.equal(typeof node.nodeVersion, 'function');
         });
 
         it('should return proper version for given tag', async () => {
-            const versions = await node.getNodeVersions();
-            const lts: any = versions.find(v => !!v.lts);
-            const max10: any = versions.find(v => v.version.startsWith('v10'));
-            const max43: any = versions.find(v => /v4\.3/.test(v.version));
+            stubDist();
+            // seed the cache with the stubbed dist so nodeVersion resolves
+            await node.getNodeVersions(true);
 
-            assert.equal(
-                'v' + (await node.nodeVersion('latest')),
-                versions[0].version,
-            );
-            assert.equal(
-                'v' + (await node.nodeVersion('node')),
-                versions[0].version,
-            );
-            assert.equal('v' + (await node.nodeVersion('stable')), lts.version);
-            assert.equal('v' + (await node.nodeVersion('lts')), lts.version);
-            assert.equal('v' + (await node.nodeVersion('lts/*')), lts.version);
-            assert.equal('v' + (await node.nodeVersion('10')), max10.version);
-            assert.equal('v' + (await node.nodeVersion('4.3')), max43.version);
+            assert.equal(await node.nodeVersion('latest'), '22.3.0');
+            assert.equal(await node.nodeVersion('node'), '22.3.0');
+            assert.equal(await node.nodeVersion('stable'), '20.11.1');
+            assert.equal(await node.nodeVersion('lts'), '20.11.1');
+            assert.equal(await node.nodeVersion('lts/*'), '20.11.1');
+            assert.equal(await node.nodeVersion('10'), '10.24.1');
+            assert.equal(await node.nodeVersion('4.3'), '4.3.2');
         });
     });
 
