@@ -26,6 +26,7 @@ import { execFileSync } from 'child_process';
 import { DEFAULT_TEMPLATES_REF, commandExists, cpr } from '../../lib/index.js';
 import {
     ciProviders,
+    containerRegistries,
     registerBuiltinProviders,
     scmTools,
     vcsHosts,
@@ -250,7 +251,31 @@ export async function runCreate(
         state.repoCreated = true;
     }
 
-    // 3. CI + docker tokens/activation
+    // 3. SECRETS - provision registry credentials to CIs that support it
+    //    (travis bakes them into its config instead, so has no setSecrets)
+    if (state.repoCreated && plan.dockerize && ci.setSecrets) {
+        const registryId = plan.config.registry.provider;
+        const registry = registryId
+            ? containerRegistries.tryGet(registryId)
+            : undefined;
+
+        if (registry) {
+            try {
+                console.log('Provisioning CI secrets...');
+                await ci.setSecrets(plan, registry.secrets(plan));
+            } catch {
+                console.log(
+                    styleText(
+                        'red',
+                        'Could not provision CI secrets automatically; add ' +
+                            'them manually in your CI provider.',
+                    ),
+                );
+            }
+        }
+    }
+
+    // 4. CI + docker tokens/activation
     await applyCi(plan, state.repoCreated, isV2);
 
     // 4. INSTALL

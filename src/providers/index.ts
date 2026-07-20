@@ -30,6 +30,8 @@ import {
 import { github } from './vcs/github.js';
 import { git } from './scm/git.js';
 import { travis } from './ci/travis.js';
+import { githubActions } from './ci/github-actions.js';
+import { circleci } from './ci/circleci.js';
 import { dockerhub } from './registry/dockerhub.js';
 
 let registered = false;
@@ -47,6 +49,8 @@ export function registerBuiltinProviders(): void {
 
     vcsHosts.register(github);
     scmTools.register(git);
+    ciProviders.register(githubActions);
+    ciProviders.register(circleci);
     ciProviders.register(travis);
     containerRegistries.register(dockerhub);
 }

@@ -34,6 +34,7 @@ export interface VcsConfig {
 
 export interface CiConfig {
     provider?: string;
+    auth?: { token?: string };
 }
 
 export interface RegistryConfig {

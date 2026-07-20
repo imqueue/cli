@@ -203,6 +203,8 @@ export const { command, describe, builder, handler } = {
             .describe('p', 'Service repository will be private at GitHub')
             .boolean('p')
 
+            .describe('ci', 'CI provider (github-actions, circleci, travis)')
+
             .describe(
                 'packages',
                 'Comma-separated @imqueue addon packages to include ' +

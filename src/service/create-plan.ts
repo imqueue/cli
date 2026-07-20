@@ -41,6 +41,9 @@ import type { CreateContext } from '../providers/types.js';
 import { type ResolvedLicense, resolveLicense } from './create-scaffold.js';
 import { loadCatalog } from '../catalog/load.js';
 import { resolvePackages } from '../catalog/resolve.js';
+import { ciProviders, registerBuiltinProviders } from '../providers/index.js';
+
+const DEFAULT_CI = 'github-actions';
 
 export const DEFAULT_SERVICE_VERSION = '1.0.0-0';
 
@@ -281,6 +284,82 @@ async function resolveVcs(
 }
 
 /**
+ * Resolves the CI provider, filtered by the chosen VCS host. Prefers an
+ * explicit flag/config value, prompts interactively among compatible CIs, and
+ * otherwise defaults to GitHub Actions (falling back to any compatible one).
+ */
+async function resolveCi(
+    argv: any,
+    structured: StructuredConfig,
+    vcsProvider: string,
+    interactive: boolean,
+): Promise<string> {
+    registerBuiltinProviders();
+
+    const compatible = (id: string): boolean => {
+        const p = ciProviders.tryGet(id);
+
+        return (
+            !!p &&
+            (!p.supportedVcs.length ||
+                !vcsProvider ||
+                p.supportedVcs.includes(vcsProvider))
+        );
+    };
+
+    let ci = (argv.ci || '').trim() || structured.ci.provider || '';
+
+    if (!ci) {
+        const choices = ciProviders
+            .list()
+            .filter(p => compatible(p.id))
+            .map(p => ({ name: p.title, value: p.id }));
+
+        if (interactive && choices.length) {
+            const answer = await inquirer.prompt<{ ci: string }>([
+                {
+                    type: 'list',
+                    name: 'ci',
+                    message: 'Select CI provider:',
+                    choices,
+                    default:
+                        choices.find(c => c.value === DEFAULT_CI)?.value ||
+                        choices[0]?.value,
+                },
+            ] as QuestionCollection);
+
+            ci = answer.ci;
+        } else {
+            ci = compatible(DEFAULT_CI)
+                ? DEFAULT_CI
+                : ciProviders.list().find(p => compatible(p.id))?.id ||
+                  DEFAULT_CI;
+        }
+    }
+
+    const provider = ciProviders.tryGet(ci);
+
+    if (!provider) {
+        throw new Error(
+            `Unknown CI provider "${ci}". Available: ` +
+                `${ciProviders.ids().join(', ')}.`,
+        );
+    }
+
+    if (
+        vcsProvider &&
+        provider.supportedVcs.length &&
+        !provider.supportedVcs.includes(vcsProvider)
+    ) {
+        throw new Error(
+            `CI "${ci}" does not support the "${vcsProvider}" host.`,
+        );
+    }
+
+    return ci;
+}
+
+/**
  * Resolves whether git integration should run, prompting interactively when
  * the choice is not already made. Honors an explicit stored `false`.
  */
@@ -443,6 +522,12 @@ export async function buildCreatePlan(
         : { want: false, namespace: '', user: '', password: '' };
 
     const dockerize = registry.want && !!registry.namespace;
+    const ciProvider = await resolveCi(
+        argv,
+        structured,
+        vcsConfig.provider,
+        interactive,
+    );
     const nodeTags = await resolveNodeTags(argv, interactive);
     const packages = await resolvePackages(
         argv.packages,
@@ -466,7 +551,7 @@ export async function buildCreatePlan(
             private: vcsConfig.private,
             auth: { token: token || undefined },
         },
-        ci: { provider: 'travis' },
+        ci: { provider: ciProvider, auth: structured.ci.auth },
         registry: {
             provider: dockerize ? 'dockerhub' : undefined,
             namespace: registry.namespace || undefined,
