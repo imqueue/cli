@@ -28,18 +28,24 @@ import {
     loadConfig,
     saveConfig,
     prepareConfigValue,
+    setPath,
 } from '../../lib/index.js';
 
 export const { command, describe, handler } = {
     command: 'set <option> <value>',
-    describe: 'Updates given config option with given value',
+    describe:
+        'Updates given config option with given value. Nested options may ' +
+        'be addressed with a dot-path, e.g. "ci.provider".',
 
     handler(argv: Arguments) {
         try {
             const config = loadConfig();
 
-            config[(argv as any).option] = prepareConfigValue(
-                (argv as any).value,
+            // dot-path aware; a plain key (no dots) behaves as before
+            setPath(
+                config,
+                (argv as any).option,
+                prepareConfigValue((argv as any).value),
             );
             saveConfig(config);
 

@@ -23,7 +23,7 @@
  */
 import { styleText } from 'node:util';
 import { type Argv, type Arguments } from 'yargs';
-import { printError, loadConfig } from '../../lib/index.js';
+import { printError, loadConfig, getPath } from '../../lib/index.js';
 
 let PROGRAM: string = '';
 
@@ -67,8 +67,10 @@ export const { command, describe, builder, handler } = {
             }
 
             if ((argv as any).option) {
+                // dot-path aware; a plain key (no dots) behaves as before
                 return process.stdout.write(
-                    JSON.stringify(config[(argv as any).option]) + '\n',
+                    JSON.stringify(getPath(config, (argv as any).option)) +
+                        '\n',
                 );
             }
 
