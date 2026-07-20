@@ -31,6 +31,12 @@ import {
     vcsHosts,
 } from '../providers/index.js';
 import type { FileFragment } from '../providers/types.js';
+import { loadCatalog } from '../catalog/load.js';
+import {
+    type AddonResult,
+    mergeDependencies,
+    resolveAddons,
+} from '../catalog/apply.js';
 import type { CreatePlan } from './create-plan.js';
 import {
     buildServiceTokens,
@@ -99,6 +105,7 @@ function scaffold(
     plan: CreatePlan,
     templatePath: string,
     fragments: FileFragment[],
+    addons: AddonResult,
 ): void {
     console.log(`Building service from template "${templatePath}"...`);
     cpr(templatePath, plan.path);
@@ -120,6 +127,8 @@ function scaffold(
         homepage: plan.homepage,
         bugs: plan.bugs,
         license: plan.license,
+        addonPreload: addons.preload,
+        addonConfig: addons.config,
     });
 
     writeLicense(plan.path, plan.license.text);
@@ -209,11 +218,28 @@ export async function runCreate(
     const manifest = loadTemplateManifest(templatePath);
     const isV2 = !!manifest && (manifest.version ?? 0) >= 2;
     const ci = ciProviders.get(plan.config.ci.provider as string);
+    const addons = resolveAddons(plan.config.packages, loadCatalog());
 
-    // v2 templates ship no CI files; the CI provider contributes them
-    const fragments = isV2 ? ci.files(plan) : [];
+    // v2 templates ship no CI files; the CI provider contributes them.
+    // addon files are overlaid regardless (they are independent files)
+    const fragments = [...(isV2 ? ci.files(plan) : []), ...addons.files];
 
-    scaffold(plan, templatePath, fragments);
+    scaffold(plan, templatePath, fragments, addons);
+
+    // merge addon dependencies into the (now compiled) package.json
+    mergeDependencies(plan.path, addons.deps, addons.devDeps);
+
+    // v1 templates lack %ADDON token points, so code snippets can't inject
+    if (addons.hasSnippets && !isV2) {
+        console.log(
+            styleText(
+                'yellow',
+                'Selected addons include code snippets, but this template ' +
+                    'has no addon insertion points - dependencies were added, ' +
+                    'wire the code manually.',
+            ),
+        );
+    }
 
     // 2. VCS - create the remote repository
     if (plan.useVcs) {
@@ -247,5 +273,18 @@ export async function runCreate(
     // 6. REPORT
     for (const note of ci.instructions(plan)) {
         console.log(styleText('cyan', note));
+    }
+
+    for (const note of addons.instructions) {
+        console.log(styleText('cyan', note));
+    }
+
+    if (addons.env.length) {
+        console.log(
+            styleText(
+                'cyan',
+                `Addon environment variables: ${addons.env.join(', ')}`,
+            ),
+        );
     }
 }

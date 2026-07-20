@@ -39,6 +39,8 @@ import {
 } from '../../lib/index.js';
 import type { CreateContext } from '../providers/types.js';
 import { type ResolvedLicense, resolveLicense } from './create-scaffold.js';
+import { loadCatalog } from '../catalog/load.js';
+import { resolvePackages } from '../catalog/resolve.js';
 
 export const DEFAULT_SERVICE_VERSION = '1.0.0-0';
 
@@ -442,6 +444,13 @@ export async function buildCreatePlan(
 
     const dockerize = registry.want && !!registry.namespace;
     const nodeTags = await resolveNodeTags(argv, interactive);
+    const packages = await resolvePackages(
+        argv.packages,
+        Array.isArray(service.packages) ? service.packages : undefined,
+        Array.isArray(global.packages) ? global.packages : undefined,
+        loadCatalog(),
+        interactive,
+    );
     const license = resolveLicense(
         await resolveLicenseId(argv, global, interactive),
         author,
@@ -464,7 +473,7 @@ export async function buildCreatePlan(
             auth: { user: registry.user, password: registry.password },
         },
         templatesRef: structured.templatesRef,
-        packages: [],
+        packages,
     };
 
     return {

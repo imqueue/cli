@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "groups": {
+    "tracing": { "title": "Tracing / APM", "exclusive": true },
+    "orm": { "title": "ORM / database", "exclusive": true },
+    "features": { "title": "Service features", "exclusive": false }
+  },
+  "packages": {
+    "opentelemetry": {
+      "group": "tracing",
+      "title": "OpenTelemetry instrumentation",
+      "deps": { "@imqueue/opentelemetry-instrumentation-imqueue": "*" },
+      "snippets": { "preload": "import '@imqueue/opentelemetry-instrumentation-imqueue';" },
+      "env": ["OTEL_EXPORTER_OTLP_ENDPOINT"],
+      "instructions": [
+        "OpenTelemetry: set OTEL_EXPORTER_OTLP_ENDPOINT to your collector endpoint."
+      ]
+    },
+    "dd-trace": {
+      "group": "tracing",
+      "title": "Datadog APM (dd-trace)",
+      "deps": { "@imqueue/dd-trace": "*" },
+      "snippets": { "preload": "import '@imqueue/dd-trace';" },
+      "env": ["DD_AGENT_HOST", "DD_TRACE_ENABLED"],
+      "instructions": [
+        "Datadog: ensure a Datadog agent is reachable via DD_AGENT_HOST."
+      ]
+    },
+    "sequelize": {
+      "group": "orm",
+      "title": "Sequelize ORM",
+      "deps": { "@imqueue/sequelize": "*", "sequelize": "*" },
+      "instructions": [
+        "Sequelize: configure your database connection in config.ts."
+      ]
+    },
+    "prisma": {
+      "group": "orm",
+      "title": "Prisma ORM",
+      "deps": { "@prisma/client": "*" },
+      "devDeps": { "prisma": "*" },
+      "instructions": [
+        "Prisma: run `npx prisma init` and define your schema."
+      ]
+    },
+    "pg-cache": {
+      "group": "features",
+      "title": "PostgreSQL query cache",
+      "deps": { "@imqueue/pg-cache": "*" }
+    },
+    "pg-pubsub": {
+      "group": "features",
+      "title": "PostgreSQL pub/sub",
+      "deps": { "@imqueue/pg-pubsub": "*" }
+    },
+    "tag-cache": {
+      "group": "features",
+      "title": "Tag-based cache",
+      "deps": { "@imqueue/tag-cache": "*" }
+    },
+    "job": {
+      "group": "features",
+      "title": "Background jobs",
+      "deps": { "@imqueue/job": "*" }
+    },
+    "net": {
+      "group": "features",
+      "title": "Network helpers",
+      "deps": { "@imqueue/net": "*" }
+    },
+    "http-protect": {
+      "group": "features",
+      "title": "HTTP protection",
+      "deps": { "@imqueue/http-protect": "*" }
+    },
+    "graphql-dependency": {
+      "group": "features",
+      "title": "GraphQL dependency resolution",
+      "deps": { "@imqueue/graphql-dependency": "*" }
+    },
+    "type-graphql-dependency": {
+      "group": "features",
+      "title": "TypeGraphQL dependency resolution",
+      "deps": { "@imqueue/type-graphql-dependency": "*" }
+    }
+  }
+}
