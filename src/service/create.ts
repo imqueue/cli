@@ -203,6 +203,12 @@ export const { command, describe, builder, handler } = {
             .describe('p', 'Service repository will be private at GitHub')
             .boolean('p')
 
+            .describe(
+                'packages',
+                'Comma-separated @imqueue addon packages to include ' +
+                    '(use --no-packages for none)',
+            )
+
             .describe('dry-run', 'Print the resolved plan and exit')
             .boolean('dry-run')
             .default('dry-run', false)
