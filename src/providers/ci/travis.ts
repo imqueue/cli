@@ -89,8 +89,52 @@ export const travis: CiProvider = {
     title: 'Travis CI (legacy)',
     supportedVcs: ['github'],
 
-    files(): FileFragment[] {
-        return [];
+    files(ctx: CreateContext): FileFragment[] {
+        const head = `dist: xenial
+language: node_js
+node_js:
+%TRAVIS_NODE_TAG
+`;
+
+        if (!ctx.dockerize) {
+            return [{ relPath: '.travis.yml', content: head }];
+        }
+
+        // docker build & push wired to the selected registry's credentials
+        return [
+            {
+                relPath: '.travis.yml',
+                content: `${head}services:
+- docker
+after_success:
+- export DOCKER_REPO="%DOCKER_NAMESPACE/%SERVICE_NAME"
+- export VERSION_REGEX="^v([0-9]+)\\.([0-9]+)\\.([0-9]+)$"
+- export DEV_VERSION_REGEX="^v([0-9]+)\\.([0-9]+)\\.([0-9]+)-([0-9A-Za-z]+)$"
+- export DOCKER_TAGS=()
+- export DATE_STR=\`date +"%Y-%m-%d-%H-%M-%S"\`
+- docker build -f Dockerfile -t $DOCKER_REPO:$TRAVIS_COMMIT . || travis_terminate 1
+- if [[ $TRAVIS_TAG =~ $DEV_VERSION_REGEX ]]; then
+    DOCKER_TAGS+=( "dev" ) && DOCKER_TAGS+=( $TRAVIS_TAG );
+  fi
+- if [[ $TRAVIS_TAG =~ $VERSION_REGEX ]]; then
+    DOCKER_TAGS+=( "latest" ) && DOCKER_TAGS+=( $TRAVIS_TAG );
+  fi
+- if [[ $TRAVIS_BRANCH == "release" ]]; then
+    DOCKER_TAGS+=( "release" ) && DOCKER_TAGS+=( "release-\${DATE_STR}");
+  fi
+- if [ \${#DOCKER_TAGS[@]} -gt 0 ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
+    for tag in "\${DOCKER_TAGS[@]}"; do
+      docker tag $DOCKER_REPO:$TRAVIS_COMMIT $DOCKER_REPO:$tag;
+    done;
+    docker login -u $DOCKER_USER -p $DOCKER_PASS || travis_terminate 1;
+    docker push $DOCKER_REPO || travis_terminate 1;
+  fi
+env:
+  global:
+  %DOCKER_SECRETS
+`,
+            },
+        ];
     },
 
     async tokens(ctx: CreateContext): Promise<Record<string, string>> {

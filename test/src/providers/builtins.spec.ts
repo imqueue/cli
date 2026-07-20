@@ -110,5 +110,22 @@ describe('builtin providers', () => {
             assert.equal(tokens.NODE_DOCKER_TAG, '');
             assert.equal(tokens.DOCKER_SECRETS, '');
         });
+
+        it('should emit a minimal .travis.yml fragment without docker', () => {
+            const files = travis.files({ ...ctx, dockerize: false });
+
+            assert.equal(files.length, 1);
+            assert.equal(files[0].relPath, '.travis.yml');
+            assert.match(files[0].content, /language: node_js/);
+            assert.doesNotMatch(files[0].content, /services:/);
+        });
+
+        it('should emit a docker-enabled .travis.yml fragment when dockerizing', () => {
+            const files = travis.files({ ...ctx, dockerize: true });
+
+            assert.match(files[0].content, /services:\n- docker/);
+            assert.match(files[0].content, /docker login/);
+            assert.match(files[0].content, /%DOCKER_SECRETS/);
+        });
     });
 });

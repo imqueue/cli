@@ -32,6 +32,7 @@ import {
 import * as fs from 'fs';
 import { execFileSync } from 'child_process';
 import { commandExists } from './node.js';
+import { DEFAULT_TEMPLATES_REF } from './config-schema.js';
 
 /**
  * Wraps words of given text to match given char width, using given indentation
@@ -79,13 +80,15 @@ export function checkGit() {
  *
  * @return {Promise<any>}
  */
-export async function loadTemplates() {
+export async function loadTemplates(ref: string = DEFAULT_TEMPLATES_REF) {
     if (fs.existsSync(TPL_HOME)) {
-        await updateTemplates();
+        await updateTemplates(ref);
     } else {
         checkGit();
         console.log('Loading IMQ templates, please, wait...');
-        execFileSync('git', ['clone', TPL_REPO, TPL_HOME], {
+        // pin the templates branch so new-CLI installs never pick up template
+        // changes meant for older CLIs (and vice versa)
+        execFileSync('git', ['clone', '--branch', ref, TPL_REPO, TPL_HOME], {
             stdio: 'inherit',
         });
     }
@@ -109,16 +112,20 @@ export async function loadTemplates() {
  *
  * @return {Promise<void>}
  */
-export async function updateTemplates() {
+export async function updateTemplates(ref: string = DEFAULT_TEMPLATES_REF) {
     checkGit();
 
     console.log('Updating IMQ templates, please, wait...');
 
+    // run in TPL_HOME via cwd (no global chdir to leak on failure); keep the
+    // local copy usable if any step fails (e.g. offline)
+    const git = (...args: string[]) =>
+        execFileSync('git', args, { cwd: TPL_HOME, stdio: 'inherit' });
+
     try {
-        // run in TPL_HOME via cwd (no global chdir to leak on failure)
-        execFileSync('git', ['pull'], { cwd: TPL_HOME, stdio: 'inherit' });
+        git('fetch', 'origin', ref);
+        git('checkout', '-B', ref, 'FETCH_HEAD');
     } catch {
-        // offline or pull failed - keep using the existing local copy
         console.log('Could not update templates, using local copy for now...');
     }
 }

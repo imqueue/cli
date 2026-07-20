@@ -22,15 +22,23 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import * as fs from 'fs';
+import * as p from 'path';
 import {
     findLicense,
     loadTemplate,
     loadTemplates,
+    mkdirp,
     resolve,
     touch,
     wrap,
     dashed,
 } from '../../lib/index.js';
+import type { FileFragment } from '../providers/types.js';
+
+export interface TemplateManifest {
+    version: number;
+    [key: string]: any;
+}
 
 export interface ResolvedLicense {
     text: string;
@@ -50,6 +58,8 @@ export interface ServiceTokenInput {
     homepage: string;
     bugs: string;
     license: ResolvedLicense;
+    addonPreload?: string;
+    addonConfig?: string;
 }
 
 /**
@@ -59,7 +69,10 @@ export interface ServiceTokenInput {
  * @param {string} template
  * @return {Promise<string>}
  */
-export async function ensureTemplate(template: string): Promise<string> {
+export async function ensureTemplate(
+    template: string,
+    ref?: string,
+): Promise<string> {
     if (fs.existsSync(template)) {
         return template;
     }
@@ -68,13 +81,90 @@ export async function ensureTemplate(template: string): Promise<string> {
         return await loadTemplate(template);
     }
 
-    const templates = await loadTemplates();
+    const templates = await loadTemplates(ref);
 
     if (!templates[template]) {
         throw new Error(`No such template exists - "${template}"`);
     }
 
     return templates[template];
+}
+
+/**
+ * Reads a template's manifest (imq-template.json). Absent/unreadable manifest
+ * means a legacy v1 template.
+ *
+ * @param {string} templatePath
+ * @return {TemplateManifest | null}
+ */
+export function loadTemplateManifest(
+    templatePath: string,
+): TemplateManifest | null {
+    try {
+        return JSON.parse(
+            fs.readFileSync(resolve(templatePath, 'imq-template.json'), {
+                encoding: 'utf8',
+            }),
+        );
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Whether the scaffolded service is an ES module (package.json type=module),
+ * which decides the module style of generated code.
+ *
+ * @param {string} servicePath
+ * @return {boolean}
+ */
+export function isEsmService(servicePath: string): boolean {
+    try {
+        const pkg = JSON.parse(
+            fs.readFileSync(resolve(servicePath, 'package.json'), {
+                encoding: 'utf8',
+            }),
+        );
+
+        return pkg.type === 'module';
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Overlays provider/addon file fragments onto a scaffolded service,
+ * overwriting any same-named template file.
+ *
+ * @param {string} servicePath
+ * @param {FileFragment[]} fragments
+ */
+export function overlayFragments(
+    servicePath: string,
+    fragments: FileFragment[],
+): void {
+    for (const fragment of fragments) {
+        const full = resolve(servicePath, fragment.relPath);
+
+        mkdirp(p.dirname(full));
+        fs.writeFileSync(full, fragment.content, { encoding: 'utf8' });
+    }
+}
+
+/**
+ * Removes docker artifacts from a v2 service when dockerization is disabled.
+ * (v2 templates ship no CI file, so only docker files are removed here.)
+ *
+ * @param {string} path
+ */
+export function removeDockerFiles(path: string): void {
+    for (const file of ['Dockerfile', '.dockerignore']) {
+        const full = resolve(path, file);
+
+        if (fs.existsSync(full)) {
+            fs.unlinkSync(full);
+        }
+    }
 }
 
 /**
@@ -275,6 +365,10 @@ export function buildServiceTokens(
         LICENSE_TEXT: input.license.text,
         LICENSE_NAME: input.license.name,
         LICENSE_TAG: input.license.tag,
+        // addon token points; populated by the package catalog (phase 3),
+        // empty otherwise so v2 templates compile cleanly with no addons
+        ADDON_PRELOAD: input.addonPreload || '',
+        ADDON_CONFIG: input.addonConfig || '',
     };
 }
 
@@ -287,20 +381,23 @@ export function buildServiceTokens(
 export function createServiceFile(
     path: string,
     tokens: Record<string, string>,
+    esm: boolean,
 ): void {
     console.log('Creating main service file...');
 
+    const cls = tokens.SERVICE_CLASS_NAME;
+    const pkgLoad = esm
+        ? `import { createRequire } from 'node:module';\n\nconst require = ` +
+          `createRequire(import.meta.url);\nconst pkg = require('../package.json');`
+        : `const pkg = require('../package.json');`;
+
     touch(
-        resolve(path, 'src', `${tokens.SERVICE_CLASS_NAME}.ts`),
+        resolve(path, 'src', `${cls}.ts`),
         `${tokens.LICENSE_HEADER}
 import { expose, IMQService, lock, logged, profile } from '@imqueue/rpc';
+${pkgLoad}
 
-export class ${tokens.SERVICE_CLASS_NAME} extends IMQService {
-    /**
-     * Service package data
-     */
-    private pkg = require('../package.json');
-
+export class ${cls} extends IMQService {
     /**
      * Returns current version of running service
      *
@@ -314,9 +411,9 @@ export class ${tokens.SERVICE_CLASS_NAME} extends IMQService {
     @lock()
     @profile()
     @expose()
-    public version(): { name: string; version: string; repository: string } {
-        const { name, version, repository } = this.pkg;
-        return { name, version, repository: repository.url };
+    public version(): { name: string; version: string; repository?: string } {
+        const { name, version, repository } = pkg;
+        return { name, version, repository: repository?.url };
     }
 
     // Implement your service methods below this line
@@ -334,26 +431,59 @@ export class ${tokens.SERVICE_CLASS_NAME} extends IMQService {
 export function createServiceTestFile(
     path: string,
     tokens: Record<string, string>,
+    esm: boolean,
 ): void {
     console.log('Creating main service test file...');
 
-    touch(
-        resolve(path, 'test/src', `${tokens.SERVICE_CLASS_NAME}.ts`),
-        `${tokens.LICENSE_HEADER}
-import { expect } from 'chai';
-import { ${tokens.SERVICE_CLASS_NAME} } from '../../src';
+    const cls = tokens.SERVICE_CLASS_NAME;
+    const content = esm
+        ? `${tokens.LICENSE_HEADER}
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { ${cls} } from '../../src/index.js';
 
+const require = createRequire(import.meta.url);
 
-describe('${tokens.SERVICE_CLASS_NAME}', () => {
+describe('${cls}', () => {
     it('should be a class of IMQService', () => {
-        expect(typeof ${tokens.SERVICE_CLASS_NAME})
+        assert.equal(typeof ${cls}, 'function');
+        assert.equal(typeof (${cls}.prototype as any).describe, 'function');
+    });
+
+    describe('version()', () => {
+        const service = new ${cls}();
+        const pkg = require('../../package.json');
+
+        it('should be a function', () => {
+            assert.equal(typeof service.version, 'function');
+        });
+
+        it('should return proper name string', async () => {
+            assert.equal((await service.version()).name, pkg.name);
+        });
+
+        it('should return proper version string', async () => {
+            assert.equal((await service.version()).version, pkg.version);
+        });
+    });
+});
+`
+        : `${tokens.LICENSE_HEADER}
+import { expect } from 'chai';
+import { ${cls} } from '../../src';
+
+
+describe('${cls}', () => {
+    it('should be a class of IMQService', () => {
+        expect(typeof ${cls})
             .equals('function');
-        expect(typeof (${tokens.SERVICE_CLASS_NAME}.prototype as any).describe)
+        expect(typeof (${cls}.prototype as any).describe)
             .equals('function');
     });
 
     describe('version()', () => {
-        const service = new ${tokens.SERVICE_CLASS_NAME}();
+        const service = new ${cls}();
         const pkg = require('../../package.json');
 
         it('should be a function', () => {
@@ -369,8 +499,9 @@ describe('${tokens.SERVICE_CLASS_NAME}', () => {
         });
     });
 });
-`,
-    );
+`;
+
+    touch(resolve(path, 'test/src', `${cls}.ts`), content);
 }
 
 /**
