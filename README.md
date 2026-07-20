@@ -51,14 +51,21 @@ Options:
 The main essence of this command-line tool is to provide simple way of
 creating services based on boilerplate templates.
 
-Currently it supports a single template `default`, which provides a way to
-create a service, targeted to be developed under GitHub version control
-system, integrated with TravisCI and docker builds. By simply running a single
-command it will create a ready-to-run service and all you will need is to
-write it's implementation.
+Service creation is organized around four independent, pluggable axes so you
+can mix and match the tools you actually use:
 
-It is recommended to run `imq config init` right after installation of this
-command-line tool and before running `imq service create` commands.
+- **VCS host** (`--vcs`): `github` (default), `gitlab`, `bitbucket`
+- **CI provider** (`--ci`): `github-actions` (default), `circleci`, `travis`
+  (legacy). Choices are filtered to those compatible with the selected host.
+- **Container registry** (`--registry`): `dockerhub` (default), `google`
+  (Artifact Registry), `aws-ecr`, `azure-acr`
+- **Addon packages** (`--packages`): optional secondary @imqueue libraries
+  (see [Package Catalog](#package-catalog))
+
+Every option resolves with the precedence **CLI flag → per-service
+`.imqrc.json` → global `~/.imq/config.json` → interactive prompt → default**,
+so non-interactive runs never hang. It is recommended to run `imq config init`
+right after installation to set your defaults.
 
 ~~~
 imq service create [name] [path]
@@ -66,35 +73,58 @@ imq service create [name] [path]
 Creates new service package with the given service name under given path.
 
 Options:
-  --version               Show version number                          [boolean]
-  --help                  Show help                                    [boolean]
-  -a, --author            Service author full name (person or organization)
-  -e, --email             Service author's contact email
-  -g, --use-git           Turns on automatic git repo creation         [boolean]
-  -u, --github-namespace  GitHub namespace (usually user name or organization
-                          name)
-  --no-install            Do not install npm packages automatically on service
-                          creation                                     [boolean]
-  -V, --service-version   Initial service version             [default: "1.0.0"]
-  -H, --homepage          Homepage URL for service, if required
-  -B, --bugs-url          Bugs url for service, if required
-  -l, --license           License for created service, should be either license
-                          name in SPDX format or path to a custom license file
-  -t, --template          Template used to create service (should be either
-                          template name, git url or file system directory)
-  -d, --description       Service description
-  -n, --node-versions     Node version tags to use for builds, separated by
-                          comma if multiple. First one will be used for docker
-                          build, if dockerize option enabled.
-  -D, --dockerize         Enable service dockerization with CI builds  [boolean]
-  -L, --node-docker-tag   Node docker tag to use as base docker image for docker
-                          builds
-  -N, --docker-namespace  Docker hub namespace
-  -T, --github-token      GitHub auth token
-  -p, --private           Service repository will be private at GitHub [boolean]
-  --name                  Service name to create with
-  --path                  Path to directory where service will be generated to
+  -a, --author           Service author full name (person or organization)
+  -e, --email            Service author's contact email
+  -g, --use-git          Turn on automatic repo creation               [boolean]
+      --vcs              VCS host: github, gitlab, bitbucket
+  -u, --github-namespace VCS namespace (user, organization or workspace)
+      --ci               CI provider: github-actions, circleci, travis
+      --registry         Container registry: dockerhub, google, aws-ecr,
+                         azure-acr
+      --region           Registry region (google, aws-ecr)
+      --project          GCP project id (google)
+      --account-id       AWS account id (aws-ecr)
+      --packages         Comma-separated addon packages (--no-packages for none)
+      --no-install       Do not install npm packages automatically     [boolean]
+  -V, --service-version  Initial service version           [default: "1.0.0-0"]
+  -H, --homepage         Homepage URL for service, if required
+  -B, --bugs-url         Bugs url for service, if required
+  -l, --license          SPDX license name/id or path to a custom license file
+  -t, --template         Template name, git url or file system directory
+  -d, --description      Service description
+  -n, --node-versions    Node version tags for CI builds (comma-separated)
+  -D, --dockerize        Enable service dockerization with CI builds   [boolean]
+  -L, --node-docker-tag  Node docker tag to use as base docker image
+  -N, --docker-namespace Registry namespace / repository / ACR name
+  -T, --github-token     VCS auth token
+  -p, --private          Repository will be private                    [boolean]
+      --dry-run          Print the resolved plan and exit              [boolean]
+  -y, --yes              Skip the confirmation prompt                  [boolean]
+      --name             Service name to create with
+      --path             Path to directory where service will be generated to
 ~~~
+
+Use `--dry-run` to preview the fully-resolved plan (providers, repo url, image
+reference, packages) without making any changes — handy for scripting and CI.
+
+The chosen providers and packages are written to a committed `.imqrc.json` in
+the generated service, so later commands and re-creations reuse them.
+
+#### Package Catalog
+
+`imq service create --packages <list>` adds secondary @imqueue libraries and
+wires them in. The catalog is data (`catalog.json` in the templates repo), so
+new addons can be published without a CLI release. Groups marked *exclusive*
+allow a single choice:
+
+- **tracing** (exclusive): `dd-trace`, `opentelemetry`
+- **orm** (exclusive): `sequelize`, `prisma`
+- **features**: `pg-cache`, `pg-pubsub`, `tag-cache`, `job`, `net`,
+  `http-protect`, `graphql-dependency`, `type-graphql-dependency`
+
+Each addon merges its dependencies, may inject wiring code at the template's
+`%ADDON_PRELOAD` / `%ADDON_CONFIG` points, and prints any required environment
+variables after creation.
 
 ### Client Management
 
@@ -169,7 +199,13 @@ will print a single requested option value.
 ~~~bash
 imq config set [option_name] [new_value]
 ~~~
-will set requested option to a given new value.
+will set requested option to a given new value. Nested options can be
+addressed with a dot-path, e.g. `imq config set ci.provider circleci` or
+`imq config set vcs.namespace my-org`. The config keeps the structured v4
+keys (`vcs`, `ci`, `registry`, `packages`, `templatesRef`) and their legacy
+equivalents in sync, so upgrading or downgrading the CLI keeps working. A
+config written by an older CLI is read transparently (github + travis +
+dockerhub).
 
 ~~~bash
 imq config check
