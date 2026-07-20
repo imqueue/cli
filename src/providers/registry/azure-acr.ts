@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI providers: registry/dockerhub
+ * IMQ-CLI providers: registry/azure-acr
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>
@@ -29,41 +29,56 @@ import type {
 } from '../types.js';
 
 /**
- * DockerHub container registry. Image references are "namespace/name"; login
- * uses a username/password pair provisioned as CI secrets.
+ * Azure Container Registry. Image path: <registry>.azurecr.io/<name>, where
+ * the namespace is the ACR registry name.
  */
-export const dockerhub: ContainerRegistryProvider = {
-    id: 'dockerhub',
-    title: 'Docker Hub',
+export const azureAcr: ContainerRegistryProvider = {
+    id: 'azure-acr',
+    title: 'Azure Container Registry',
 
     options: [
-        { key: 'namespace', describe: 'Docker Hub namespace', required: true },
+        {
+            key: 'namespace',
+            describe: 'ACR registry name (<name>.azurecr.io)',
+            required: true,
+        },
     ],
 
     imageRef(ctx: CreateContext): string {
-        const ns = ctx.config.registry.namespace || '';
-
-        return ns ? `${ns}/${ctx.name}` : ctx.name;
+        return `${ctx.config.registry.namespace}.azurecr.io/${ctx.name}`;
     },
 
     secretSpecs(): SecretSpec[] {
         return [
-            { name: 'DOCKER_USER', describe: 'Docker Hub username' },
-            { name: 'DOCKER_PASS', describe: 'Docker Hub password or token' },
+            { name: 'AZURE_CLIENT_ID', describe: 'Azure service principal id' },
+            {
+                name: 'AZURE_CLIENT_SECRET',
+                describe: 'Azure service principal secret',
+            },
         ];
     },
 
-    secrets(ctx: CreateContext): Secret[] {
-        const auth = ctx.config.registry.auth || {};
+    secrets(): Secret[] {
+        const id = process.env.AZURE_CLIENT_ID;
+        const secret = process.env.AZURE_CLIENT_SECRET;
+        const out: Secret[] = [];
 
-        return [
-            { name: 'DOCKER_USER', value: auth.user || '' },
-            { name: 'DOCKER_PASS', value: auth.password || '' },
-        ];
+        if (id) {
+            out.push({ name: 'AZURE_CLIENT_ID', value: id });
+        }
+
+        if (secret) {
+            out.push({ name: 'AZURE_CLIENT_SECRET', value: secret });
+        }
+
+        return out;
     },
 
-    loginCmd(): string {
-        return 'docker login -u "$DOCKER_USER" -p "$DOCKER_PASS"';
+    loginCmd(ctx: CreateContext): string {
+        return (
+            `docker login "${ctx.config.registry.namespace}.azurecr.io" ` +
+            '-u "$AZURE_CLIENT_ID" -p "$AZURE_CLIENT_SECRET"'
+        );
     },
 
     pushCmd(): string {

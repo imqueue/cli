@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI providers: registry/dockerhub
+ * IMQ-CLI providers: registry/google
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>
@@ -29,41 +29,49 @@ import type {
 } from '../types.js';
 
 /**
- * DockerHub container registry. Image references are "namespace/name"; login
- * uses a username/password pair provisioned as CI secrets.
+ * Google Artifact Registry (the successor to the retired Container Registry).
+ * Image path: <region>-docker.pkg.dev/<project>/<repository>/<name>.
  */
-export const dockerhub: ContainerRegistryProvider = {
-    id: 'dockerhub',
-    title: 'Docker Hub',
+export const google: ContainerRegistryProvider = {
+    id: 'google',
+    title: 'Google Artifact Registry',
 
     options: [
-        { key: 'namespace', describe: 'Docker Hub namespace', required: true },
+        { key: 'region', describe: 'Artifact Registry region', required: true },
+        { key: 'project', describe: 'GCP project id', required: true },
+        {
+            key: 'namespace',
+            describe: 'Artifact Registry repository',
+            required: true,
+        },
     ],
 
     imageRef(ctx: CreateContext): string {
-        const ns = ctx.config.registry.namespace || '';
+        const { region, project, namespace } = ctx.config.registry;
 
-        return ns ? `${ns}/${ctx.name}` : ctx.name;
+        return `${region}-docker.pkg.dev/${project}/${namespace}/${ctx.name}`;
     },
 
     secretSpecs(): SecretSpec[] {
         return [
-            { name: 'DOCKER_USER', describe: 'Docker Hub username' },
-            { name: 'DOCKER_PASS', describe: 'Docker Hub password or token' },
+            {
+                name: 'GCP_SA_KEY',
+                describe: 'GCP service-account JSON key (json_key auth)',
+            },
         ];
     },
 
-    secrets(ctx: CreateContext): Secret[] {
-        const auth = ctx.config.registry.auth || {};
+    secrets(): Secret[] {
+        const key = process.env.GCP_SA_KEY;
 
-        return [
-            { name: 'DOCKER_USER', value: auth.user || '' },
-            { name: 'DOCKER_PASS', value: auth.password || '' },
-        ];
+        return key ? [{ name: 'GCP_SA_KEY', value: key }] : [];
     },
 
-    loginCmd(): string {
-        return 'docker login -u "$DOCKER_USER" -p "$DOCKER_PASS"';
+    loginCmd(ctx: CreateContext): string {
+        return (
+            'echo "$GCP_SA_KEY" | docker login -u _json_key --password-stdin ' +
+            `https://${ctx.config.registry.region}-docker.pkg.dev`
+        );
     },
 
     pushCmd(): string {

@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI providers: registry/dockerhub
+ * IMQ-CLI providers: registry/aws-ecr
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>
@@ -28,42 +28,57 @@ import type {
     SecretSpec,
 } from '../types.js';
 
+/** Reads a secret value from the environment, if present. */
+function fromEnv(name: string): Secret[] {
+    const value = process.env[name];
+
+    return value ? [{ name, value }] : [];
+}
+
 /**
- * DockerHub container registry. Image references are "namespace/name"; login
- * uses a username/password pair provisioned as CI secrets.
+ * Amazon Elastic Container Registry. Image path:
+ * <accountId>.dkr.ecr.<region>.amazonaws.com/<name>.
  */
-export const dockerhub: ContainerRegistryProvider = {
-    id: 'dockerhub',
-    title: 'Docker Hub',
+export const awsEcr: ContainerRegistryProvider = {
+    id: 'aws-ecr',
+    title: 'Amazon ECR',
 
     options: [
-        { key: 'namespace', describe: 'Docker Hub namespace', required: true },
+        { key: 'region', describe: 'AWS region', required: true },
+        { key: 'accountId', describe: 'AWS account id', required: true },
     ],
 
     imageRef(ctx: CreateContext): string {
-        const ns = ctx.config.registry.namespace || '';
+        const { region, accountId } = ctx.config.registry;
 
-        return ns ? `${ns}/${ctx.name}` : ctx.name;
+        return `${accountId}.dkr.ecr.${region}.amazonaws.com/${ctx.name}`;
     },
 
     secretSpecs(): SecretSpec[] {
         return [
-            { name: 'DOCKER_USER', describe: 'Docker Hub username' },
-            { name: 'DOCKER_PASS', describe: 'Docker Hub password or token' },
+            { name: 'AWS_ACCESS_KEY_ID', describe: 'AWS access key id' },
+            {
+                name: 'AWS_SECRET_ACCESS_KEY',
+                describe: 'AWS secret access key',
+            },
         ];
     },
 
-    secrets(ctx: CreateContext): Secret[] {
-        const auth = ctx.config.registry.auth || {};
-
+    secrets(): Secret[] {
         return [
-            { name: 'DOCKER_USER', value: auth.user || '' },
-            { name: 'DOCKER_PASS', value: auth.password || '' },
+            ...fromEnv('AWS_ACCESS_KEY_ID'),
+            ...fromEnv('AWS_SECRET_ACCESS_KEY'),
         ];
     },
 
-    loginCmd(): string {
-        return 'docker login -u "$DOCKER_USER" -p "$DOCKER_PASS"';
+    loginCmd(ctx: CreateContext): string {
+        const { region, accountId } = ctx.config.registry;
+
+        return (
+            `aws ecr get-login-password --region ${region} | ` +
+            `docker login -u AWS --password-stdin ` +
+            `${accountId}.dkr.ecr.${region}.amazonaws.com`
+        );
     },
 
     pushCmd(): string {

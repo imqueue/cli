@@ -82,10 +82,15 @@ export function printPlanSummary(plan: CreatePlan): void {
             : styleText('gray', 'disabled'),
     );
     line('ci', plan.config.ci.provider || styleText('gray', 'none'));
+    const reg = plan.config.registry;
+    const regDetail = [reg.namespace, reg.project, reg.region, reg.accountId]
+        .filter(Boolean)
+        .join('/');
+
     line(
         'registry',
         plan.dockerize
-            ? `${plan.config.registry.provider} (${plan.config.registry.namespace})`
+            ? `${reg.provider}${regDetail ? ` (${regDetail})` : ''}`
             : styleText('gray', 'no dockerization'),
     );
     line('node', plan.nodeTags.join(', '));

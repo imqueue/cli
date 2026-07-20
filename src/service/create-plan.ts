@@ -43,12 +43,14 @@ import { loadCatalog } from '../catalog/load.js';
 import { resolvePackages } from '../catalog/resolve.js';
 import {
     ciProviders,
+    containerRegistries,
     registerBuiltinProviders,
     vcsHosts,
 } from '../providers/index.js';
 
 const DEFAULT_CI = 'github-actions';
 const DEFAULT_VCS = 'github';
+const DEFAULT_REGISTRY = 'dockerhub';
 
 export const DEFAULT_SERVICE_VERSION = '1.0.0-0';
 
@@ -431,20 +433,40 @@ async function resolveUseVcs(
     return !!useGit;
 }
 
+interface ResolvedRegistry {
+    want: boolean;
+    provider: string;
+    namespace: string;
+    region: string;
+    project: string;
+    accountId: string;
+    user: string;
+    password: string;
+}
+
+const EMPTY_REGISTRY: ResolvedRegistry = {
+    want: false,
+    provider: '',
+    namespace: '',
+    region: '',
+    project: '',
+    accountId: '',
+    user: '',
+    password: '',
+};
+
 /**
- * Resolves the docker registry section when dockerization is requested.
+ * Resolves the container registry section when dockerization is requested:
+ * the registry provider, its declared config options, and (for docker hub)
+ * credentials. If a required option can't be resolved, dockerization is
+ * skipped (non-fatal) rather than failing the whole run.
  */
 async function resolveRegistry(
     argv: any,
     structured: StructuredConfig,
     global: IMQCLIConfig,
     interactive: boolean,
-): Promise<{
-    want: boolean;
-    namespace: string;
-    user: string;
-    password: string;
-}> {
+): Promise<ResolvedRegistry> {
     let want = argv.D || global.useDocker;
 
     if (!want && typeof global.useDocker === 'undefined' && interactive) {
@@ -461,58 +483,125 @@ async function resolveRegistry(
     }
 
     if (!want) {
-        return { want: false, namespace: '', user: '', password: '' };
+        return EMPTY_REGISTRY;
     }
 
-    let namespace = (argv.N || structured.registry.namespace || '').trim();
+    registerBuiltinProviders();
 
-    if (!isNamespace(namespace) && interactive) {
-        const answer = await inquirer.prompt<{ dockerNamespace: string }>([
-            {
-                type: 'input',
-                name: 'dockerNamespace',
-                message: 'Enter DockerHub namespace:',
-            },
-        ] as QuestionCollection);
+    let providerId =
+        (argv.registry || '').trim() || structured.registry.provider || '';
 
-        if (
-            answer.dockerNamespace &&
-            !isNamespace(answer.dockerNamespace.trim())
-        ) {
-            throw new TypeError('Given DockerHub namespace is invalid!');
+    if (!providerId) {
+        if (interactive) {
+            const answer = await inquirer.prompt<{ registry: string }>([
+                {
+                    type: 'list',
+                    name: 'registry',
+                    message: 'Select container registry:',
+                    choices: containerRegistries
+                        .list()
+                        .map(p => ({ name: p.title, value: p.id })),
+                    default: DEFAULT_REGISTRY,
+                },
+            ] as QuestionCollection);
+
+            providerId = answer.registry;
+        } else {
+            providerId = DEFAULT_REGISTRY;
+        }
+    }
+
+    if (!containerRegistries.has(providerId)) {
+        throw new Error(
+            `Unknown registry "${providerId}". Available: ` +
+                `${containerRegistries.ids().join(', ')}.`,
+        );
+    }
+
+    const provider = containerRegistries.get(providerId);
+    const flagMap: Record<string, any> = {
+        namespace: argv.N,
+        region: argv.region,
+        project: argv.project,
+        accountId: argv.accountId,
+    };
+    const values: Record<string, string> = {
+        namespace: '',
+        region: '',
+        project: '',
+        accountId: '',
+    };
+
+    for (const opt of provider.options || []) {
+        let value = String(
+            flagMap[opt.key] ?? (structured.registry as any)[opt.key] ?? '',
+        ).trim();
+
+        if (!value && interactive) {
+            const answer = await inquirer.prompt<{ v: string }>([
+                { type: 'input', name: 'v', message: `${opt.describe}:` },
+            ] as QuestionCollection);
+
+            value = answer.v.trim();
         }
 
-        namespace = answer.dockerNamespace.trim();
+        values[opt.key] = value;
     }
 
-    let user = structured.registry.auth?.user || '';
-    let password = structured.registry.auth?.password || '';
+    const missing = (provider.options || []).filter(
+        o => o.required && !values[o.key],
+    );
 
-    if (!user && interactive) {
-        const answer = await inquirer.prompt<{ dockerHubUser: string }>([
-            {
-                type: 'input',
-                name: 'dockerHubUser',
-                message: 'Docker hub user:',
-            },
-        ] as QuestionCollection);
+    if (missing.length) {
+        // non-fatal: skip dockerization when a required field is unavailable
+        console.log(
+            `Skipping dockerization: ${provider.title} needs ` +
+                `${missing.map(m => m.describe).join(', ')}.`,
+        );
 
-        user = answer.dockerHubUser.trim();
+        return EMPTY_REGISTRY;
     }
 
-    if (!password && interactive) {
-        const answer = await inquirer.prompt<{ dockerHubPassword: string }>([
-            {
-                type: 'password',
-                name: 'dockerHubPassword',
-                message: 'Docker hub password:',
-            },
-        ] as QuestionCollection);
+    let user = '';
+    let password = '';
 
-        password = answer.dockerHubPassword.trim();
+    // only docker hub uses username/password auth provisioned by the cli;
+    // cloud registries read their secrets from the environment / CI
+    if (providerId === 'dockerhub') {
+        user = structured.registry.auth?.user || '';
+        password = structured.registry.auth?.password || '';
+
+        if (!user && interactive) {
+            const answer = await inquirer.prompt<{ u: string }>([
+                { type: 'input', name: 'u', message: 'Docker hub user:' },
+            ] as QuestionCollection);
+
+            user = answer.u.trim();
+        }
+
+        if (!password && interactive) {
+            const answer = await inquirer.prompt<{ p: string }>([
+                {
+                    type: 'password',
+                    name: 'p',
+                    message: 'Docker hub password:',
+                },
+            ] as QuestionCollection);
+
+            password = answer.p.trim();
+        }
     }
 
-    return { want: true, namespace, user, password };
+    return {
+        want: true,
+        provider: providerId,
+        namespace: values.namespace,
+        region: values.region,
+        project: values.project,
+        accountId: values.accountId,
+        user,
+        password,
+    };
 }
 
 /**
@@ -563,9 +652,9 @@ export async function buildCreatePlan(
     // dockerization depends on a pushed repo; disable when git is off
     const registry = useVcs
         ? await resolveRegistry(argv, structured, global, interactive)
-        : { want: false, namespace: '', user: '', password: '' };
+        : EMPTY_REGISTRY;
 
-    const dockerize = registry.want && !!registry.namespace;
+    const dockerize = registry.want;
     const ciProvider = await resolveCi(
         argv,
         structured,
@@ -597,8 +686,11 @@ export async function buildCreatePlan(
         },
         ci: { provider: ciProvider, auth: structured.ci.auth },
         registry: {
-            provider: dockerize ? 'dockerhub' : undefined,
+            provider: dockerize ? registry.provider : undefined,
             namespace: registry.namespace || undefined,
+            region: registry.region || undefined,
+            project: registry.project || undefined,
+            accountId: registry.accountId || undefined,
             auth: { user: registry.user, password: registry.password },
         },
         templatesRef: structured.templatesRef,

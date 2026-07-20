@@ -60,7 +60,7 @@ export function registryShellTokens(ctx: CreateContext): {
 
     return {
         IMAGE_REF: registry.imageRef(ctx),
-        REGISTRY_LOGIN: registry.loginCmd(),
-        REGISTRY_PUSH: registry.pushCmd(),
+        REGISTRY_LOGIN: registry.loginCmd(ctx),
+        REGISTRY_PUSH: registry.pushCmd(ctx),
     };
 }
