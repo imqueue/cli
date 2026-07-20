@@ -63,6 +63,6 @@ export const dockerhub: ContainerRegistryProvider = {
     },
 
     pushCmd(): string {
-        return 'docker push "$DOCKER_REPO"';
+        return 'docker push --all-tags "$DOCKER_REPO"';
     },
 };
