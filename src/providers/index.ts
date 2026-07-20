@@ -35,6 +35,9 @@ import { travis } from './ci/travis.js';
 import { githubActions } from './ci/github-actions.js';
 import { circleci } from './ci/circleci.js';
 import { dockerhub } from './registry/dockerhub.js';
+import { google } from './registry/google.js';
+import { awsEcr } from './registry/aws-ecr.js';
+import { azureAcr } from './registry/azure-acr.js';
 
 let registered = false;
 
@@ -57,6 +60,9 @@ export function registerBuiltinProviders(): void {
     ciProviders.register(circleci);
     ciProviders.register(travis);
     containerRegistries.register(dockerhub);
+    containerRegistries.register(google);
+    containerRegistries.register(awsEcr);
+    containerRegistries.register(azureAcr);
 }
 
 export * from './registry.js';

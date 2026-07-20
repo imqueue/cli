@@ -148,12 +148,24 @@ export interface CiProvider extends Provider {
  * Container registry provider. Produces the image reference and the shell
  * snippets a CI uses to log in and push, plus the secrets it requires.
  */
+/**
+ * A configuration field a registry needs (e.g. region, project), resolved into
+ * config.registry[key] from flags/config/prompt.
+ */
+export interface RegistryOption {
+    key: string;
+    describe: string;
+    required?: boolean;
+}
+
 export interface ContainerRegistryProvider extends Provider {
+    /** config fields this registry needs (region/project/namespace/...) */
+    options?: RegistryOption[];
     imageRef(ctx: CreateContext): string;
     /** secret names this registry needs, plus how to obtain them */
     secretSpecs(ctx: CreateContext): SecretSpec[];
-    /** the resolved name/value secret pairs from the current config */
+    /** the resolved name/value secret pairs available for provisioning */
     secrets(ctx: CreateContext): Secret[];
-    loginCmd(): string;
-    pushCmd(): string;
+    loginCmd(ctx: CreateContext): string;
+    pushCmd(ctx: CreateContext): string;
 }

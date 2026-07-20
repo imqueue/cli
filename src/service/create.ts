@@ -190,9 +190,18 @@ export const { command, describe, builder, handler } = {
             )
             .default('L', '')
 
+            .describe(
+                'registry',
+                'Container registry (dockerhub, google, aws-ecr, azure-acr)',
+            )
+
             .alias('N', 'docker-namespace')
-            .describe('N', 'Docker hub namespace')
+            .describe('N', 'Registry namespace / repository / ACR name')
             .default('N', config.dockerHubNamespace)
+
+            .describe('region', 'Registry region (google, aws-ecr)')
+            .describe('project', 'GCP project id (google)')
+            .describe('account-id', 'AWS account id (aws-ecr)')
 
             .alias('T', 'github-token')
             .describe('T', 'GitHub auth token')
