@@ -90,6 +90,10 @@ export interface CreateContext {
     email: string;
     /** whether dockerization is enabled */
     dockerize: boolean;
+    /** node version tags to build against (CI matrix / docker base) */
+    nodeTags: string[];
+    /** explicit base node docker tag override, if any */
+    nodeDockerTag?: string;
     /** resolved structured config for this run */
     config: StructuredConfig;
     /** whether interactive prompting is allowed */
@@ -129,7 +133,9 @@ export interface CiProvider extends Provider {
     /** config file fragments to overlay into the service */
     files(ctx: CreateContext): FileFragment[];
     /** token values this CI contributes to template compilation */
-    tokens(ctx: CreateContext): Record<string, string>;
+    tokens(
+        ctx: CreateContext,
+    ): Record<string, string> | Promise<Record<string, string>>;
     /** optional: activate builds for the repository */
     enable?(ctx: CreateContext): Promise<void>;
     /** optional: provision CI secrets */
@@ -144,7 +150,10 @@ export interface CiProvider extends Provider {
  */
 export interface ContainerRegistryProvider extends Provider {
     imageRef(ctx: CreateContext): string;
+    /** secret names this registry needs, plus how to obtain them */
     secretSpecs(ctx: CreateContext): SecretSpec[];
+    /** the resolved name/value secret pairs from the current config */
+    secrets(ctx: CreateContext): Secret[];
     loginCmd(): string;
     pushCmd(): string;
 }
