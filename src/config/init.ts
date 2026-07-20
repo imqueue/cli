@@ -22,7 +22,7 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import { styleText } from 'node:util';
-import * as originalInquirer from 'inquirer';
+import inquirer from 'inquirer';
 import {
     CONFIG_PATH,
     DEFAULT_TEMPLATES_REF,
@@ -46,8 +46,6 @@ import {
 import { loadCatalog } from '../catalog/load.js';
 import { promptPackages, validateSelection } from '../catalog/resolve.js';
 import * as fs from 'fs';
-
-const inquirer = originalInquirer as unknown as typeof originalInquirer.default;
 
 // we are going to ignore almost all code here because it's very hard to test
 // command line user interaction
