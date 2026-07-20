@@ -23,13 +23,14 @@
  */
 import { styleText } from 'node:util';
 import { execFileSync } from 'child_process';
-import { commandExists, cpr } from '../../lib/index.js';
+import { DEFAULT_TEMPLATES_REF, commandExists, cpr } from '../../lib/index.js';
 import {
     ciProviders,
     registerBuiltinProviders,
     scmTools,
     vcsHosts,
 } from '../providers/index.js';
+import type { FileFragment } from '../providers/types.js';
 import type { CreatePlan } from './create-plan.js';
 import {
     buildServiceTokens,
@@ -37,6 +38,10 @@ import {
     createServiceFile,
     createServiceTestFile,
     ensureTemplate,
+    isEsmService,
+    loadTemplateManifest,
+    overlayFragments,
+    removeDockerFiles,
     stripDockerization,
     writeLicense,
 } from './create-scaffold.js';
@@ -90,9 +95,19 @@ export function printPlanSummary(plan: CreatePlan): void {
  * Scaffolds the service from its template: copy, write LICENSE, compile base
  * tokens, and generate the service class and test files.
  */
-function scaffold(plan: CreatePlan, templatePath: string): void {
+function scaffold(
+    plan: CreatePlan,
+    templatePath: string,
+    fragments: FileFragment[],
+): void {
     console.log(`Building service from template "${templatePath}"...`);
     cpr(templatePath, plan.path);
+
+    // v2: overlay provider/addon fragments before compilation so their
+    // %TOKENS are substituted alongside the template's own
+    if (fragments.length) {
+        overlayFragments(plan.path, fragments);
+    }
 
     const tokens = buildServiceTokens({
         name: plan.name,
@@ -109,8 +124,12 @@ function scaffold(plan: CreatePlan, templatePath: string): void {
 
     writeLicense(plan.path, plan.license.text);
     compileTemplate(plan.path, tokens);
-    createServiceFile(plan.path, tokens);
-    createServiceTestFile(plan.path, tokens);
+
+    // module style follows the (now compiled) service package.json
+    const esm = isEsmService(plan.path);
+
+    createServiceFile(plan.path, tokens, esm);
+    createServiceTestFile(plan.path, tokens, esm);
 }
 
 /**
@@ -118,12 +137,22 @@ function scaffold(plan: CreatePlan, templatePath: string): void {
  * docker artifacts when dockerization is disabled, and activates builds when
  * a repository exists (never fatal).
  */
-async function applyCi(plan: CreatePlan, repoCreated: boolean): Promise<void> {
+async function applyCi(
+    plan: CreatePlan,
+    repoCreated: boolean,
+    isV2: boolean,
+): Promise<void> {
     const ci = ciProviders.get(plan.config.ci.provider as string);
     const tokens = await ci.tokens(plan);
 
     if (!plan.dockerize) {
-        stripDockerization(plan.path);
+        // v2 templates ship no CI file (it is a provider fragment), so only
+        // docker files need removing; v1 also strips the baked travis block
+        if (isV2) {
+            removeDockerFiles(plan.path);
+        } else {
+            stripDockerization(plan.path);
+        }
     }
 
     if (repoCreated && ci.enable) {
@@ -173,9 +202,18 @@ export async function runCreate(
     registerBuiltinProviders();
 
     // 1. SCAFFOLD
-    const templatePath = await ensureTemplate(plan.template);
+    const templatePath = await ensureTemplate(
+        plan.template,
+        plan.config.templatesRef || DEFAULT_TEMPLATES_REF,
+    );
+    const manifest = loadTemplateManifest(templatePath);
+    const isV2 = !!manifest && (manifest.version ?? 0) >= 2;
+    const ci = ciProviders.get(plan.config.ci.provider as string);
 
-    scaffold(plan, templatePath);
+    // v2 templates ship no CI files; the CI provider contributes them
+    const fragments = isV2 ? ci.files(plan) : [];
+
+    scaffold(plan, templatePath, fragments);
 
     // 2. VCS - create the remote repository
     if (plan.useVcs) {
@@ -187,7 +225,7 @@ export async function runCreate(
     }
 
     // 3. CI + docker tokens/activation
-    await applyCi(plan, state.repoCreated);
+    await applyCi(plan, state.repoCreated, isV2);
 
     // 4. INSTALL
     if (!plan.noInstall) {
@@ -207,8 +245,6 @@ export async function runCreate(
     }
 
     // 6. REPORT
-    const ci = ciProviders.get(plan.config.ci.provider as string);
-
     for (const note of ci.instructions(plan)) {
         console.log(styleText('cyan', note));
     }
