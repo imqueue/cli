@@ -55,9 +55,11 @@ export class TravisClient {
     private accessToken?: string;
 
     public constructor(options?: TravisClientOptions) {
-        this.baseUrl = options?.pro
-            ? 'https://api.travis-ci.com'
-            : 'https://api.travis-ci.org';
+        this.baseUrl =
+            process.env.IMQ_TRAVIS_API_URL ||
+            (options?.pro
+                ? 'https://api.travis-ci.com'
+                : 'https://api.travis-ci.org');
     }
 
     /**

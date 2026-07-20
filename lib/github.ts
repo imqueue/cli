@@ -21,7 +21,9 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-const GITHUB_API_URL = 'https://api.github.com';
+// overridable for GitHub Enterprise (and integration testing)
+const GITHUB_API_URL =
+    process.env.IMQ_GITHUB_API_URL || 'https://api.github.com';
 const RX_DEPRECATION = /Deprecation:/;
 
 /**

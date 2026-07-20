@@ -34,7 +34,11 @@ export const OS_HOME: string =
     process.env['HOME'] ||
     os.tmpdir();
 export const IMQ_HOME = '~/.imq';
-export const TPL_REPO = 'git@github.com:imqueue/templates.git';
+// default to public HTTPS so users without an SSH key can fetch templates;
+// overridable (e.g. SSH for contributors, or a fork)
+export const TPL_REPO =
+    process.env.IMQ_TEMPLATES_REPO ||
+    'https://github.com/imqueue/templates.git';
 export const TPL_HOME = resolve(IMQ_HOME, 'templates');
 export const CUSTOM_TPL_HOME = resolve(IMQ_HOME, 'custom-templates');
 export const CONFIG_FILENAME = 'config.json';
