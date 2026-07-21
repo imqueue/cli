@@ -41,6 +41,9 @@ export const TPL_REPO =
     'https://github.com/imqueue/templates.git';
 export const TPL_HOME = resolve(IMQ_HOME, 'templates');
 export const CUSTOM_TPL_HOME = resolve(IMQ_HOME, 'custom-templates');
+// runtime working directory - holds per-service logs and the process id file
+// used by `imq ctl` / `imq log` (was `$HOME/.imq/var` in the legacy bash tools)
+export const VAR_HOME = resolve(IMQ_HOME, 'var');
 export const CONFIG_FILENAME = 'config.json';
 export const CONFIG_PATH = resolve(IMQ_HOME, CONFIG_FILENAME);
 // detect zsh from the actual login shell rather than any ZSH* env var, which

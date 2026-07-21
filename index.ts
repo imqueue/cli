@@ -28,7 +28,10 @@ import { VERSION, checkForUpdate } from './lib/index.js';
 import * as client from './src/client.js';
 import * as completions from './src/completions.js';
 import * as config from './src/config.js';
+import * as ctl from './src/ctl.js';
+import * as log from './src/log.js';
 import * as service from './src/service.js';
+import * as up from './src/up.js';
 
 (async () => {
     const y = yargs(hideBin(process.argv));
@@ -45,7 +48,10 @@ import * as service from './src/service.js';
         .command(client as any)
         .command(completions as any)
         .command(config as any)
+        .command(ctl as any)
+        .command(log as any)
         .command(service as any)
+        .command(up as any)
         .demandCommand()
         .wrap(y.terminalWidth())
         .help().argv;

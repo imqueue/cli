@@ -60,10 +60,7 @@
   },
   "main": "index.js",
   "bin": {
-    "imq": "index.js",
-    "imqctl": "bin/ctl.sh",
-    "imqlog": "bin/log.sh",
-    "imqup": "bin/updep.sh"
+    "imq": "index.js"
   },
   "typescript": {
     "definitions": "index.d.ts"
