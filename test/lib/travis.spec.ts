@@ -203,31 +203,38 @@ describe('travis', () => {
             assert.equal(typeof travisEncrypt, 'function');
         });
 
-        it.skip('should not throw on existing public repo', async () => {
-            let error: any = null;
-            try {
-                await travisEncrypt('imqueue/cli', 'a=b');
-            } catch (err) {
-                error = err;
-            }
-            assert.equal(error, null);
-        });
+        it('should seal data with the repository public key (offline)', async () => {
+            // generate a throwaway RSA key, serve its public half as the repo
+            // key, then decrypt travisEncrypt's output to prove a real round-trip
+            const { publicKey, privateKey } = generateKeyPairSync('rsa', {
+                modulusLength: 2048,
+                publicKeyEncoding: { type: 'spki', format: 'pem' },
+                privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+            });
 
-        it('should throw if wrong repo or credentials', async () => {
-            let error: any = null;
-            try {
-                await travisEncrypt('!@#$/%^&*', 'a=b');
-            } catch (err) {
-                error = err;
-            }
-            assert.ok(error instanceof Error);
-        });
-
-        it.skip('should return string value', async () => {
-            assert.equal(
-                typeof (await travisEncrypt('imqueue/cli', 'a=b')),
-                'string',
+            mock.method(
+                globalThis,
+                'fetch',
+                async () =>
+                    ({
+                        ok: true,
+                        status: 200,
+                        json: async () => ({ key: publicKey }),
+                    }) as any,
             );
+
+            const sealed = await travisEncrypt('imqueue/cli', 'a=b');
+
+            assert.equal(typeof sealed, 'string');
+
+            const decrypted = privateDecrypt(
+                { key: privateKey, padding: cryptoConstants.RSA_PKCS1_PADDING },
+                Buffer.from(sealed, 'base64'),
+            ).toString('utf8');
+
+            assert.equal(decrypted, 'a=b');
+
+            mock.restoreAll();
         });
     });
 });

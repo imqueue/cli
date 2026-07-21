@@ -306,6 +306,61 @@ describe('service ctl', () => {
             ]);
         });
 
+        it('should skip a service whose git pull fails and report it', async () => {
+            makeService('billing');
+
+            const rec = recorder();
+
+            rec.deps.gitPull = () => {
+                throw new Error('offline');
+            };
+
+            await assert.rejects(
+                () => ctl.startServices(opts({ update: true }), rec.deps),
+                /Started 0\/1 service\(s\); failed: billing/,
+            );
+            // the failed service was never started
+            assert.equal(rec.started.length, 0);
+            assert.ok(rec.logs.some(l => l.includes('git pull failed')));
+        });
+
+        it('should record no pid when the spawn fails', async () => {
+            makeService('billing');
+
+            const rec = recorder();
+
+            rec.deps.startService = () => 0; // simulate a failed spawn
+
+            await assert.rejects(
+                () => ctl.startServices(opts(), rec.deps),
+                /failed: billing/,
+            );
+            // a pid of 0 must never be persisted (it would corrupt stop)
+            assert.deepEqual(ctl.readPids(join(root, '.var')), []);
+        });
+
+        it('should fail a calm start when the service crashes', async () => {
+            makeService('billing');
+
+            const rec = recorder();
+            const logFile = join(root, '.var', 'billing.log');
+
+            // service starts, then its pid is dead on the readiness poll
+            rec.deps.startService = () => {
+                rec.started.push(join(root, 'billing'));
+                rec.alive.set(9999, false);
+
+                return 9999;
+            };
+            rec.logContent.set(logFile, 'boot...');
+
+            await assert.rejects(
+                () => ctl.startServices(opts({ calm: true }), rec.deps),
+                /failed: billing/,
+            );
+            assert.ok(rec.logs.some(l => l.includes('exited during startup')));
+        });
+
         it('should (re)start a service whose recorded pid is dead', async () => {
             makeService('billing');
 

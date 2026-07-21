@@ -240,7 +240,7 @@ function installPackages(plan: CreatePlan): void {
  *
  * @param {CreatePlan} plan
  */
-function writeServiceConfig(plan: CreatePlan): void {
+export function writeServiceConfig(plan: CreatePlan): void {
     const { vcs, ci, registry, packages, templatesRef } = plan.config;
     const defined = <T extends object>(obj: T): T =>
         Object.fromEntries(

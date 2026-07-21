@@ -21,8 +21,14 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-// sandbox all cli file locations before anything loads lib/constants
-process.env.IMQ_CLI_HOME = '/tmp';
+// sandbox all cli file locations before anything loads lib/constants; use a
+// per-run private temp dir (not the shared /tmp) so two concurrent suite runs
+// - or a stale run's leftovers - can never interfere with each other
+const { mkdtempSync } = await import('node:fs');
+const { tmpdir } = await import('node:os');
+const { join } = await import('node:path');
+
+process.env.IMQ_CLI_HOME = mkdtempSync(join(tmpdir(), 'imq-home-'));
 
 const { mock } = await import('node:test');
 const { Redis } = await import('./redis.js');

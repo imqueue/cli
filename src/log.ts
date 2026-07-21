@@ -22,6 +22,7 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import {
+    type FSWatcher,
     existsSync,
     readdirSync,
     readFileSync,
@@ -157,7 +158,15 @@ export function labelText(
  */
 export function tailFiles(
     files: string[],
-    opts: { follow: boolean; prefix: boolean; out?: (chunk: string) => void },
+    opts: {
+        follow: boolean;
+        prefix: boolean;
+        out?: (chunk: string) => void;
+        // aborting stops follow mode and cleans up watchers/timers; production
+        // never aborts (follow runs until the process is killed), but tests use
+        // it to end a follow deterministically
+        signal?: AbortSignal;
+    },
 ): Promise<void> {
     const out = opts.out || ((chunk: string) => process.stdout.write(chunk));
     const labels = files.map(f => basename(f).replace(/\.log$/, ''));
@@ -186,16 +195,26 @@ export function tailFiles(
     }
 
     // then follow appended bytes on each file, forever
-    return new Promise<void>(() => {
+    return new Promise<void>(resolve => {
         // A ref'd timer keeps the event loop alive for the whole lifetime of
         // follow mode. Without it, a moment when no fs.watch handle is active
         // (e.g. the gap while re-watching a rotated file) would let Node drain
         // its loop and exit 0 mid-follow. `imq log -f` runs until interrupted.
-        setInterval(() => undefined, 1 << 30);
+        const keepAlive = setInterval(() => undefined, 1 << 30);
 
-        files.forEach((file, i) =>
+        const stops = files.map((file, i) =>
             followFile(file, labels[i], i, positions[i], out, opts.prefix),
         );
+
+        opts.signal?.addEventListener('abort', () => {
+            clearInterval(keepAlive);
+
+            for (const stop of stops) {
+                stop();
+            }
+
+            resolve();
+        });
     });
 }
 
@@ -216,7 +235,7 @@ const REWATCH_DELAY_MS = 100;
  * @param {number} startPos - byte offset to start following from
  * @param {(chunk: string) => void} out - output sink
  * @param {boolean} prefix - whether to prefix lines
- * @return {void}
+ * @return {() => void} - a cleanup function that stops following this file
  */
 function followFile(
     file: string,
@@ -225,8 +244,10 @@ function followFile(
     startPos: number,
     out: (chunk: string) => void,
     prefix: boolean,
-): void {
+): () => void {
     let position = startPos;
+    let watcher: FSWatcher | undefined;
+    let rewatchTimer: ReturnType<typeof setTimeout> | undefined;
     // hold undecoded bytes (a partial line and/or a partial multibyte char)
     // until a newline arrives - decoding whole lines keeps UTF-8 intact
     let pending = Buffer.alloc(0);
@@ -269,12 +290,12 @@ function followFile(
 
     const start = () => {
         try {
-            const watcher = watch(file, { persistent: true }, eventType => {
+            const w = watch(file, { persistent: true }, eventType => {
                 if (eventType === 'rename') {
                     // the file was moved/replaced (log rotation) - rebind to
                     // the path and read the new file from the top
                     try {
-                        watcher.close();
+                        w.close();
                     } catch {
                         /* ignore */
                     }
@@ -289,10 +310,12 @@ function followFile(
                 drain();
             });
 
+            watcher = w;
+
             // a watcher 'error' event is otherwise fatal (unhandled) - rebind
-            watcher.on('error', () => {
+            w.on('error', () => {
                 try {
-                    watcher.close();
+                    w.close();
                 } catch {
                     /* ignore */
                 }
@@ -306,7 +329,7 @@ function followFile(
     };
 
     const rewatch = () => {
-        setTimeout(() => {
+        rewatchTimer = setTimeout(() => {
             if (existsSync(file)) {
                 start();
                 // pick up anything written before the watch was (re)established
@@ -318,6 +341,18 @@ function followFile(
     };
 
     start();
+
+    return () => {
+        try {
+            watcher?.close();
+        } catch {
+            /* ignore */
+        }
+
+        if (rewatchTimer) {
+            clearTimeout(rewatchTimer);
+        }
+    };
 }
 
 /**
