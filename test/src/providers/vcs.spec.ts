@@ -26,6 +26,7 @@ import assert from 'node:assert/strict';
 import '../../mocks/index.js';
 import { gitlab } from '../../../src/providers/vcs/gitlab.js';
 import { bitbucket } from '../../../src/providers/vcs/bitbucket.js';
+import { github } from '../../../src/providers/vcs/github.js';
 
 function ctx(provider: string, namespace: string): any {
     return {
@@ -111,6 +112,32 @@ describe('vcs providers', () => {
             const post = calls.find(c => c.init.method === 'POST');
 
             assert.equal(JSON.parse(post.init.body).namespace_id, undefined);
+        });
+    });
+
+    describe('github', () => {
+        it('should default a repository to private when unspecified', async () => {
+            const calls: any[] = [];
+
+            stubFetch((url, init) => {
+                calls.push({ url, init });
+
+                // the repo does not exist yet, then the org create succeeds
+                return (init.method || 'GET') === 'GET'
+                    ? { status: 404 }
+                    : { status: 201, body: {} };
+            });
+
+            const c = ctx('github', 'acme');
+
+            c.config.vcs.private = undefined; // not specified -> defaults true
+
+            await github.createRepository(c);
+
+            const post = calls.find(x => x.init.method === 'POST');
+
+            assert.ok(post, 'a repository POST was made');
+            assert.equal(JSON.parse(post.init.body).private, true);
         });
     });
 

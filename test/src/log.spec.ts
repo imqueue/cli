@@ -23,15 +23,19 @@ import '../mocks/index.js';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+    appendFileSync,
     existsSync,
+    mkdirSync,
     mkdtempSync,
     readdirSync,
     rmSync,
+    truncateSync,
     writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as log from '../../src/log.js';
+import { VAR_HOME } from '../../lib/index.js';
 
 describe('service log', () => {
     let varHome: string;
@@ -153,16 +157,102 @@ describe('service log', () => {
         });
     });
 
-    describe('handler()', () => {
-        it('should clean logs when --clean is given', async () => {
-            // handler uses the real VAR_HOME (sandboxed to /tmp by mocks); we
-            // only assert it runs without throwing and returns for the clean
-            // branch - resolveLogFiles/cleanLogs are covered directly above.
-            await (log.handler as (a: unknown) => Promise<void>)({
-                clean: true,
+    describe('tailFiles() follow mode', () => {
+        // deadline-poll the sink instead of fixed sleeps, so the test is fast
+        // and not flaky
+        async function waitFor(check: () => boolean, ms = 4000): Promise<void> {
+            const started = Date.now();
+
+            while (!check()) {
+                if (Date.now() - started > ms) {
+                    throw new Error('timed out waiting for follow output');
+                }
+
+                await new Promise(r => setTimeout(r, 20));
+            }
+        }
+
+        it('should stream appended lines and survive truncation', async () => {
+            const file = join(varHome, 'follow.log');
+
+            writeFileSync(file, 'first\n');
+
+            const chunks: string[] = [];
+            const ac = new AbortController();
+            const done = log.tailFiles([file], {
+                follow: true,
+                prefix: false,
+                out: c => chunks.push(c),
+                signal: ac.signal,
             });
 
-            assert.ok(existsSync(varHome));
+            try {
+                await waitFor(() => chunks.join('').includes('first'));
+
+                // append while following
+                appendFileSync(file, 'second\n');
+                await waitFor(() => chunks.join('').includes('second'));
+
+                // truncate + write fresh content: must reset and re-emit
+                truncateSync(file, 0);
+                appendFileSync(file, 'reborn\n');
+                await waitFor(() => chunks.join('').includes('reborn'));
+            } finally {
+                ac.abort();
+                await done;
+            }
+        });
+
+        it('should not tear a multibyte char split across writes', async () => {
+            const file = join(varHome, 'mb.log');
+
+            writeFileSync(file, '');
+
+            const chunks: string[] = [];
+            const ac = new AbortController();
+            const done = log.tailFiles([file], {
+                follow: true,
+                prefix: false,
+                out: c => chunks.push(c),
+                signal: ac.signal,
+            });
+
+            try {
+                // '€' is E2 82 AC - append the first two bytes, then the rest
+                const euro = Buffer.from('€ ok\n', 'utf8');
+
+                appendFileSync(file, euro.subarray(0, 2));
+                await new Promise(r => setTimeout(r, 60));
+                appendFileSync(file, euro.subarray(2));
+                await waitFor(() => chunks.join('').includes('€ ok'));
+
+                assert.ok(!chunks.join('').includes('�'));
+            } finally {
+                ac.abort();
+                await done;
+            }
+        });
+    });
+
+    describe('handler()', () => {
+        it('should actually remove the scoped log via --clean', async () => {
+            // the handler cleans the real (per-run, sandboxed) VAR_HOME; scope
+            // to a unique service so we assert the file is truly gone rather
+            // than that some unrelated dir still exists
+            mkdirSync(VAR_HOME, { recursive: true });
+
+            const svc = 'zeta-clean-spec';
+            const file = join(VAR_HOME, `${svc}.log`);
+
+            writeFileSync(file, 'to be removed\n');
+            assert.ok(existsSync(file));
+
+            await (log.handler as (a: unknown) => Promise<void>)({
+                clean: true,
+                services: [svc],
+            });
+
+            assert.ok(!existsSync(file));
         });
     });
 });

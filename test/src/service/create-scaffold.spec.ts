@@ -37,17 +37,35 @@ import { join } from 'path';
 import {
     buildServiceTokens,
     compileTemplate,
+    ensureTemplate,
     isEsmService,
     loadTemplateManifest,
     overlayFragments,
     removeDockerFiles,
     resolveLicense,
 } from '../../../src/service/create-scaffold.js';
+import { CUSTOM_TPL_HOME } from '../../../lib/index.js';
 
 describe('service create scaffolding', () => {
     const dir = mkdtempSync(join(tmpdir(), 'imq-scaffold-'));
 
     after(() => rmSync(dir, { recursive: true, force: true }));
+
+    describe('ensureTemplate()', () => {
+        it('should return a filesystem path verbatim', async () => {
+            assert.equal(await ensureTemplate(dir), dir);
+        });
+
+        it('should resolve a custom template by name', async () => {
+            // a template dir the user placed under ~/.imq/custom-templates
+            const name = 'my-custom-tpl';
+            const custom = join(CUSTOM_TPL_HOME, name);
+
+            mkdirSync(custom, { recursive: true });
+
+            assert.equal(await ensureTemplate(name), custom);
+        });
+    });
 
     describe('loadTemplateManifest()', () => {
         it('should return null when no manifest exists', () => {
