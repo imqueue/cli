@@ -29,6 +29,7 @@ export * from './config.js';
 export * from './config-path.js';
 export * from './config-schema.js';
 export * from './service-config.js';
+export * from './services.js';
 export * from './resolve.js';
 export * from './license.js';
 export * from './fs.js';
