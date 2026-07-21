@@ -239,6 +239,15 @@ export const { command, describe, builder, handler } = {
                 .boolean('y')
                 .default('y', false)
 
+                .alias('f', 'force')
+                .describe(
+                    'f',
+                    'Scaffold into a non-empty target directory, overwriting ' +
+                        'existing files',
+                )
+                .boolean('f')
+                .default('f', false)
+
                 .default('name', path.basename(process.cwd()))
                 .describe('name', 'Service name to create with')
 
@@ -273,6 +282,36 @@ export const { command, describe, builder, handler } = {
         if (argv.dryRun) {
             console.log(styleText('cyan', 'Dry run - no changes made.'));
             return;
+        }
+
+        // never scaffold into a populated directory without an explicit
+        // opt-in: the default path is '.', so a mistyped command would
+        // otherwise overwrite files in the current project (package.json,
+        // README, …) and report success
+        if (!argv.force) {
+            let existing: string[] = [];
+
+            try {
+                existing = fs.readdirSync(plan.path);
+            } catch {
+                /* missing / unreadable -> treated as empty, nothing to guard */
+            }
+
+            if (existing.length) {
+                const shown = existing.slice(0, 5).join(', ');
+                const more = existing.length > 5 ? ', …' : '';
+
+                printError(
+                    new Error(
+                        `Target directory ${plan.path} is not empty ` +
+                            `(found ${shown}${more}). Refusing to overwrite ` +
+                            'existing files - pass --force to scaffold into ' +
+                            'it anyway, or choose an empty --path.',
+                    ),
+                );
+
+                return;
+            }
         }
 
         // confirm only when interactive and not explicitly skipped

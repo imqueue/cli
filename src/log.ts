@@ -32,7 +32,7 @@ import {
 import { basename, join } from 'path';
 import { styleText } from 'node:util';
 import { type Argv, type Arguments } from 'yargs';
-import { VAR_HOME, printError } from '../lib/index.js';
+import { VAR_HOME, parseServices, printError } from '../lib/index.js';
 
 /** Colours cycled through when prefixing multiplexed log lines. */
 const COLOURS = ['cyan', 'green', 'yellow', 'magenta', 'blue', 'red'] as const;
@@ -187,17 +187,28 @@ export function tailFiles(
 
     // then follow appended bytes on each file, forever
     return new Promise<void>(() => {
+        // A ref'd timer keeps the event loop alive for the whole lifetime of
+        // follow mode. Without it, a moment when no fs.watch handle is active
+        // (e.g. the gap while re-watching a rotated file) would let Node drain
+        // its loop and exit 0 mid-follow. `imq log -f` runs until interrupted.
+        setInterval(() => undefined, 1 << 30);
+
         files.forEach((file, i) =>
             followFile(file, labels[i], i, positions[i], out, opts.prefix),
         );
     });
 }
 
+/** Delay before re-watching a rotated/absent log file (ms). */
+const REWATCH_DELAY_MS = 100;
+
 /**
- * Follows one log file, emitting appended data as whole labelled lines. A
- * partial trailing line is buffered until its newline arrives, so a `[svc]`
- * tag is never injected mid-line. Survives truncation/rotation and never
- * crashes the process on watcher errors.
+ * Follows one log file, emitting appended data as whole labelled lines. Data is
+ * buffered at the byte level and only decoded up to the last newline, so a
+ * `[svc]` tag is never injected mid-line AND a multibyte character split across
+ * two writes is never mangled into replacement characters. Survives
+ * truncation and rotation (re-watching until the file reappears, then draining
+ * from the top) and never crashes the process on watcher errors.
  *
  * @param {string} file - log file path
  * @param {string} label - service name for the prefix
@@ -216,37 +227,43 @@ function followFile(
     prefix: boolean,
 ): void {
     let position = startPos;
-    let buffer = '';
+    // hold undecoded bytes (a partial line and/or a partial multibyte char)
+    // until a newline arrives - decoding whole lines keeps UTF-8 intact
+    let pending = Buffer.alloc(0);
 
     const drain = () => {
         const size = safeSize(file);
 
         if (size < position) {
-            // truncated/rotated - start over from the top
+            // truncated in place - start over from the top
             position = 0;
-            buffer = '';
+            pending = Buffer.alloc(0);
         }
 
         if (size <= position) {
             return;
         }
 
+        let data: Buffer;
+
         try {
-            const data = readFileSync(file)
-                .subarray(position, size)
-                .toString('utf8');
-
-            position = size;
-            buffer += data;
-
-            const nl = buffer.lastIndexOf('\n');
-
-            if (nl >= 0) {
-                out(labelText(label, buffer.slice(0, nl + 1), index, prefix));
-                buffer = buffer.slice(nl + 1);
-            }
+            data = readFileSync(file).subarray(position, size);
         } catch {
-            /* transient read error - try again on the next event */
+            return; // transient read error - retry on the next event
+        }
+
+        position = size;
+        pending = Buffer.concat([pending, data]);
+
+        // emit up to (and including) the last newline; keep the remainder
+        // buffered - never decode a boundary that could split a UTF-8 sequence
+        const nl = pending.lastIndexOf(0x0a);
+
+        if (nl >= 0) {
+            const text = pending.subarray(0, nl + 1).toString('utf8');
+
+            pending = pending.subarray(nl + 1);
+            out(labelText(label, text, index, prefix));
         }
     };
 
@@ -254,8 +271,8 @@ function followFile(
         try {
             const watcher = watch(file, { persistent: true }, eventType => {
                 if (eventType === 'rename') {
-                    // the file was replaced (e.g. `ctl start` truncates by
-                    // recreating): rebind the watcher to the path
+                    // the file was moved/replaced (log rotation) - rebind to
+                    // the path and read the new file from the top
                     try {
                         watcher.close();
                     } catch {
@@ -263,8 +280,8 @@ function followFile(
                     }
 
                     position = 0;
-                    buffer = '';
-                    setTimeout(start, 100).unref();
+                    pending = Buffer.alloc(0);
+                    rewatch();
 
                     return;
                 }
@@ -272,11 +289,32 @@ function followFile(
                 drain();
             });
 
-            // a watcher 'error' event is otherwise fatal (unhandled) - swallow it
-            watcher.on('error', () => undefined);
+            // a watcher 'error' event is otherwise fatal (unhandled) - rebind
+            watcher.on('error', () => {
+                try {
+                    watcher.close();
+                } catch {
+                    /* ignore */
+                }
+
+                rewatch();
+            });
         } catch {
-            /* file vanished before we could watch it - give up on this one */
+            // the file is not present yet - keep retrying until it reappears
+            rewatch();
         }
+    };
+
+    const rewatch = () => {
+        setTimeout(() => {
+            if (existsSync(file)) {
+                start();
+                // pick up anything written before the watch was (re)established
+                drain();
+            } else {
+                rewatch();
+            }
+        }, REWATCH_DELAY_MS);
     };
 
     start();
@@ -346,9 +384,7 @@ export const { command, describe, builder, handler } = {
     async handler(argv: Arguments) {
         try {
             const varHome = VAR_HOME;
-            const services = (argv.services as string[] | undefined)?.filter(
-                Boolean,
-            );
+            const services = parseServices(argv.services);
 
             if (argv.clean) {
                 const n = cleanLogs(varHome, services);

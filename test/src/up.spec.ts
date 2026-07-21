@@ -175,13 +175,32 @@ describe('service up', () => {
         it('should commit, version-bump and push when dirty', () => {
             makeService('billing');
 
-            const rec = recorder();
+            // clean BEFORE the update, dirty AFTER it: the dependency update is
+            // what made the tree dirty, so committing is safe
+            let calls = 0;
+            const rec = recorder({ gitDirty: () => calls++ > 0 });
 
             up.runUp(opts({ commit: true, npmVersion: 'minor' }), rec.deps);
 
             assert.ok(rec.calls.includes('commit:billing'));
             assert.ok(rec.calls.includes('version:billing:minor'));
             assert.ok(rec.calls.includes('push:billing'));
+        });
+
+        it('should skip commit when the tree was dirty before the update', () => {
+            makeService('billing');
+
+            // dirty from the start: the user has uncommitted work; `up -c` must
+            // NOT sweep it into (and push) the dependencies-update commit
+            const rec = recorder({ gitDirty: () => true });
+
+            up.runUp(opts({ commit: true }), rec.deps);
+
+            assert.ok(!rec.calls.some(c => c.startsWith('commit')));
+            assert.ok(!rec.calls.some(c => c.startsWith('push')));
+            assert.ok(
+                rec.logs.some(l => l.includes('uncommitted changes before')),
+            );
         });
 
         it('should skip commit when the tree is clean', () => {
@@ -210,7 +229,9 @@ describe('service up', () => {
         it('should default an unknown version keyword to prerelease', () => {
             makeService('billing');
 
-            const rec = recorder();
+            // clean before, dirty after the update (so the commit proceeds)
+            let calls = 0;
+            const rec = recorder({ gitDirty: () => calls++ > 0 });
 
             up.runUp(opts({ commit: true, npmVersion: 'weird' }), rec.deps);
 

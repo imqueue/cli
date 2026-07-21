@@ -26,7 +26,7 @@ import { join } from 'path';
 import { spawnSync } from 'child_process';
 import { styleText } from 'node:util';
 import { type Argv, type Arguments } from 'yargs';
-import { discoverServices, printError } from '../lib/index.js';
+import { discoverServices, parseServices, printError } from '../lib/index.js';
 
 /** Accepted npm version bump keywords. */
 const VERSION_TYPES = ['major', 'minor', 'patch', 'prerelease'] as const;
@@ -139,6 +139,16 @@ export function runUp(opts: UpOptions, deps: UpDeps): void {
         deps.log(styleText('blue', `\nService: ${svc}`));
 
         try {
+            // When we are about to update AND commit, capture whether the tree
+            // was already dirty BEFORE we touch it. If it was, the user has
+            // uncommitted work of their own; committing would sweep it into
+            // (and push) our "dependencies update" commit - so we refuse and
+            // warn instead. With --skip-update the user explicitly asked to
+            // commit whatever is there, so this guard does not apply.
+            const guardPreexistingChanges = opts.commit && !opts.skipUpdate;
+            const preexistingChanges =
+                guardPreexistingChanges && deps.gitDirty(dir);
+
             if (!opts.skipUpdate) {
                 // ordered so a failure aborts BEFORE anything destructive
                 // (ncu rewrite / node_modules + lockfile removal)
@@ -149,7 +159,17 @@ export function runUp(opts: UpOptions, deps: UpDeps): void {
             }
 
             if (opts.commit) {
-                if (deps.gitDirty(dir)) {
+                if (preexistingChanges) {
+                    deps.log(
+                        styleText(
+                            'yellow',
+                            `  ${svc} had uncommitted changes before the ` +
+                                'update; skipping commit to avoid committing ' +
+                                'unrelated work (commit or stash them, then ' +
+                                'rerun).',
+                        ),
+                    );
+                } else if (deps.gitDirty(dir)) {
                     deps.gitCommit(dir, COMMIT_MESSAGE);
                     deps.npmVersion(dir, type);
                     deps.gitPushTags(dir);
@@ -231,6 +251,20 @@ export function defaultDeps(): UpDeps {
                 encoding: 'utf8',
             });
 
+            // a git failure (not a repo, git missing) must NOT read as a clean
+            // tree - that would silently skip the commit and report success;
+            // throw so the per-service loop records it as a failure
+            if (res.error) {
+                throw new Error(`git status: ${res.error.message}`);
+            }
+
+            if (res.status !== 0) {
+                throw new Error(
+                    `git status exited with code ${res.status}` +
+                        (res.stderr ? `: ${res.stderr.toString().trim()}` : ''),
+                );
+            }
+
             return !!res.stdout && res.stdout.trim().length > 0;
         },
         gitCommit(dir: string, message: string): void {
@@ -296,10 +330,7 @@ export const { command, describe, builder, handler } = {
 
     handler(argv: Arguments) {
         try {
-            const services =
-                typeof argv.services === 'string'
-                    ? (argv.services as string).split(',')
-                    : undefined;
+            const services = parseServices(argv.services);
 
             runUp(
                 {

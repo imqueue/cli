@@ -36,7 +36,34 @@ import { join } from 'path';
  * Mirrors the detection historically performed by the bash `imqctl`/`imqup`
  * tools via `grep -P 'extends\s+IMQ(Service|Client)\s*\{'`.
  */
-const SERVICE_MARKER = /extends\s+IMQ(?:Service|Client)\s*\{/;
+const SERVICE_MARKER = /extends\s+(?:[\w$]+\.)?IMQ(?:Service|Client)\b/;
+
+/**
+ * Normalises the `--services`/`-s` option into a clean list of service names.
+ * Accepts every shape yargs can produce for the flag - a single comma-separated
+ * string (`-s a,b`), a repeated flag (`-s a -s b`, which yargs collects into an
+ * array), an array of comma-separated strings, or nothing - and always returns
+ * a trimmed, de-duplicated, order-preserving list (or `undefined` when empty).
+ *
+ * Without this, a repeated `-s` silently produced an array that the callers'
+ * `typeof === 'string'` guard rejected, so the command fell back to operating
+ * on ALL discovered services.
+ *
+ * @param {unknown} raw - the raw `argv.services` value
+ * @return {string[] | undefined}
+ */
+export function parseServices(raw: unknown): string[] | undefined {
+    if (raw === undefined || raw === null) {
+        return undefined;
+    }
+
+    const list = (Array.isArray(raw) ? raw : [raw])
+        .flatMap(v => String(v).split(','))
+        .map(s => s.trim())
+        .filter(Boolean);
+
+    return list.length ? [...new Set(list)] : undefined;
+}
 
 /**
  * Recursively collects `.ts` file paths under the given directory. Missing

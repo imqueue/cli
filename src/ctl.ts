@@ -33,14 +33,33 @@ import {
 import { join } from 'path';
 import { styleText } from 'node:util';
 import { type Argv, type Arguments } from 'yargs';
-import { VAR_HOME, discoverServices, printError } from '../lib/index.js';
+import {
+    VAR_HOME,
+    discoverServices,
+    parseServices,
+    printError,
+} from '../lib/index.js';
 
 /** Log line emitted by a healthy service once its IMQ reader channel is up. */
 const READY_MARKER = 'reader channel connected';
-/** Log line emitted when a service crashed during startup. */
-const ERROR_MARKER = 'UnhandledPromiseRejectionWarning:';
+/**
+ * Log fragments that indicate a service errored during startup. Covers both the
+ * legacy Node warning text and the modern `ERR_UNHANDLED_REJECTION` code, so a
+ * crash is recognised across Node versions rather than only via the dead-pid
+ * fallback.
+ */
+const ERROR_MARKERS = [
+    'UnhandledPromiseRejection',
+    'ERR_UNHANDLED_REJECTION',
+] as const;
 /** How many one-second polls to wait for readiness in calm mode. */
 const MAX_READY_ATTEMPTS = 60;
+/** Interval between liveness polls while stopping a service (ms). */
+const STOP_POLL_MS = 250;
+/** Polls to await graceful SIGTERM shutdown before escalating (~5s). */
+const STOP_TERM_ATTEMPTS = 20;
+/** Polls to await death after SIGKILL before giving up (~2s). */
+const STOP_KILL_ATTEMPTS = 8;
 
 /**
  * Side-effectful primitives used by the ctl orchestration. Extracted behind an
@@ -57,8 +76,8 @@ export interface CtlDeps {
     gitPull(dir: string): void;
     /** Runs `npm run stop` in the service directory (best-effort). */
     stopService(dir: string): void;
-    /** Terminates a started process (and its group) by pid. */
-    killGroup(pid: number): void;
+    /** Signals a started process (and its group) by pid; defaults to SIGTERM. */
+    killGroup(pid: number, signal?: NodeJS.Signals): void;
     /** True if a process with the given pid is currently running. */
     isAlive(pid: number): boolean;
     /** Reads a service log file, returning '' when it does not exist yet. */
@@ -81,8 +100,14 @@ export interface CtlOptions {
     varHome?: string;
 }
 
-/** Outcome of waiting for a service to become ready in calm mode. */
-export type ReadyState = 'ready' | 'errored' | 'timeout';
+/**
+ * Outcome of waiting for a service to become ready in calm mode.
+ * - `ready`   - the readiness marker appeared;
+ * - `crashed` - the process exited during startup (dead pid);
+ * - `errored` - an error was logged but the process is still alive;
+ * - `timeout` - neither readiness nor an error within the attempt budget.
+ */
+export type ReadyState = 'ready' | 'crashed' | 'errored' | 'timeout';
 
 interface PidEntry {
     svc: string;
@@ -163,9 +188,15 @@ export async function waitForReady(
             return 'ready';
         }
 
-        // a dead process (or a logged unhandled rejection) means the service
-        // crashed on startup - report it now instead of waiting out the budget
-        if (log.includes(ERROR_MARKER) || !deps.isAlive(pid)) {
+        // a dead process is a definite startup crash - report it at once
+        // instead of waiting out the budget
+        if (!deps.isAlive(pid)) {
+            return 'crashed';
+        }
+
+        // an error was logged but the process is still alive: surface it as a
+        // distinct (softer) signal - it may still recover or keep running
+        if (ERROR_MARKERS.some(marker => log.includes(marker))) {
             return 'errored';
         }
 
@@ -227,12 +258,14 @@ export async function startServices(
         );
 
     let startedAny = false;
+    const failed: string[] = [];
 
     for (const svc of services) {
         const dir = join(opts.path, svc);
 
         if (!existsSync(dir)) {
             deps.log(styleText('red', `No such service directory: ${dir}`));
+            failed.push(svc);
 
             continue;
         }
@@ -266,6 +299,7 @@ export async function startServices(
                             `${(err as Error).message}`,
                     ),
                 );
+                failed.push(svc);
 
                 continue;
             }
@@ -276,6 +310,7 @@ export async function startServices(
 
         if (!pid) {
             deps.log(styleText('red', `Failed to start ${svc}.`));
+            failed.push(svc);
 
             continue;
         }
@@ -288,14 +323,25 @@ export async function startServices(
         if (opts.calm) {
             const state = await waitForReady(logFile, pid, deps);
 
-            if (state === 'errored') {
+            if (state === 'crashed') {
                 deps.log(
                     styleText(
-                        'yellow',
+                        'red',
                         `warn: ${svc} exited during startup, please check ` +
                             `its logs ('imq log ${svc}').`,
                     ),
                 );
+                failed.push(svc);
+            } else if (state === 'errored') {
+                deps.log(
+                    styleText(
+                        'yellow',
+                        `warn: ${svc} logged an error during startup and may ` +
+                            `not be healthy, please check its logs ` +
+                            `('imq log ${svc}').`,
+                    ),
+                );
+                failed.push(svc);
             } else if (state === 'timeout') {
                 deps.log(
                     styleText(
@@ -311,42 +357,133 @@ export async function startServices(
     persist();
 
     if (startedAny && !opts.calm) {
-        deps.log('Bulk service start initiated, please, be patient...');
+        deps.log('Bulk service start initiated, please be patient...');
+    }
+
+    // surface partial failures with a non-zero exit (handler -> printError),
+    // matching `imq up`; a pure timeout is a warning, not a failure
+    if (failed.length) {
+        throw new Error(
+            `Started ${services.length - failed.length}/${services.length} ` +
+                `service(s); failed: ${failed.join(', ')}.`,
+        );
     }
 }
 
 /**
- * Stops the selected services: kills their recorded master processes (keeping
- * unrelated pids in the pid file) and runs each service's `stop` script.
+ * Polls the given pid entries until they all die or the attempt budget is
+ * exhausted, returning those still alive.
+ *
+ * @param {PidEntry[]} entries - processes to await
+ * @param {CtlDeps} deps
+ * @param {number} attempts - number of {@link STOP_POLL_MS} polls
+ * @return {Promise<PidEntry[]>} - entries still alive after waiting
+ */
+async function waitForDeath(
+    entries: PidEntry[],
+    deps: CtlDeps,
+    attempts: number,
+): Promise<PidEntry[]> {
+    let alive = entries.filter(e => deps.isAlive(e.pid));
+
+    for (let i = 0; alive.length && i < attempts; i++) {
+        await deps.sleep(STOP_POLL_MS);
+        alive = alive.filter(e => deps.isAlive(e.pid));
+    }
+
+    return alive;
+}
+
+/**
+ * Stops the selected services: signals their recorded master processes, waits
+ * for them to actually terminate (escalating SIGTERM -> SIGKILL), runs each
+ * service's `stop` script, and prints a summary. Pids of services we could not
+ * kill are kept in the pid file (with a warning) so `status` still reflects
+ * reality and a later `start` won't spawn a duplicate.
+ *
+ * When run from a directory where no services can be discovered and no explicit
+ * `-s` was given, it falls back to stopping every tracked pid, so `imq ctl stop`
+ * works from anywhere rather than silently doing nothing.
  *
  * @param {CtlOptions} opts
  * @param {CtlDeps} deps
- * @return {void}
+ * @return {Promise<void>}
  */
-export function stopServices(opts: CtlOptions, deps: CtlDeps): void {
+export async function stopServices(
+    opts: CtlOptions,
+    deps: CtlDeps,
+): Promise<void> {
     const varHome = ensureVarHome(opts);
-    const services = discoverServices(opts.path, opts.services);
-    const target = new Set(services);
-    const remaining: PidEntry[] = [];
+    const discovered = discoverServices(opts.path, opts.services);
+    const allPids = readPids(varHome);
+    // scope to the discovered/explicit set; if nothing is discoverable here and
+    // no -s was given, fall back to every tracked pid (works from any cwd)
+    const scoped = !!opts.services?.length || discovered.length > 0;
+    const target = scoped
+        ? new Set(discovered)
+        : new Set(allPids.map(e => e.svc));
 
-    for (const entry of readPids(varHome)) {
-        if (target.has(entry.svc)) {
-            deps.log(`Stopping ${entry.svc} (pid ${entry.pid})...`);
-            deps.killGroup(entry.pid);
-        } else {
-            remaining.push(entry);
-        }
+    const toStop = allPids.filter(e => target.has(e.svc));
+    const untouched = allPids.filter(e => !target.has(e.svc));
+
+    if (!toStop.length) {
+        deps.log(
+            'Nothing to stop - no matching services are tracked as running.',
+        );
+
+        return;
     }
 
-    writePids(varHome, remaining);
+    for (const entry of toStop) {
+        deps.log(`Stopping ${entry.svc} (pid ${entry.pid})...`);
+        deps.killGroup(entry.pid);
+    }
 
-    for (const svc of services) {
+    // wait for graceful shutdown, then escalate to SIGKILL for any stragglers
+    let alive = await waitForDeath(toStop, deps, STOP_TERM_ATTEMPTS);
+
+    if (alive.length) {
+        for (const entry of alive) {
+            deps.log(
+                styleText(
+                    'yellow',
+                    `warn: ${entry.svc} (pid ${entry.pid}) did not stop on ` +
+                        'SIGTERM; sending SIGKILL...',
+                ),
+            );
+            deps.killGroup(entry.pid, 'SIGKILL');
+        }
+
+        alive = await waitForDeath(alive, deps, STOP_KILL_ATTEMPTS);
+    }
+
+    // keep entries we could not kill (plus unrelated ones); drop the stopped
+    const survivors = new Set(alive.map(e => e.pid));
+
+    writePids(varHome, [
+        ...untouched,
+        ...toStop.filter(e => survivors.has(e.pid)),
+    ]);
+
+    for (const svc of discovered) {
         const dir = join(opts.path, svc);
 
-        if (existsSync(dir)) {
+        if (target.has(svc) && existsSync(dir)) {
             deps.stopService(dir);
         }
     }
+
+    const stopped = toStop.length - alive.length;
+
+    deps.log(
+        alive.length
+            ? styleText(
+                  'yellow',
+                  `Stopped ${stopped} service(s); ${alive.length} refused to ` +
+                      `terminate: ${alive.map(e => e.svc).join(', ')}.`,
+              )
+            : `Stopped ${stopped} service(s).`,
+    );
 }
 
 /**
@@ -359,19 +496,37 @@ export function stopServices(opts: CtlOptions, deps: CtlDeps): void {
  */
 export function statusServices(opts: CtlOptions, deps: CtlDeps): void {
     const varHome = opts.varHome || VAR_HOME;
-    const entries = readPids(varHome);
+    const all = readPids(varHome);
+    const scope = opts.services?.length ? new Set(opts.services) : undefined;
+    const shown = scope ? all.filter(e => scope.has(e.svc)) : all;
 
-    if (!entries.length) {
+    if (!shown.length) {
         deps.log('No services are currently tracked as running.');
 
         return;
     }
 
-    for (const { svc, pid } of entries) {
-        deps.log(
-            deps.isAlive(pid)
-                ? `${svc}: ${styleText('green', `running (pid ${pid})`)}`
-                : `${svc}: ${styleText('red', `not running (stale pid ${pid})`)}`,
+    const stale: string[] = [];
+
+    for (const { svc, pid } of shown) {
+        if (deps.isAlive(pid)) {
+            deps.log(`${svc}: ${styleText('green', `running (pid ${pid})`)}`);
+        } else {
+            deps.log(
+                `${svc}: ${styleText('red', `not running (stale pid ${pid})`)}`,
+            );
+            stale.push(`${svc}:${pid}`);
+        }
+    }
+
+    // prune the stale entries we examined, preserving every other record
+    // (including entries outside a -s filter we never looked at)
+    if (stale.length) {
+        const staleKeys = new Set(stale);
+
+        writePids(
+            varHome,
+            all.filter(e => !staleKeys.has(`${e.svc}:${e.pid}`)),
         );
     }
 }
@@ -399,7 +554,9 @@ export async function runCtl(
     const started = deps.now();
 
     if (action === 'stop' || action === 'restart') {
-        stopServices(opts, deps);
+        // awaited: on restart this guarantees the old processes are dead (and
+        // their logs settled) before startServices truncates and respawns
+        await stopServices(opts, deps);
     }
 
     if (action === 'start' || action === 'restart') {
@@ -466,14 +623,14 @@ export function defaultDeps(): CtlDeps {
                 stdio: 'ignore',
             });
         },
-        killGroup(pid: number): void {
+        killGroup(pid: number, signal: NodeJS.Signals = 'SIGTERM'): void {
             try {
                 // detached children lead their own process group (pgid = pid),
                 // so a negative pid signals the whole tree
-                process.kill(-pid, 'SIGTERM');
+                process.kill(-pid, signal);
             } catch {
                 try {
-                    process.kill(pid, 'SIGTERM');
+                    process.kill(pid, signal);
                 } catch {
                     /* already gone */
                 }
@@ -562,10 +719,7 @@ export const { command, describe, builder, handler } = {
 
     async handler(argv: Arguments) {
         try {
-            const services =
-                typeof argv.services === 'string'
-                    ? (argv.services as string).split(',')
-                    : undefined;
+            const services = parseServices(argv.services);
 
             await runCtl(
                 argv.action as 'start' | 'stop' | 'restart' | 'status',
