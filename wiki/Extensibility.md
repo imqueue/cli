@@ -29,7 +29,7 @@ enterprise/self-hosted ones and makes the whole tool testable:
 |---|---|
 | `IMQ_GITHUB_API_URL` | GitHub Enterprise Server |
 | `IMQ_GITLAB_API_URL` | self-managed GitLab |
-| `IMQ_BITBUCKET_API_URL` | Bitbucket Server / Data Center |
+| `IMQ_BITBUCKET_API_URL` | Bitbucket Cloud 2.0-compatible endpoint |
 | `IMQ_CIRCLECI_API_URL` | CircleCI (or a proxy) |
 | `IMQ_TRAVIS_API_URL` | Travis (or a proxy) |
 | `IMQ_GIT_REMOTE_BASE` | base for the git remote on commit/push |

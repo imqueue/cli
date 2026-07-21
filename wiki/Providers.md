@@ -10,7 +10,7 @@ providers combine.
 |---|---|---|---|
 | **github** (default) | user or organization | Personal Access Token with `repo` scope (and `admin:org` for org repos / Actions secrets) | `IMQ_GITHUB_API_URL` |
 | **gitlab** | user or group | Personal Access Token with `api` scope | `IMQ_GITLAB_API_URL` |
-| **bitbucket** | workspace | App password with repository admin | `IMQ_BITBUCKET_API_URL` |
+| **bitbucket** | workspace | Bitbucket **Cloud** access token (repo admin), sent as a Bearer token | `IMQ_BITBUCKET_API_URL` |
 
 The VCS provider is responsible for **creating the remote repository** and,
 where applicable, storing CI secrets. The SCM tool (git) is deliberately split
@@ -68,9 +68,16 @@ providers into enterprise-ready ones with no code change:
 export IMQ_GITHUB_API_URL=https://github.mycorp.com/api/v3
 # self-managed GitLab
 export IMQ_GITLAB_API_URL=https://gitlab.mycorp.com/api/v4
-# Bitbucket Server / Data Center
-export IMQ_BITBUCKET_API_URL=https://bitbucket.mycorp.com/rest/api/1.0
+# an API-compatible Bitbucket endpoint / proxy
+export IMQ_BITBUCKET_API_URL=https://bitbucket.mycorp.com/api/2.0
 ```
+
+> The override relocates the API **base URL** only; it does not translate
+> between API dialects. The GitHub and GitLab providers speak the same API
+> shape as their enterprise/self-managed servers, so those work directly. The
+> Bitbucket provider speaks the **Bitbucket Cloud 2.0** API; point the override
+> at a Cloud-2.0-compatible endpoint (Bitbucket Server/Data Center's 1.0 API is
+> a different dialect and is not supported as-is).
 
 Combine with `IMQ_GIT_REMOTE_BASE` if your git remote host differs from the API
 host. These same variables are how the test suite exercises the providers
@@ -82,7 +89,12 @@ For any provider token the resolution order is:
 
 1. `-T/--github-token` flag (one-off; applies to the active VCS host)
 2. config: `vcs.auth.token`, `ci.auth.token`, `registry.auth.password`
-3. interactive prompt (TTY only)
+3. for CircleCI, the `CIRCLE_TOKEN` environment variable (fallback for
+   `ci.auth.token`)
+4. interactive prompt (TTY only)
+
+A legacy `gitHubAuthToken` from a v3 config is only reused for the **github**
+host, never for gitlab/bitbucket.
 
 Because the config may store these, `~/.imq/config.json` is always written
 `0600`. In shared CI, prefer passing tokens per-invocation or via environment

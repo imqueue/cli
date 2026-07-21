@@ -19,7 +19,7 @@ imq config set packages opentelemetry,pg-cache
 ## Groups
 
 Packages belong to groups. **Exclusive** groups accept at most one member;
-selecting a second replaces the first.
+selecting two members of the same exclusive group is rejected with an error.
 
 | Group | Exclusive? | Members |
 |---|---|---|

@@ -24,15 +24,20 @@ globally. Do this once after installation to make later commands short.
 
 ```bash
 imq config get                 # print every set option as "key = value"
+imq config get --json          # print the whole config as JSON (-j for short)
 imq config get ci.provider     # print a single value
 imq config set ci.provider circleci
 imq config set vcs.namespace my-org
+imq config set packages otel,pg-cache   # comma list OR a JSON array
 imq config check               # exit 0 if initialized, 1 otherwise (for scripts)
 ```
 
 `get`/`set` accept **dot-paths** into the structured config (e.g.
 `registry.region`, `vcs.auth.token`). The file is written with `0600`
 permissions because it may hold secrets (VCS token, registry password).
+Setting a structured key (`vcs.*`, `ci.*`, `registry.*`, `packages`,
+`templatesRef`) also updates the mapped legacy keys, so a config written by v4
+still works if the CLI is downgraded to v3.
 
 ## The structured (v4) schema
 
@@ -134,7 +139,7 @@ You do not need to migrate anything by hand.
 | `IMQ_TEMPLATES_REPO` | Override the templates git URL (fork or SSH). |
 | `IMQ_GITHUB_API_URL` | GitHub API base — set to a GitHub Enterprise host. |
 | `IMQ_GITLAB_API_URL` | GitLab API base — self-managed GitLab. |
-| `IMQ_BITBUCKET_API_URL` | Bitbucket API base — Bitbucket Server/Data Center. |
+| `IMQ_BITBUCKET_API_URL` | Bitbucket API base — a Bitbucket Cloud 2.0-compatible endpoint. |
 | `IMQ_CIRCLECI_API_URL` | CircleCI API base. |
 | `IMQ_TRAVIS_API_URL` | Travis API base. |
 | `IMQ_GIT_REMOTE_BASE` | Base for the git remote used on commit/push (testing seam). |

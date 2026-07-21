@@ -48,8 +48,9 @@ imq service create payments ./payments -y \
   -T "$GHE_TOKEN" -a "Acme Corp" -e platform@acme-corp.com
 ```
 
-Analogously use `IMQ_GITLAB_API_URL` / `IMQ_BITBUCKET_API_URL` for self-managed
-GitLab / Bitbucket Server. See [Providers](Providers#enterprise--self-hosted).
+Analogously use `IMQ_GITLAB_API_URL` for self-managed GitLab, or
+`IMQ_BITBUCKET_API_URL` for a Bitbucket Cloud 2.0-compatible endpoint. See
+[Providers](Providers#enterprise--self-hosted).
 
 ## 4. A local fleet of services
 
@@ -79,7 +80,7 @@ imq ctl stop
 ```bash
 cd ~/work/services
 
-# preview: update deps everywhere, no git changes
+# update deps everywhere (rewrites package.json + reinstalls; no git commit)
 imq up
 
 # then patch-bump, commit and push each service that actually changed
