@@ -152,20 +152,17 @@ async function resolveEmail(
 async function resolveLicenseId(
     argv: any,
     global: IMQCLIConfig,
+    service: IMQCLIConfig,
     interactive: boolean,
 ): Promise<string> {
-    let licenseId = argv.license || 'UNLICENSED';
+    // flag -> per-service -> global; prompt only when nothing was chosen
+    const chosen = argv.license || service.license || global.license;
 
-    // prompt for a license only when the user hasn't chosen one anywhere
-    if (
-        licenseId === 'UNLICENSED' &&
-        typeof global.license === 'undefined' &&
-        interactive
-    ) {
-        licenseId = (await licensingOptions()).id;
+    if (!chosen && interactive) {
+        return (await licensingOptions()).id;
     }
 
-    return licenseId;
+    return chosen || 'UNLICENSED';
 }
 
 async function resolveNodeTags(
@@ -405,11 +402,21 @@ async function resolveCi(
 async function resolveUseVcs(
     argv: any,
     global: IMQCLIConfig,
+    structured: StructuredConfig,
     interactive: boolean,
 ): Promise<boolean> {
-    // an explicit --vcs choice implies git integration
+    // an explicit --no-use-git wins over any configured value
+    if (argv.g === false) {
+        return false;
+    }
+
+    // an explicit --vcs choice, or a configured/structured vcs provider,
+    // implies git integration
     let useGit =
-        argv.g || !!(argv.vcs && String(argv.vcs).trim()) || global.useGit;
+        argv.g ||
+        !!(argv.vcs && String(argv.vcs).trim()) ||
+        !!structured.vcs.provider ||
+        global.useGit;
 
     if (!useGit && typeof global.useGit === 'undefined') {
         if (!interactive) {
@@ -421,7 +428,7 @@ async function resolveUseVcs(
                 type: 'confirm',
                 name: 'useGit',
                 message:
-                    'Would you like to enable automatic GitHub integration ' +
+                    'Would you like to enable automatic repository creation ' +
                     'for this service?',
                 default: true,
             },
@@ -467,7 +474,13 @@ async function resolveRegistry(
     global: IMQCLIConfig,
     interactive: boolean,
 ): Promise<ResolvedRegistry> {
-    let want = argv.D || global.useDocker;
+    // nullish: an explicit --no-dockerize (argv.D === false) must win over a
+    // configured useDocker: true; a configured registry provider also implies
+    // dockerization (so a structured-only config is honored)
+    let want =
+        argv.D ??
+        global.useDocker ??
+        (structured.registry.provider ? true : undefined);
 
     if (!want && typeof global.useDocker === 'undefined' && interactive) {
         const answer = await inquirer.prompt<{ useDocker: boolean }>([
@@ -613,12 +626,46 @@ async function resolveRegistry(
  * @param {PlanSources} sources - config sources and mode flags
  * @return {Promise<CreatePlan>}
  */
+/**
+ * Deep-merges the per-service config over the global config for the structured
+ * sections (vcs/ci/registry incl. their nested `auth`), so a partial
+ * `.imqrc.json` (e.g. `{ "vcs": { "private": false } }`) overrides only the
+ * keys it names rather than replacing the whole section. Top-level scalars and
+ * arrays keep replace-wins semantics (service wins).
+ *
+ * @param {IMQCLIConfig} global
+ * @param {IMQCLIConfig} service
+ * @return {IMQCLIConfig}
+ */
+function mergeConfig(
+    global: IMQCLIConfig,
+    service: IMQCLIConfig,
+): IMQCLIConfig {
+    const merged: IMQCLIConfig = { ...global, ...service };
+
+    for (const key of ['vcs', 'ci', 'registry'] as const) {
+        const g = (global as any)[key];
+        const s = (service as any)[key];
+
+        if (g || s) {
+            (merged as any)[key] = {
+                ...g,
+                ...s,
+                auth: { ...g?.auth, ...s?.auth },
+            };
+        }
+    }
+
+    return merged;
+}
+
 export async function buildCreatePlan(
     argv: any,
     sources: PlanSources,
 ): Promise<CreatePlan> {
     const { global, service, interactive, dryRun } = sources;
-    const structured = deriveStructured({ ...global, ...service });
+    const merged = mergeConfig(global, service);
+    const structured = deriveStructured(merged);
 
     const name = ensureName(argv.name);
     const className = camelCase(name);
@@ -630,7 +677,7 @@ export async function buildCreatePlan(
     const homepage = (argv.H || '').trim();
     const bugs = (argv.B || '').trim();
 
-    const useVcs = await resolveUseVcs(argv, global, interactive);
+    const useVcs = await resolveUseVcs(argv, global, structured, interactive);
 
     const vcsConfig = { provider: '', namespace: '', private: true };
     let token = '';
@@ -641,6 +688,21 @@ export async function buildCreatePlan(
             structured,
             interactive,
         );
+
+        // the legacy gitHubAuthToken is github-specific; if a non-github host
+        // is chosen and the structured token was only derived from legacy keys
+        // (no explicit vcs.auth.token in the config), do not reuse it
+        if (
+            providerId !== 'github' &&
+            !merged.vcs?.auth?.token &&
+            merged.gitHubAuthToken
+        ) {
+            structured.vcs = {
+                ...structured.vcs,
+                auth: { ...structured.vcs.auth, token: undefined },
+            };
+        }
+
         const vcs = await resolveVcs(argv, structured, providerId, interactive);
 
         vcsConfig.provider = providerId;
@@ -670,7 +732,7 @@ export async function buildCreatePlan(
         interactive,
     );
     const license = resolveLicense(
-        await resolveLicenseId(argv, global, interactive),
+        await resolveLicenseId(argv, global, service, interactive),
         author,
         email,
         homepage,
@@ -710,11 +772,11 @@ export async function buildCreatePlan(
         dockerize,
         nodeTags,
         nodeDockerTag: (argv.L || '').trim() || undefined,
-        template: argv.template || 'default',
+        template:
+            argv.template || service.template || global.template || 'default',
         license,
-        // yargs boolean-negation turns `--no-install` into `install=false`,
-        // so honor both the declared flag and the negated form
-        noInstall: !!argv.noInstall || argv.install === false,
+        // `install` is declared with default true; `--no-install` sets it false
+        noInstall: argv.install === false,
         useVcs,
         config,
         interactive,

@@ -23,7 +23,12 @@
  */
 import { styleText } from 'node:util';
 import { execFileSync } from 'child_process';
-import { DEFAULT_TEMPLATES_REF, commandExists, cpr } from '../../lib/index.js';
+import {
+    DEFAULT_TEMPLATES_REF,
+    commandExists,
+    cpr,
+    saveServiceConfig,
+} from '../../lib/index.js';
 import {
     ciProviders,
     containerRegistries,
@@ -122,6 +127,24 @@ function scaffold(
         overlayFragments(plan.path, fragments);
     }
 
+    // derive package.json repository/homepage/bugs URLs from the SELECTED VCS
+    // host (not hardcoded github); honor IMQ_GIT_REMOTE_BASE for the repo url
+    const ns = plan.config.vcs.namespace || '';
+    let repoUrl = '';
+    let homeUrl = '';
+    let bugsUrl = '';
+
+    if (plan.useVcs && plan.config.vcs.provider) {
+        const vcs = vcsHosts.get(plan.config.vcs.provider);
+        const remoteBase = process.env.IMQ_GIT_REMOTE_BASE;
+
+        repoUrl = remoteBase
+            ? `${remoteBase.replace(/\/+$/, '')}/${plan.name}.git`
+            : vcs.remoteUrl(ns, plan.name);
+        homeUrl = vcs.webUrl(ns, plan.name);
+        bugsUrl = vcs.bugsUrl(ns, plan.name);
+    }
+
     const tokens = buildServiceTokens({
         name: plan.name,
         className: plan.className,
@@ -129,12 +152,15 @@ function scaffold(
         description: plan.description,
         author: plan.author,
         email: plan.email,
-        namespace: plan.config.vcs.namespace || '',
+        namespace: ns,
         homepage: plan.homepage,
         bugs: plan.bugs,
         license: plan.license,
         addonPreload: addons.preload,
         addonConfig: addons.config,
+        repoUrl,
+        homeUrl,
+        bugsUrl,
     });
 
     writeLicense(plan.path, plan.license.text);
@@ -202,6 +228,48 @@ function installPackages(plan: CreatePlan): void {
 }
 
 /**
+ * Persists the resolved provider/package choices to the service's committed
+ * `.imqrc.json`, so later commands and re-creations reuse them. Secrets
+ * (VCS token, registry credentials) are deliberately NOT written.
+ *
+ * @param {CreatePlan} plan
+ */
+function writeServiceConfig(plan: CreatePlan): void {
+    const { vcs, ci, registry, packages, templatesRef } = plan.config;
+    const defined = <T extends object>(obj: T): T =>
+        Object.fromEntries(
+            Object.entries(obj).filter(([, v]) => v !== undefined && v !== ''),
+        ) as T;
+
+    const config: Record<string, unknown> = {
+        vcs: plan.useVcs
+            ? defined({
+                  provider: vcs.provider,
+                  namespace: vcs.namespace,
+                  private: vcs.private,
+              })
+            : undefined,
+        ci: ci.provider ? { provider: ci.provider } : undefined,
+        registry: registry.provider
+            ? defined({
+                  provider: registry.provider,
+                  namespace: registry.namespace,
+                  region: registry.region,
+                  project: registry.project,
+                  accountId: registry.accountId,
+              })
+            : undefined,
+        packages: packages.length ? packages : undefined,
+        templatesRef,
+    };
+
+    saveServiceConfig(
+        plan.path,
+        defined(config) as Parameters<typeof saveServiceConfig>[1],
+    );
+}
+
+/**
  * Runs the full create pipeline for a resolved plan, delegating hosting/CI/
  * scm concerns to the selected providers. Mutates `state.repoCreated` so the
  * caller can roll back a created remote repository on failure.
@@ -246,6 +314,10 @@ export async function runCreate(
             ),
         );
     }
+
+    // persist the resolved choices (no secrets) so later commands and
+    // re-creations reuse them; written before commit so it is included
+    writeServiceConfig(plan);
 
     // 2. VCS - create the remote repository
     if (plan.useVcs) {

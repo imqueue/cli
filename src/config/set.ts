@@ -24,12 +24,42 @@
 import { styleText } from 'node:util';
 import { type Arguments } from 'yargs';
 import {
+    type IMQCLIConfig,
     printError,
     loadConfig,
     saveConfig,
     prepareConfigValue,
     setPath,
+    deriveStructured,
+    applyStructured,
 } from '../../lib/index.js';
+
+/** Structured config sections whose writes are mirrored to legacy keys. */
+const STRUCTURED = /^(vcs|ci|registry|packages|templatesRef)(\.|$)/;
+
+/**
+ * Removes structured sections that ended up empty (e.g. an `auth: {}` left by
+ * the sync) so the config stays tidy.
+ *
+ * @param {IMQCLIConfig} cfg
+ */
+function pruneEmpty(cfg: IMQCLIConfig): void {
+    for (const key of ['vcs', 'ci', 'registry'] as const) {
+        const section = (cfg as any)[key];
+
+        if (!section || typeof section !== 'object') {
+            continue;
+        }
+
+        if (section.auth && Object.keys(section.auth).length === 0) {
+            delete section.auth;
+        }
+
+        if (Object.keys(section).length === 0) {
+            delete (cfg as any)[key];
+        }
+    }
+}
 
 export const { command, describe, handler } = {
     command: 'set <option> <value>',
@@ -40,13 +70,18 @@ export const { command, describe, handler } = {
     handler(argv: Arguments) {
         try {
             const config = loadConfig();
+            const option = String((argv as any).option);
 
             // dot-path aware; a plain key (no dots) behaves as before
-            setPath(
-                config,
-                (argv as any).option,
-                prepareConfigValue((argv as any).value),
-            );
+            setPath(config, option, prepareConfigValue((argv as any).value));
+
+            // keep structured <-> legacy keys in sync when a structured key is
+            // set, so a config written by v4 still works if downgraded to v3
+            if (STRUCTURED.test(option)) {
+                applyStructured(config, deriveStructured(config));
+                pruneEmpty(config);
+            }
+
             saveConfig(config);
 
             process.stdout.write(
