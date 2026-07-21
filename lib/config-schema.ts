@@ -29,6 +29,12 @@ export interface VcsConfig {
     provider?: string;
     namespace?: string;
     private?: boolean;
+    /**
+     * Git transport used for the commit/push at create time: `https` (default,
+     * authenticated with the access token) or `ssh` (uses the user's ssh
+     * keys/agent, no token injection).
+     */
+    protocol?: 'ssh' | 'https';
     auth?: { token?: string };
 }
 

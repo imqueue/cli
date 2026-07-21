@@ -36,6 +36,9 @@ import {
     loadTemplates,
     loadTemplate,
     licensingOptions,
+    detectGitProtocol,
+    hasSshKeys,
+    sshDir,
 } from '../../lib/index.js';
 import {
     ciProviders,
@@ -526,7 +529,48 @@ export async function vcsHostOptions(config: IMQCLIConfig): Promise<void> {
 
     if (config.useGit) {
         config.vcs = { ...config.vcs, provider: answer.provider };
+        await gitProtocolOptions(config);
     }
+}
+
+/**
+ * Chooses the git transport for pushing new services. The default is
+ * auto-detected from whether the machine user has SSH keys (SSH when present,
+ * HTTPS otherwise); the detection is reported and the user can override it.
+ *
+ * @param {IMQCLIConfig} config
+ */
+export async function gitProtocolOptions(config: IMQCLIConfig): Promise<void> {
+    const detected = detectGitProtocol();
+    const reason = hasSshKeys()
+        ? `SSH keys were found in ${sshDir()}`
+        : `no SSH keys were found in ${sshDir()}`;
+
+    console.log(
+        styleText(
+            'gray',
+            `Detected git transport for pushes: ` +
+                `${styleText('cyan', detected)} (${reason}).`,
+        ),
+    );
+
+    const answer = await inquirer.prompt<{ protocol: 'ssh' | 'https' }>([
+        {
+            type: 'list',
+            name: 'protocol',
+            message: 'Git transport for pushing new services:',
+            choices: [
+                {
+                    name: 'HTTPS (authenticated with your access token)',
+                    value: 'https',
+                },
+                { name: 'SSH (uses your ssh keys)', value: 'ssh' },
+            ],
+            default: detected,
+        },
+    ]);
+
+    config.vcs = { ...config.vcs, protocol: answer.protocol };
 }
 
 export async function ciOptions(config: IMQCLIConfig): Promise<void> {

@@ -119,6 +119,8 @@ Options:
   -L, --node-docker-tag  Node docker tag to use as base docker image
   -N, --docker-namespace Registry namespace / repository / ACR name
   -T, --github-token     VCS auth token
+      --git-protocol     Git transport for the initial push: https (default) or
+                         ssh                            [choices: "https","ssh"]
   -p, --private          Repository will be private                    [boolean]
       --dry-run          Print the resolved plan and exit              [boolean]
   -y, --yes              Skip the confirmation prompt                  [boolean]
@@ -131,6 +133,17 @@ reference, packages) without making any changes — handy for scripting and CI.
 
 The chosen providers and packages are written to a committed `.imqrc.json` in
 the generated service, so later commands and re-creations reuse them.
+
+**Git transport for the initial push.** By default (`vcs.protocol: https`) the
+initial commit is pushed over HTTPS authenticated with the same access token
+that created the repository — the token is used only for that push and is never
+written into the repository's `.git/config`. This makes a push to a private
+organization repo succeed even when your SSH key (or a different "active"
+git/gh account) has no access to it. Pass `--git-protocol ssh` (or set
+`vcs.protocol ssh`) to push over SSH with your own keys instead. `imq config
+init` auto-detects a sensible default from whether you have SSH keys in
+`~/.ssh`. See
+[Configuration → Git transport](https://github.com/imqueue/cli/wiki/Configuration#git-transport-for-the-initial-push-https-vs-ssh).
 
 #### Package Catalog
 
@@ -204,7 +217,9 @@ command:
 imq config init
 ~~~
 
-which will guide you through configuration process.
+which will guide you through configuration process. When you enable a VCS host
+it auto-detects the git transport (SSH if you have keys in `~/.ssh`, otherwise
+HTTPS), tells you what it picked, and lets you change it.
 
 There are also useful commands to retrieve and set specific configuration
 values, stored in a configuration file:
@@ -224,12 +239,12 @@ will print a single requested option value.
 imq config set [option_name] [new_value]
 ~~~
 will set requested option to a given new value. Nested options can be
-addressed with a dot-path, e.g. `imq config set ci.provider circleci` or
-`imq config set vcs.namespace my-org`. The config keeps the structured v4
-keys (`vcs`, `ci`, `registry`, `packages`, `templatesRef`) and their legacy
-equivalents in sync, so upgrading or downgrading the CLI keeps working. A
-config written by an older CLI is read transparently (github + travis +
-dockerhub).
+addressed with a dot-path, e.g. `imq config set ci.provider circleci`,
+`imq config set vcs.namespace my-org` or `imq config set vcs.protocol ssh`.
+The config keeps the structured v4 keys (`vcs`, `ci`, `registry`, `packages`,
+`templatesRef`) and their legacy equivalents in sync, so upgrading or
+downgrading the CLI keeps working. A config written by an older CLI is read
+transparently (github + travis + dockerhub).
 
 ~~~bash
 imq config check

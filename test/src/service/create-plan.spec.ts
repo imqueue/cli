@@ -218,4 +218,69 @@ describe('service create plan', () => {
             assert.equal(plan.config.vcs.provider, 'gitlab');
         });
     });
+
+    describe('buildCreatePlan() git protocol resolution', () => {
+        it('should default the push protocol to https', async () => {
+            const plan = await buildCreatePlan(baseArgv, {
+                global: legacyConfig,
+                service: {},
+                interactive: false,
+                dryRun: true,
+            });
+
+            assert.equal(plan.config.vcs.protocol, 'https');
+        });
+
+        it('should let --git-protocol ssh win over the default', async () => {
+            const plan = await buildCreatePlan(
+                { ...baseArgv, gitProtocol: 'ssh' },
+                {
+                    global: legacyConfig,
+                    service: {},
+                    interactive: false,
+                    dryRun: true,
+                },
+            );
+
+            assert.equal(plan.config.vcs.protocol, 'ssh');
+        });
+
+        it('should honor a configured vcs.protocol', async () => {
+            const plan = await buildCreatePlan(baseArgv, {
+                global: { ...legacyConfig, vcs: { protocol: 'ssh' } },
+                service: {},
+                interactive: false,
+                dryRun: true,
+            });
+
+            assert.equal(plan.config.vcs.protocol, 'ssh');
+        });
+
+        it('should let a per-service protocol override the global', async () => {
+            const plan = await buildCreatePlan(baseArgv, {
+                global: { ...legacyConfig, vcs: { protocol: 'ssh' } },
+                service: { vcs: { protocol: 'https' } },
+                interactive: false,
+                dryRun: true,
+            });
+
+            assert.equal(plan.config.vcs.protocol, 'https');
+        });
+
+        it('should reject an invalid protocol value', async () => {
+            await assert.rejects(
+                () =>
+                    buildCreatePlan(
+                        { ...baseArgv, gitProtocol: 'ftp' },
+                        {
+                            global: legacyConfig,
+                            service: {},
+                            interactive: false,
+                            dryRun: true,
+                        },
+                    ),
+                /Invalid git protocol/,
+            );
+        });
+    });
 });

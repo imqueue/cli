@@ -22,7 +22,7 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import { execFileSync } from 'child_process';
-import type { CreateContext, ScmProvider } from '../types.js';
+import type { CreateContext, ScmAuth, ScmProvider } from '../types.js';
 import { commandExists } from '../../../lib/index.js';
 
 /**
@@ -33,7 +33,11 @@ export const git: ScmProvider = {
     id: 'git',
     title: 'Git',
 
-    async initAndPush(ctx: CreateContext, remoteUrl: string): Promise<void> {
+    async initAndPush(
+        ctx: CreateContext,
+        remoteUrl: string,
+        auth?: ScmAuth,
+    ): Promise<void> {
         if (!commandExists('git')) {
             throw new Error('Git command expected, but is not installed!');
         }
@@ -41,6 +45,30 @@ export const git: ScmProvider = {
         // no shell: urls/branches cannot be injected
         const run = (...args: string[]) =>
             execFileSync('git', args, { cwd: ctx.path, stdio: 'inherit' });
+
+        // When an access token is supplied for an HTTPS remote, authenticate
+        // the push with it instead of relying on the user's ssh keys or git
+        // credential helper. This is the same token that just created the
+        // repository, so it is guaranteed to have write access - which the
+        // user's ssh identity (or a different active account) may not.
+        //
+        // The credential is passed via a per-invocation `-c http.extraHeader`
+        // so it is NEVER written into the repository's .git/config (the remote
+        // url stays clean and token-free). It applies only to https requests.
+        const authArgs =
+            auth && /^https:\/\//i.test(remoteUrl)
+                ? [
+                      '-c',
+                      `http.extraHeader=Authorization: Basic ${Buffer.from(
+                          `${auth.user}:${auth.token}`,
+                      ).toString('base64')}`,
+                  ]
+                : [];
+        const push = (...args: string[]) =>
+            execFileSync('git', [...authArgs, 'push', ...args], {
+                cwd: ctx.path,
+                stdio: 'inherit',
+            });
         const tag = `v${ctx.version}`;
 
         console.log('Committing changes...');
@@ -63,7 +91,7 @@ export const git: ScmProvider = {
                 .trim() || 'main';
 
         run('remote', 'add', 'origin', remoteUrl);
-        run('push', 'origin', branch);
+        push('origin', branch);
 
         console.log('Setting up version tag...');
 
@@ -74,12 +102,12 @@ export const git: ScmProvider = {
         }
 
         try {
-            run('push', 'origin', `:refs/tags/${tag}`);
+            push('origin', `:refs/tags/${tag}`);
         } catch {
             /* no remote tag to drop */
         }
 
         run('tag', '-fa', tag, '-m', `Tagging version ${tag}`);
-        run('push', 'origin', branch, '--tags');
+        push('origin', branch, '--tags');
     },
 };

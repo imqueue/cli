@@ -32,6 +32,25 @@ for org repos / Actions secrets), GitLab needs `api`, Bitbucket needs a
 repository-scoped access token (sent as a Bearer token). Pass it with `-T` or
 set `vcs.auth.token`.
 
+## Push fails with "Repository not found" (repo *was* created)
+
+The remote repository is created, but the final commit/push fails with
+`ERROR: Repository not found` / `Could not read from remote repository`. This
+is an SSH access problem: your SSH key (or the currently "active" git/gh
+account, if you have several) has no push access to the namespace — common with
+a private organization repo.
+
+By default the CLI now pushes over **HTTPS authenticated with the access token
+that created the repo**, which avoids this entirely. If you have explicitly
+selected SSH (`vcs.protocol: ssh` or `--git-protocol ssh`), either:
+
+- switch that service/config back to HTTPS —
+  `imq config set vcs.protocol https` (or pass `--git-protocol https`); or
+- fix your SSH access to the namespace (add the key to the right account / add
+  the account to the org), then re-run or push manually.
+
+See [Configuration → Git transport](Configuration#git-transport-for-the-initial-push-https-vs-ssh).
+
 ## Nothing happens on an enterprise/self-hosted host
 
 Set the matching API base URL and (if the git host differs) the remote base:

@@ -59,17 +59,35 @@ async function rollbackRepository(plan: CreatePlan): Promise<void> {
         return;
     }
 
-    let doDelete = !plan.interactive ? false : true;
+    const repo = `${plan.config.vcs.namespace}/${plan.name}`;
+
+    // interactive default: keep the repository. Deleting a remote repo is
+    // destructive and the local files/commit are usually fine - the failure
+    // is often just the push, which the user can retry manually. A
+    // non-interactive run never deletes.
+    let doDelete = false;
 
     if (plan.interactive) {
+        // spell out exactly what each answer does so the (Y/n) prompt is not
+        // ambiguous about the consequence of a destructive remote deletion
+        console.log(
+            styleText(
+                'yellow',
+                `\nThe ${vcs.title} repository "${repo}" was created before ` +
+                    'creation failed.\n' +
+                    '  • Yes → DELETE that remote repository (full roll back, ' +
+                    'nothing is kept).\n' +
+                    '  • No  → KEEP it (fix the problem and push manually, ' +
+                    'e.g. `git push origin`).',
+            ),
+        );
+
         const answer = await inquirer.prompt<{ del: boolean }>([
             {
                 type: 'confirm',
                 name: 'del',
-                message:
-                    `A ${vcs.title} repository was already created. Delete ` +
-                    'it to roll back?',
-                default: true,
+                message: `Delete the remote ${vcs.title} repository "${repo}"?`,
+                default: false,
             },
         ] as QuestionCollection);
 
@@ -80,7 +98,8 @@ async function rollbackRepository(plan: CreatePlan): Promise<void> {
         console.log(
             styleText(
                 'yellow',
-                `Leaving the created ${vcs.title} repository in place.`,
+                `Leaving the created ${vcs.title} repository "${repo}" in ` +
+                    'place.',
             ),
         );
 
@@ -137,6 +156,14 @@ export const { command, describe, builder, handler } = {
                     'VCS namespace (user, organization or workspace)',
                 )
                 .string('u')
+
+                .describe(
+                    'git-protocol',
+                    'Git transport for the initial push: "https" (default, ' +
+                        'authenticated with the access token) or "ssh" (uses ' +
+                        'your ssh keys)',
+                )
+                .choices('git-protocol', ['https', 'ssh'])
 
                 // declared as the positive `install` (default true) so that, under
                 // yargs strict mode, the negated `--no-install` is a known flag

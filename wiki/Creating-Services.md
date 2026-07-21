@@ -94,7 +94,15 @@ run performs, in order:
 7. **Install** dependencies (`npm install`) unless `--no-install`.
 8. **Initialize git** locally (sets a local commit identity from the author/
    email so it works even without a global git identity), **commit**, add the
-   **remote**, **push**, and **tag** the initial version.
+   **remote**, **push**, and **tag** the initial version. By default the push
+   is sent over **HTTPS and authenticated with the same access token** that
+   created the repo (injected only for that push, never written into the
+   repository's git config). This is what makes a push to a private org repo
+   succeed even when your SSH key — or a different "active" git/gh account — has
+   no access to it. The remote left in `.git/config` is the clean, token-free
+   HTTPS URL. To push over **SSH** with your own keys instead, pass
+   `--git-protocol ssh` (or set `vcs.protocol: ssh`) — see
+   [Configuration → Git transport](Configuration#git-transport-for-the-initial-push-https-vs-ssh).
 9. **Report** any addon instructions and environment variables you must set.
 
 Without repo creation, the remote/CI-secret/commit/push steps (4, 5, 8) are
@@ -107,8 +115,10 @@ still run.
   a pre-existing directory (or the current/home directory) is never deleted.
   A non-empty target is refused up front unless you pass `--force`.
 - If the remote repository was already created when a later step fails, you are
-  offered (interactively) to delete it to roll back; non-interactively it is
-  left in place with a notice so nothing is destroyed silently.
+  asked (interactively) whether to **delete** it (full roll back) or **keep** it
+  and fix the problem manually — the prompt spells out both outcomes and
+  **defaults to keeping** it. Non-interactively it is always left in place with
+  a notice, so nothing is destroyed silently.
 - Enabling CI and provisioning secrets are **non-fatal**: on failure the CLI
   prints what to do manually and continues. It reports which registry secrets
   were actually provisioned rather than assuming success.

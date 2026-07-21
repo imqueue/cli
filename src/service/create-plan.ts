@@ -202,6 +202,33 @@ async function resolveNodeTags(
 }
 
 /**
+ * Resolves the git transport for the create-time commit/push: an explicit
+ * `--git-protocol` flag wins, then a configured `vcs.protocol`, then the
+ * `https` default. Validates the value so a bad config fails clearly rather
+ * than silently falling back.
+ *
+ * @param {any} argv
+ * @param {StructuredConfig} structured
+ * @return {'ssh' | 'https'}
+ */
+function resolveGitProtocol(
+    argv: any,
+    structured: StructuredConfig,
+): 'ssh' | 'https' {
+    const raw = String(argv.gitProtocol || structured.vcs.protocol || 'https')
+        .trim()
+        .toLowerCase();
+
+    if (raw !== 'ssh' && raw !== 'https') {
+        throw new TypeError(
+            `Invalid git protocol "${raw}". Use "https" (default) or "ssh".`,
+        );
+    }
+
+    return raw;
+}
+
+/**
  * Resolves the VCS section (namespace/token/private) when git integration is
  * enabled, prompting only interactively; throws with a clear message when a
  * required value is missing non-interactively.
@@ -749,7 +776,12 @@ export async function buildCreatePlan(
         interactive,
     );
 
-    const vcsConfig = { provider: '', namespace: '', private: true };
+    const vcsConfig = {
+        provider: '',
+        namespace: '',
+        private: true,
+        protocol: 'https' as 'ssh' | 'https',
+    };
     let token = '';
 
     if (useVcs) {
@@ -786,6 +818,7 @@ export async function buildCreatePlan(
         vcsConfig.provider = providerId;
         vcsConfig.namespace = vcs.namespace;
         vcsConfig.private = vcs.private;
+        vcsConfig.protocol = resolveGitProtocol(argv, structured);
         token = vcs.token;
     }
 
@@ -846,6 +879,7 @@ export async function buildCreatePlan(
             provider: vcsConfig.provider || undefined,
             namespace: vcsConfig.namespace || undefined,
             private: vcsConfig.private,
+            protocol: vcsConfig.provider ? vcsConfig.protocol : undefined,
             auth: { token: token || undefined },
         },
         ci: { provider: ciProvider, auth: structured.ci.auth },

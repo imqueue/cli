@@ -1,7 +1,9 @@
 # @imqueue/cli — Local Manual Test Plan (v4)
 
 > **Purpose:** verify every feature of the locally-linked `imq` (`npm link`) end-to-end
-> before merge/publish. Local-only; this file is **not** committed.
+> before merge/publish. This checklist is committed to the repo so it can be
+> re-used for every manual testing session; run it against a throwaway sandbox
+> (section 0) so your real config is never touched.
 >
 > **How to use:**
 > - Work top-to-bottom. Each test is a checkbox.
@@ -129,6 +131,22 @@ which imq && imq --version                 # sanity: should print 4.0.0
   ↳ Notes:
 - [ ] **T2.11 [offline]** `imq config init` **interactively** (real terminal): walks VCS → CI → registry → packages → author, masks token input (`*`), ends with `@imqueue/cli successfully configured!`. Token echoes as `*`, never plaintext.
   ↳ Notes:
+- [ ] **T2.12 [offline]** `imq config init` **auto-detects the git transport**: when the VCS host is enabled it prints `Detected git transport for pushes: ssh|https (...)`, and the following `Git transport for pushing new services:` prompt is **pre-selected** to the detected value. Force each branch and confirm the default flips:
+  ```bash
+  IMQ_SSH_DIR="$(mktemp -d)"; : > "$IMQ_SSH_DIR/id_ed25519"   # fake key → detects ssh
+  IMQ_SSH_DIR="$IMQ_SSH_DIR" imq config init                  # default should be SSH
+  IMQ_SSH_DIR="$(mktemp -d)" imq config init                  # empty dir → default HTTPS
+  ```
+  Expect: with a key present the prompt defaults to **SSH**; with an empty dir it defaults to **HTTPS**; in both cases you can override the choice.
+  ↳ Notes:
+- [ ] **T2.13 [offline]** `vcs.protocol` set + validation:
+  ```bash
+  imq config set vcs.protocol ssh   && imq config get vcs.protocol   # → "ssh"
+  imq config set vcs.protocol https && imq config get vcs.protocol   # → "https"
+  imq config set vcs.protocol ftp; echo "exit=$?"                    # → rejected
+  ```
+  Expect: `ssh`/`https` accepted; `ftp` → `Invalid git protocol "ftp". Valid: https, ssh.` and non-zero exit; config unchanged.
+  ↳ Notes:
 
 ---
 
@@ -215,6 +233,14 @@ which imq && imq --version                 # sanity: should print 4.0.0
   ```
   Expect: plan reflects the requested template; no crash.
   ↳ Notes:
+- [ ] **T4.10** Git transport in the plan (`--git-protocol`): the `vcs:` line reports the transport, defaulting to `https`:
+  ```bash
+  imq service create demo "$SBX/demo" -a J -e j@d.io --use-git --vcs github -u me --dry-run < /dev/null | grep -i "vcs:"
+  imq service create demo "$SBX/demo" -a J -e j@d.io --use-git --vcs github -u me --git-protocol ssh --dry-run < /dev/null | grep -i "vcs:"
+  imq service create demo "$SBX/demo" -a J -e j@d.io --use-git --vcs github -u me --git-protocol ftp --dry-run < /dev/null; echo "exit=$?"
+  ```
+  Expect: first → `vcs: github (me, private, https)`; second → `... , ssh)`; third → rejected by the flag's choices (non-zero). A per-service `.imqrc.json`/global `vcs.protocol` is used when the flag is absent.
+  ↳ Notes:
 
 ---
 
@@ -231,6 +257,20 @@ which imq && imq --version                 # sanity: should print 4.0.0
   Expect: resolved providers/packages present; **no** token/password/user fields.
   ↳ Notes:
 - [ ] **T5.3 [net]** Honest secrets report: with cloud registry env vars unset, output states which CI secrets were/weren't provisioned (no silent success).
+  ↳ Notes:
+- [ ] **T5.4 [net]** HTTPS token push (default) to a **private org** repo succeeds **without** any SSH access configured for that org (this is the "Repository not found" regression). After creation, the pushed remote is clean/token-free:
+  ```bash
+  git -C <service> remote get-url origin     # → https://<host>/<ns>/<name>.git, NO token in it
+  git -C <service> config --get-regexp '^http\.' || echo "no extraheader persisted (good)"
+  ```
+  Expect: repo is created, committed and pushed over HTTPS; the origin URL contains no credentials and no `http.extraHeader` is left in `.git/config`.
+  ↳ Notes:
+- [ ] **T5.5 [net]** SSH transport: with `--git-protocol ssh` (or `vcs.protocol ssh`) and working SSH keys, the push uses `git@<host>:<ns>/<name>.git` and no token is injected:
+  ```bash
+  git -C <service> remote get-url origin     # → git@<host>:<ns>/<name>.git
+  ```
+  ↳ Notes:
+- [ ] **T5.6 [net]** Rollback prompt clarity: force a **post-create** failure (e.g. revoke push rights, or use `--git-protocol ssh` with no SSH access so the push fails after the repo exists). Interactively you get a clear prompt naming the repo, listing what **Yes** (delete/roll back) vs **No** (keep + fix manually) do, and **defaulting to No (keep)**. Non-interactively the repo is **left in place** with a notice (never deleted silently).
   ↳ Notes:
 
 ---

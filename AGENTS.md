@@ -117,6 +117,7 @@ Getting this wrong yields `TS2307/TS2882` and a non-zero build that aborts
 `IMQ_CLI_HOME`, `IMQ_NO_UPDATE_CHECK`, `IMQ_TEMPLATES_REPO`,
 `IMQ_GITHUB_API_URL`, `IMQ_GITLAB_API_URL`, `IMQ_BITBUCKET_API_URL`,
 `IMQ_CIRCLECI_API_URL`, `IMQ_TRAVIS_API_URL`, `IMQ_GIT_REMOTE_BASE`,
+`IMQ_SSH_DIR` (ssh dir scanned for git-protocol auto-detection),
 `IMQ_CLI_MISSING_COMMANDS` (test seam for `commandExists`).
 Any new network endpoint MUST get an `IMQ_*_API_URL` override so it is testable
 and enterprise-ready. Default the templates repo to public **HTTPS** (no SSH
@@ -162,6 +163,23 @@ Note two *different* service-detection strategies, by design:
   the current default template (no `require()`/`chai`).
 - `service create`'s commit step sets a **repo-local** git identity from the
   author/email, so it works without a global git identity.
+- `service create` push transport is chosen by `vcs.protocol`
+  (`--git-protocol` flag → `.imqrc` → global → `https` default), resolved in
+  `create-plan.ts` (`resolveGitProtocol`) and applied in `create-pipeline.ts`
+  step 6. **`https` (default): push authenticated with the VCS access token**
+  (the one that created the repo), injected per-push via
+  `git -c http.extraHeader=Authorization: Basic …` — never persisted to
+  `.git/config` (the remote URL stays token-free). This avoids the classic
+  "Repository not found" SSH failure when the user's key/active account lacks
+  access to a private org repo. Per-host basic-auth username is
+  `VcsHostProvider.httpAuthUser` (`x-access-token`/`oauth2`/`x-token-auth`).
+  **`ssh`: push over the host ssh url using the user's keys, no token
+  injection.** `git.initAndPush` injects the header only for `https://` remotes.
+  `IMQ_GIT_REMOTE_BASE` still overrides the target entirely (no token injection
+  there) and takes precedence over `vcs.protocol`. `imq config init`
+  auto-detects the default protocol via `lib/ssh.ts` `detectGitProtocol()`
+  (SSH when `~/.ssh` has keys, else HTTPS; `IMQ_SSH_DIR` overrides the dir),
+  reports it, and lets the user change it.
 - `update-version` must not filter by export name containing "Service" — walk
   the prototype chain.
 - Some sandboxes/containers have **no runtime network**; the docker harness is

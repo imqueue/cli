@@ -38,4 +38,5 @@ export * from './travis.js';
 export * from './template.js';
 export * from './github.js';
 export * from './node.js';
+export * from './ssh.js';
 export * from './autoupdate.js';

@@ -74,6 +74,10 @@ export const bitbucket: VcsHostProvider = {
 
     authSpec: { path: 'vcs.auth.token', describe: 'Bitbucket access token' },
 
+    // Bitbucket HTTPS basic-auth for workspace/repo access tokens: username
+    // `x-token-auth`, the token as the password
+    httpAuthUser: 'x-token-auth',
+
     remoteUrl(
         namespace: string,
         name: string,
