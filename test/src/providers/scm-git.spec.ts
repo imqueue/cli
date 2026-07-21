@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: scm/git initAndPush (against a local bare remote)
+ * @imqueue/cli Unit Tests: scm/git initAndPush (against a local bare remote)
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI library: resolve
+ * @imqueue/cli library: resolve
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

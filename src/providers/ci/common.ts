@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI providers: ci/common
+ * @imqueue/cli providers: ci/common
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

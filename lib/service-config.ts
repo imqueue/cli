@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI library: service-config
+ * @imqueue/cli library: service-config
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI library: travis
+ * @imqueue/cli library: travis
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

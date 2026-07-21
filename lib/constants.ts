@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI library: constants
+ * @imqueue/cli library: constants
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>

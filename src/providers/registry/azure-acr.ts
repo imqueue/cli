@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI providers: registry/azure-acr
+ * @imqueue/cli providers: registry/azure-acr
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

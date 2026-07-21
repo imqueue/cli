@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: package catalog
+ * @imqueue/cli Unit Tests: package catalog
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

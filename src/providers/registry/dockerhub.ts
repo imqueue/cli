@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI providers: registry/dockerhub
+ * @imqueue/cli providers: registry/dockerhub
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

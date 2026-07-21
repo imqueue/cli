@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: config
+ * @imqueue/cli command: config
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
@@ -29,7 +29,7 @@ import * as set from './config/set.js';
 
 export const { command, describe, builder } = {
     command: 'config',
-    describe: 'Manage IMQ CLI settings',
+    describe: 'Manage @imqueue CLI settings',
 
     builder(yargs: Argv) {
         return yargs

@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: template
+ * @imqueue/cli Unit Tests: template
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>

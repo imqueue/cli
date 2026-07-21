@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI library: github
+ * @imqueue/cli library: github
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

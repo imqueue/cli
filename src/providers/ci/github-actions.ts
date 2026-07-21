@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI providers: ci/github-actions
+ * @imqueue/cli providers: ci/github-actions
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

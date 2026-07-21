@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: service update-version
+ * @imqueue/cli command: service update-version
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>

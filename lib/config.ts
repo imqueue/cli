@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI library: config
+ * @imqueue/cli library: config
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
@@ -56,7 +56,7 @@ export function loadConfig(): IMQCLIConfig {
         // a corrupted config file must not crash every command with a raw
         // SyntaxError - fail with an actionable message instead
         throw new Error(
-            `Malformed IMQ config at ${CONFIG_PATH}: ` +
+            `Malformed @imqueue config at ${CONFIG_PATH}: ` +
                 `${(err as Error).message}. ` +
                 'Fix the JSON or run `imq config init` to recreate it.',
         );

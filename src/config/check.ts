@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: config check
+ * @imqueue/cli command: config check
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>

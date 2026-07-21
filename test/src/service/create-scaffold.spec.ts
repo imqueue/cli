@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: service create scaffolding
+ * @imqueue/cli Unit Tests: service create scaffolding
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

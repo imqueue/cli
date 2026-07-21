@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: log
+ * @imqueue/cli command: log
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>
@@ -372,7 +372,7 @@ function safeSize(file: string): number {
 export const { command, describe, builder, handler } = {
     command: 'log [services..]',
     describe:
-        'Tails and combines logs of IMQ services started with `imq ctl`. ' +
+        'Tails and combines logs of @imqueue services started with `imq ctl`. ' +
         'With no service names, all available logs are combined.',
 
     builder(yargs: Argv) {

@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: service
+ * @imqueue/cli command: service
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
@@ -28,7 +28,7 @@ import * as packages from './service/packages.js';
 
 export const { command, describe, builder } = {
     command: 'service',
-    describe: 'Manage IMQ service',
+    describe: 'Manage @imqueue service',
 
     builder(yargs: Argv) {
         return yargs

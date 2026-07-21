@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: providers registry
+ * @imqueue/cli Unit Tests: providers registry
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

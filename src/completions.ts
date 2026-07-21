@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: completions
+ * @imqueue/cli command: completions
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>

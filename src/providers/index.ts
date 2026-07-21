@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI providers: builtins registration
+ * @imqueue/cli providers: builtins registration
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

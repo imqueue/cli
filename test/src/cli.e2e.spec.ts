@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: end-to-end CLI (spawned process, real exit codes)
+ * @imqueue/cli Unit Tests: end-to-end CLI (spawned process, real exit codes)
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

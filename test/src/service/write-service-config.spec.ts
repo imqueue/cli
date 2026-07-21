@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: .imqrc.json is written without secrets
+ * @imqueue/cli Unit Tests: .imqrc.json is written without secrets
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

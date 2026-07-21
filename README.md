@@ -39,21 +39,21 @@ To start simply run after install:
 imq
 ~~~
 
-IMQ-CLI first of all provides a way to manage your IMQ-RPC based services and 
+@imqueue/cli first of all provides a way to manage your @imqueue/rpc based services and 
 clients based on desired configuration.
 
 ~~~
-IMQ Command Line Interface
+@imqueue Command Line Interface
 
 Usage: imq <command>
 
 Commands:
-  imq client            Manage IMQ client
+  imq client            Manage @imqueue client
   imq completions       Generates completions script for your shell
-  imq config            Manage IMQ CLI settings
+  imq config            Manage @imqueue CLI settings
   imq ctl <action>      Start/stop/restart/status a bulk of local services
   imq log [services..]  Tail and combine local service logs
-  imq service           Manage IMQ service
+  imq service           Manage @imqueue service
   imq up                Bulk-update service dependencies
 
 Options:
@@ -163,7 +163,7 @@ Usage:
 ~~~
 imq client generate <name> [path]
 
-Generates IMQ-RPC client for a specified service
+Generates @imqueue/rpc client for a specified service
 
 Options:
   --version        Show version number                                 [boolean]
@@ -193,9 +193,9 @@ For each detected service it runs `git checkout <branch>` → `git pull` →
 `npm version <n>` → `git push --follow-tags`, stopping that service on the
 first failing step.
 
-### Managing IMQ-CLI Configuration
+### Managing @imqueue/cli Configuration
 
-IMQ-CLI can be used with a pre-configured options to shorten commands usage.
+@imqueue/cli can be used with a pre-configured options to shorten commands usage.
 Global base configurations options usually stored in `~/.imq/config.json` file.
 This file can be managed manually, but it is recommended to use special
 command:
@@ -239,9 +239,9 @@ handy in scripts. The config file is written with `0600` permissions since it
 may hold secrets (GitHub token, DockerHub password).
 
 
-### IMQ-CLI Completions For Your Shell
+### @imqueue/cli Completions For Your Shell
 
-IMQ-CLI supports completions for your shell. It provide a way to generate 
+@imqueue/cli supports completions for your shell. It provide a way to generate 
 completions script and add it to your shell configuration, as far as
 allows to remove previously added completion script just running the 
 corresponding commands:

@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: config-schema
+ * @imqueue/cli Unit Tests: config-schema
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI providers: registry/aws-ecr
+ * @imqueue/cli providers: registry/aws-ecr
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>
