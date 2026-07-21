@@ -20,6 +20,7 @@
   "scripts": {
     "prepare": "npm run build",
     "build": "npm run clean-compiled && tsc",
+    "postbuild": "chmod +x index.js",
     "lint": "oxlint",
     "format": "oxfmt \"index.ts\" \"lib/**/*.ts\" \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "oxfmt --check \"index.ts\" \"lib/**/*.ts\" \"src/**/*.ts\" \"test/**/*.ts\"",
