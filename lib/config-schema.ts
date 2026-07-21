@@ -80,6 +80,25 @@ function hasLegacyKeys(cfg: IMQCLIConfig): boolean {
 }
 
 /**
+ * Returns true when the config carries any structured (v4) section. Used to
+ * tell a genuine v3 config apart from a v4 config that merely mirrors legacy
+ * keys: `applyStructured` writes `useGit`/`useDocker` alongside the structured
+ * sections, and those mirrors must NOT be mistaken for a legacy install.
+ *
+ * @param {IMQCLIConfig} cfg
+ * @return {boolean}
+ */
+function hasStructuredKeys(cfg: IMQCLIConfig): boolean {
+    return (
+        typeof cfg.vcs !== 'undefined' ||
+        typeof cfg.ci !== 'undefined' ||
+        typeof cfg.registry !== 'undefined' ||
+        typeof cfg.packages !== 'undefined' ||
+        typeof cfg.templatesRef !== 'undefined'
+    );
+}
+
+/**
  * Derives the namespace from a legacy git base url such as
  * "git@github.com:imqueue" -> "imqueue".
  *
@@ -141,8 +160,11 @@ export function deriveStructured(cfg: IMQCLIConfig): StructuredConfig {
     }
 
     // ——— CI ———
-    if (ci.provider === undefined && legacy) {
-        // every legacy installation used travis for CI
+    // Infer legacy travis ONLY for a genuinely legacy (v3) config - one with
+    // no structured sections at all. A v4 config carries structured keys plus
+    // their mirrored legacy keys (useGit, ...); mistaking those mirrors for a
+    // v3 install silently resurrected travis and broke gitlab/bitbucket creates.
+    if (ci.provider === undefined && legacy && !hasStructuredKeys(cfg)) {
         ci.provider = 'travis';
     }
 
@@ -214,8 +236,14 @@ export function applyStructured(
         cfg.useGit = false;
     }
 
-    if (vcs.auth?.token) {
+    // gitHubAuthToken is github-specific: only mirror a token for the github
+    // host (a v3 downgrade would otherwise send a gitlab/bitbucket token to the
+    // GitHub API), and clear any stale value when the token is cleared or the
+    // host is switched away from github
+    if (vcs.provider === 'github' && vcs.auth?.token) {
         cfg.gitHubAuthToken = vcs.auth.token;
+    } else {
+        delete cfg.gitHubAuthToken;
     }
 
     if (typeof vcs.private !== 'undefined') {

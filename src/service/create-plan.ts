@@ -284,7 +284,9 @@ async function resolveVcs(
 
         const answer = await inquirer.prompt<{ token: string }>([
             {
-                type: 'input',
+                // masked: a token must not be echoed to the terminal/scrollback
+                type: 'password',
+                mask: '*',
                 name: 'token',
                 message: `Enter your ${title} auth token:`,
             },
@@ -396,48 +398,60 @@ async function resolveCi(
 }
 
 /**
- * Resolves whether git integration should run, prompting interactively when
- * the choice is not already made. Honors an explicit stored `false`.
+ * Resolves whether git integration should run, honoring the documented
+ * flag -> .imqrc -> global precedence. Flags win first; then an explicit
+ * per-source signal (`useGit`, or a configured vcs provider) is honored,
+ * including an explicit `false` opt-out; only when nothing is configured is
+ * the choice prompted (TTY) or defaulted to off.
+ *
+ * @param {any} argv - parsed cli arguments
+ * @param {boolean | undefined} serviceUseGit - service (.imqrc) signal
+ * @param {boolean | undefined} globalUseGit - global config signal
+ * @param {boolean} interactive
+ * @return {Promise<boolean>}
  */
 async function resolveUseVcs(
     argv: any,
-    global: IMQCLIConfig,
-    structured: StructuredConfig,
+    serviceUseGit: boolean | undefined,
+    globalUseGit: boolean | undefined,
     interactive: boolean,
 ): Promise<boolean> {
-    // an explicit --no-use-git wins over any configured value
+    // explicit flags win over any configured value
     if (argv.g === false) {
+        return false; // --no-use-git
+    }
+
+    if (argv.g === true || !!(argv.vcs && String(argv.vcs).trim())) {
+        return true; // --use-git or an explicit --vcs host
+    }
+
+    // then the configured signal, service (.imqrc) over global - an explicit
+    // stored `false` is honored here (it is not nullish, so it is returned)
+    if (serviceUseGit !== undefined) {
+        return serviceUseGit;
+    }
+
+    if (globalUseGit !== undefined) {
+        return globalUseGit;
+    }
+
+    // nothing configured: prompt when interactive, otherwise default to off
+    if (!interactive) {
         return false;
     }
 
-    // an explicit --vcs choice, or a configured/structured vcs provider,
-    // implies git integration
-    let useGit =
-        argv.g ||
-        !!(argv.vcs && String(argv.vcs).trim()) ||
-        !!structured.vcs.provider ||
-        global.useGit;
+    const answer = await inquirer.prompt<{ useGit: boolean }>([
+        {
+            type: 'confirm',
+            name: 'useGit',
+            message:
+                'Would you like to enable automatic repository creation ' +
+                'for this service?',
+            default: true,
+        },
+    ] as QuestionCollection);
 
-    if (!useGit && typeof global.useGit === 'undefined') {
-        if (!interactive) {
-            return false;
-        }
-
-        const answer = await inquirer.prompt<{ useGit: boolean }>([
-            {
-                type: 'confirm',
-                name: 'useGit',
-                message:
-                    'Would you like to enable automatic repository creation ' +
-                    'for this service?',
-                default: true,
-            },
-        ] as QuestionCollection);
-
-        useGit = answer.useGit;
-    }
-
-    return !!useGit;
+    return !!answer.useGit;
 }
 
 interface ResolvedRegistry {
@@ -471,18 +485,18 @@ const EMPTY_REGISTRY: ResolvedRegistry = {
 async function resolveRegistry(
     argv: any,
     structured: StructuredConfig,
-    global: IMQCLIConfig,
+    serviceUseDocker: boolean | undefined,
+    globalUseDocker: boolean | undefined,
     interactive: boolean,
 ): Promise<ResolvedRegistry> {
-    // nullish: an explicit --no-dockerize (argv.D === false) must win over a
-    // configured useDocker: true; a configured registry provider also implies
-    // dockerization (so a structured-only config is honored)
-    let want =
-        argv.D ??
-        global.useDocker ??
-        (structured.registry.provider ? true : undefined);
+    // flag -> .imqrc -> global precedence for the docker master switch: an
+    // explicit --no-dockerize (argv.D === false) wins; then the service signal
+    // (useDocker, or a configured registry provider) over the global signal, so
+    // a service that requests a registry is dockerized even when the global
+    // default is off. `false` short-circuits `??` so an opt-out is preserved.
+    let want = argv.D ?? serviceUseDocker ?? globalUseDocker;
 
-    if (!want && typeof global.useDocker === 'undefined' && interactive) {
+    if (want === undefined && interactive) {
         const answer = await inquirer.prompt<{ useDocker: boolean }>([
             {
                 type: 'confirm',
@@ -667,6 +681,32 @@ export async function buildCreatePlan(
     const merged = mergeConfig(global, service);
     const structured = deriveStructured(merged);
 
+    // Per-source structured views so the git/docker master switches honor the
+    // documented flag -> .imqrc -> global precedence: a provider configured (or
+    // useGit/useDocker set) in the service's .imqrc must outrank a global
+    // scalar, which the merged view alone cannot express (a scalar unset in the
+    // .imqrc keeps the global value). `false` short-circuits `??` so an
+    // explicit opt-out is preserved.
+    const serviceStruct = deriveStructured(service);
+    const globalStruct = deriveStructured(global);
+    const serviceUseGit =
+        service.useGit ?? (serviceStruct.vcs.provider ? true : undefined);
+    const globalUseGit =
+        global.useGit ?? (globalStruct.vcs.provider ? true : undefined);
+    const serviceUseDocker =
+        service.useDocker ??
+        (serviceStruct.registry.provider ? true : undefined);
+    const globalUseDocker =
+        global.useDocker ?? (globalStruct.registry.provider ? true : undefined);
+
+    // The host the configured namespace/token belong to: the structured
+    // provider, or github when only the legacy github token is present.
+    const configuredVcsProvider =
+        structured.vcs.provider ||
+        (merged.gitHubAuthToken && !merged.vcs?.auth?.token
+            ? 'github'
+            : undefined);
+
     const name = ensureName(argv.name);
     const className = camelCase(name);
     const version = ensureVersion(argv.serviceVersion ?? argv.V ?? '');
@@ -677,7 +717,12 @@ export async function buildCreatePlan(
     const homepage = (argv.H || '').trim();
     const bugs = (argv.B || '').trim();
 
-    const useVcs = await resolveUseVcs(argv, global, structured, interactive);
+    const useVcs = await resolveUseVcs(
+        argv,
+        serviceUseGit,
+        globalUseGit,
+        interactive,
+    );
 
     const vcsConfig = { provider: '', namespace: '', private: true };
     let token = '';
@@ -689,17 +734,19 @@ export async function buildCreatePlan(
             interactive,
         );
 
-        // the legacy gitHubAuthToken is github-specific; if a non-github host
-        // is chosen and the structured token was only derived from legacy keys
-        // (no explicit vcs.auth.token in the config), do not reuse it
-        if (
-            providerId !== 'github' &&
-            !merged.vcs?.auth?.token &&
-            merged.gitHubAuthToken
-        ) {
+        // A namespace/token stored in config belong to the host they were
+        // configured for. If a DIFFERENT vcs host is now chosen (e.g. via
+        // --vcs), never reuse them for the new host - that would leak a token
+        // cross-host and push to the wrong namespace. Explicit -u/-T on the CLI
+        // are host-agnostic overrides and are kept.
+        if (configuredVcsProvider && providerId !== configuredVcsProvider) {
             structured.vcs = {
                 ...structured.vcs,
-                auth: { ...structured.vcs.auth, token: undefined },
+                namespace: argv.u ? structured.vcs.namespace : undefined,
+                auth: {
+                    ...structured.vcs.auth,
+                    token: argv.T ? structured.vcs.auth?.token : undefined,
+                },
             };
         }
 
@@ -713,7 +760,13 @@ export async function buildCreatePlan(
 
     // dockerization depends on a pushed repo; disable when git is off
     const registry = useVcs
-        ? await resolveRegistry(argv, structured, global, interactive)
+        ? await resolveRegistry(
+              argv,
+              structured,
+              serviceUseDocker,
+              globalUseDocker,
+              interactive,
+          )
         : EMPTY_REGISTRY;
 
     const dockerize = registry.want;

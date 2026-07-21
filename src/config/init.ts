@@ -251,7 +251,9 @@ export async function versionSystemOptions(
 
     answer = await inquirer.prompt<{ gitHubAuthToken: string }>([
         {
-            type: 'input',
+            // masked: a token must not be echoed to the terminal/scrollback
+            type: 'password',
+            mask: '*',
             name: 'gitHubAuthToken',
             message: 'Enter GitHub auth token:',
         },
@@ -472,7 +474,9 @@ export async function genericVcsOptions(
             message: `Enter ${title} namespace (user, org or workspace):`,
         },
         {
-            type: 'input',
+            // masked: a token must not be echoed to the terminal/scrollback
+            type: 'password',
+            mask: '*',
             name: 'token',
             message: `Enter ${title} auth token (leave empty to be asked later):`,
         },
@@ -509,13 +513,19 @@ export async function vcsHostOptions(config: IMQCLIConfig): Promise<void> {
         },
     ]);
 
-    config.vcs = { ...config.vcs, provider: answer.provider };
-
-    // github keeps the familiar base-url flow; other hosts use a generic one
+    // github keeps the familiar base-url flow; other hosts use a generic one.
+    // Do NOT persist the provider up front: the github sub-flow first asks
+    // whether to enable git at all, and if the user declines we must not leave
+    // a vcs.provider behind - that would force git back on at create time
+    // despite the stored useGit:false.
     if (answer.provider === 'github') {
         await versionSystemOptions(config);
     } else {
         await genericVcsOptions(config, answer.provider);
+    }
+
+    if (config.useGit) {
+        config.vcs = { ...config.vcs, provider: answer.provider };
     }
 }
 
