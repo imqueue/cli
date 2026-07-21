@@ -62,6 +62,34 @@ node index.js config check; mark $? "config check exits 0 when set"
 SHELL=/bin/bash node index.js completions on >/dev/null 2>&1
 grep -q "###-begin" "$IMQ_CLI_HOME/.bashrc" 2>/dev/null; mark $? "completions on writes block"
 
+echo "== 5. ctl / log / up (real process orchestration, offline) =="
+SVCROOT=/tmp/imq-svc-root
+rm -rf "$SVCROOT"; mkdir -p "$SVCROOT"
+for name in alpha beta; do
+  d="$SVCROOT/$name"; mkdir -p "$d/src"
+  printf 'export class %s extends IMQService {}\n' "$name" > "$d/src/index.ts"
+  printf "console.log('%s: up');setTimeout(()=>console.log('reader channel connected'),200);setInterval(()=>{},1000);process.on('SIGTERM',()=>process.exit(0));\n" "$name" > "$d/dev.js"
+  printf '{"name":"%s","version":"1.0.0","private":true,"scripts":{"dev":"node dev.js","stop":"true"}}\n' "$name" > "$d/package.json"
+done
+node index.js ctl start -p "$SVCROOT" -c >/dev/null 2>&1; mark $? "ctl start -c"
+sleep 1
+grep -q alpha "$IMQ_CLI_HOME/.imq/var/.pids" 2>/dev/null; mark $? "ctl wrote pid file"
+grep -q "reader channel connected" "$IMQ_CLI_HOME/.imq/var/alpha.log" 2>/dev/null; mark $? "service reached ready marker"
+node index.js log --no-follow >/tmp/logdump.txt 2>&1
+grep -q "reader channel connected" /tmp/logdump.txt; mark $? "log --no-follow dumps content"
+node index.js ctl stop -p "$SVCROOT" >/dev/null 2>&1; mark $? "ctl stop"
+node index.js up -p "$SVCROOT" -s alpha --skip-update >/tmp/up.txt 2>&1
+[ $? -ne 0 ] && grep -qi "nothing to perform" /tmp/up.txt; mark $? "up guards against no-op invocation"
+# real commit flow against a local bare remote (no network needed)
+BARE=/tmp/alpha.git; rm -rf "$BARE"; git init --bare -q "$BARE"
+( cd "$SVCROOT/alpha" && git init -q && git config user.email t@e.io \
+  && git config user.name T && git add -A && git commit -qm init \
+  && git branch -M master && git remote add origin "$BARE" \
+  && git push -q -u origin master ) >/dev/null 2>&1
+printf '// touch\n' >> "$SVCROOT/alpha/src/index.ts"
+node index.js up -p "$SVCROOT" -s alpha --skip-update --commit -v patch >/dev/null 2>&1
+( cd "$SVCROOT/alpha" && git log --oneline | grep -q "dependencies update" ); mark $? "up commits + bumps + pushes"
+
 echo "======================================"
 if [ "$FAIL" -eq 0 ]; then echo "ALL CHECKS PASSED"; else echo "SOME CHECKS FAILED"; fi
 exit $FAIL
