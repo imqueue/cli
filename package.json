@@ -19,6 +19,7 @@
   ],
   "scripts": {
     "prepare": "npm run build",
+    "postpublish": "gh api -X POST repos/imqueue/imqueue.com/dispatches -f event_type=cli-released >/dev/null 2>&1 && echo '→ notified imqueue.com to refresh the CLI User Guide' || echo 'note: could not notify imqueue.com (is gh installed & authed?) — trigger manually: gh api -X POST repos/imqueue/imqueue.com/dispatches -f event_type=cli-released'",
     "build": "npm run clean-compiled && tsc",
     "postbuild": "chmod +x index.js",
     "lint": "oxlint",
