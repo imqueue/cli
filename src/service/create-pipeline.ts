@@ -29,6 +29,7 @@ import {
     DEFAULT_TEMPLATES_REF,
     commandExists,
     cpr,
+    nodeVersion,
     saveServiceConfig,
 } from '../../lib/index.js';
 import {
@@ -184,13 +185,33 @@ function scaffold(
  * docker artifacts when dockerization is disabled, and activates builds when
  * a repository exists (never fatal).
  */
-async function applyCi(
+export async function applyCi(
     plan: CreatePlan,
     repoCreated: boolean,
     isV2: boolean,
 ): Promise<void> {
     const ci = ciProviders.get(plan.config.ci.provider as string);
     const tokens = await ci.tokens(plan);
+
+    // NODE_DOCKER_TAG is a Dockerfile-level token (the base image tag in
+    // `FROM node:%NODE_DOCKER_TAG-alpine`). It must resolve whenever the service
+    // is dockerized, independent of the CI provider. Historically only the
+    // travis provider set it, so github-actions/circleci left the placeholder
+    // literal and `docker build` failed with an invalid reference. Resolve it
+    // here for every provider that hasn't already.
+    if (plan.dockerize && !tokens.NODE_DOCKER_TAG) {
+        const tag =
+            plan.nodeDockerTag || (await nodeVersion(plan.nodeTags[0] || ''));
+
+        if (!tag) {
+            throw new TypeError(
+                'Could not resolve a Node.js version for the Docker base ' +
+                    'image. Pass -L/--node-docker-tag <tag> explicitly.',
+            );
+        }
+
+        tokens.NODE_DOCKER_TAG = tag;
+    }
 
     if (!plan.dockerize) {
         // v2 templates ship no CI file (it is a provider fragment), so only
