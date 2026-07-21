@@ -25,17 +25,16 @@ import { styleText } from 'node:util';
 import { type Argv, type Arguments } from 'yargs';
 import { printError, loadConfig, getPath } from '../../lib/index.js';
 
-let PROGRAM: string = '';
-
 export const { command, describe, builder, handler } = {
     command: 'get [option]',
     describe:
         'Prints value for given option from config. If option is ' +
         'not provided, will list all config options',
 
-    async builder(yargs: Argv) {
-        PROGRAM = (await yargs.argv).$0;
-
+    builder(yargs: Argv) {
+        // NOTE: do not read `yargs.argv` here - under strict mode that early
+        // parse rejects the positional as an unknown argument. The program
+        // name is taken from argv.$0 in the handler instead.
         return yargs
             .option('j', {
                 alias: 'json',
@@ -51,6 +50,7 @@ export const { command, describe, builder, handler } = {
 
     handler(argv: Arguments) {
         try {
+            const program = (argv.$0 as string) || 'imq';
             const config = loadConfig();
             const options = (config && Object.keys(config)) || [];
 
@@ -58,10 +58,11 @@ export const { command, describe, builder, handler } = {
                 return process.stdout.write(
                     styleText(
                         ['bold', 'yellow'],
-                        'Config is empty. Try to init if first by running:',
+                        'Config is empty. Try to initialize it first by ' +
+                            'running:',
                     ) +
                         '\n\n  $ ' +
-                        styleText('cyan', `${PROGRAM} config init`) +
+                        styleText('cyan', `${program} config init`) +
                         '\n\n',
                 );
             }

@@ -708,7 +708,6 @@ export const { command, describe, handler } = {
             );
         } catch (err) {
             printError(err as Error);
-            console.error(err);
         }
     },
 };

@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: config get
+ * IMQ-CLI command: service update-version
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
@@ -298,7 +298,7 @@ export const { command, describe, builder, handler } = {
                 describe: 'The branch to checkout and use during update.',
             })
             .option('n', {
-                alias: 'npm-version',
+                alias: ['npm-version', 'bump'],
                 default: 'prerelease',
                 describe:
                     'NPM version to update (major|minor|patch|prerelease).',

@@ -350,19 +350,52 @@ export function stopServices(opts: CtlOptions, deps: CtlDeps): void {
 }
 
 /**
- * Runs a ctl action (start | stop | restart) end-to-end, honoring verbose
- * timing.
+ * Reports the recorded services and whether each is currently running,
+ * distinguishing live pids from stale ones left by a crash or reboot.
  *
- * @param {'start'|'stop'|'restart'} action
+ * @param {CtlOptions} opts
+ * @param {CtlDeps} deps
+ * @return {void}
+ */
+export function statusServices(opts: CtlOptions, deps: CtlDeps): void {
+    const varHome = opts.varHome || VAR_HOME;
+    const entries = readPids(varHome);
+
+    if (!entries.length) {
+        deps.log('No services are currently tracked as running.');
+
+        return;
+    }
+
+    for (const { svc, pid } of entries) {
+        deps.log(
+            deps.isAlive(pid)
+                ? `${svc}: ${styleText('green', `running (pid ${pid})`)}`
+                : `${svc}: ${styleText('red', `not running (stale pid ${pid})`)}`,
+        );
+    }
+}
+
+/**
+ * Runs a ctl action (start | stop | restart | status) end-to-end, honoring
+ * verbose timing.
+ *
+ * @param {'start'|'stop'|'restart'|'status'} action
  * @param {CtlOptions} opts
  * @param {CtlDeps} deps
  * @return {Promise<void>}
  */
 export async function runCtl(
-    action: 'start' | 'stop' | 'restart',
+    action: 'start' | 'stop' | 'restart' | 'status',
     opts: CtlOptions,
     deps: CtlDeps,
 ): Promise<void> {
+    if (action === 'status') {
+        statusServices(opts, deps);
+
+        return;
+    }
+
     const started = deps.now();
 
     if (action === 'stop' || action === 'restart') {
@@ -480,14 +513,14 @@ export function defaultDeps(): CtlDeps {
 export const { command, describe, builder, handler } = {
     command: 'ctl <action>',
     describe:
-        'Controls a bulk of IMQ services (start, stop or restart) located ' +
-        'under a given path.',
+        'Controls a set of IMQ services (start, stop, restart or status) ' +
+        'located under a given path.',
 
     builder(yargs: Argv) {
         return yargs
             .positional('action', {
                 describe: 'Action to perform on the services.',
-                choices: ['start', 'stop', 'restart'] as const,
+                choices: ['start', 'stop', 'restart', 'status'] as const,
                 type: 'string',
             })
             .option('p', {
@@ -535,7 +568,7 @@ export const { command, describe, builder, handler } = {
                     : undefined;
 
             await runCtl(
-                argv.action as 'start' | 'stop' | 'restart',
+                argv.action as 'start' | 'stop' | 'restart' | 'status',
                 {
                     path: argv.path as string,
                     services,

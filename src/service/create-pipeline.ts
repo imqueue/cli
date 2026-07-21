@@ -355,12 +355,12 @@ export async function runCreate(
     // 4. CI + docker tokens/activation
     await applyCi(plan, state.repoCreated, isV2);
 
-    // 4. INSTALL
+    // 5. INSTALL
     if (!plan.noInstall) {
         installPackages(plan);
     }
 
-    // 5. COMMIT + push
+    // 6. COMMIT + push
     if (state.repoCreated) {
         const vcs = vcsHosts.get(plan.config.vcs.provider as string);
         const scm = scmTools.get('git');
@@ -374,7 +374,7 @@ export async function runCreate(
         await scm.initAndPush(plan, remoteUrl);
     }
 
-    // 6. REPORT
+    // 7. REPORT
     for (const note of ci.instructions(plan)) {
         console.log(styleText('cyan', note));
     }

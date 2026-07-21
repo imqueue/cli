@@ -82,7 +82,12 @@ export async function ensureTemplate(
         return template;
     }
 
-    if (template.startsWith('git@')) {
+    // a git url in any supported form (ssh, https, or a bare *.git)
+    if (
+        template.startsWith('git@') ||
+        /^https?:\/\//.test(template) ||
+        template.endsWith('.git')
+    ) {
         return await loadTemplate(template);
     }
 
@@ -521,14 +526,18 @@ function compileTemplateFile(
     tokens: Record<string, string>,
 ): string {
     for (const tag of Object.keys(tokens)) {
-        text = text.replace(new RegExp(`%${tag}`, 'g'), tokens[tag]);
+        // a function replacement inserts the value verbatim, so `$&`, `` $` ``,
+        // `$'` or `$1` in a token value (e.g. an author name or license text)
+        // are not interpreted as replacement patterns
+        text = text.replace(new RegExp(`%${tag}`, 'g'), () => tokens[tag]);
     }
 
     return text;
 }
 
 /**
- * Recursively compiles %TOKEN placeholders across every file under a path.
+ * Recursively compiles %TOKEN placeholders across every file under a path,
+ * skipping VCS/dependency directories and symlinks.
  *
  * @param {string} path - directory to compile
  * @param {Record<string, string>} tokens
@@ -537,11 +546,27 @@ export function compileTemplate(
     path: string,
     tokens: Record<string, string>,
 ): void {
-    fs.readdirSync(path).forEach((file: string) => {
-        const filePath = resolve(path, file);
+    for (const entry of fs.readdirSync(path, { withFileTypes: true })) {
+        // never rewrite a pre-existing .git or node_modules (e.g. when the
+        // target dir already existed), and never follow symlinks
+        if (entry.name === '.git' || entry.name === 'node_modules') {
+            continue;
+        }
 
-        if (fs.statSync(filePath).isDirectory()) {
-            return compileTemplate(filePath, tokens);
+        const filePath = resolve(path, entry.name);
+
+        if (entry.isSymbolicLink()) {
+            continue;
+        }
+
+        if (entry.isDirectory()) {
+            compileTemplate(filePath, tokens);
+
+            continue;
+        }
+
+        if (!entry.isFile()) {
+            continue;
         }
 
         const content = compileTemplateFile(
@@ -550,7 +575,7 @@ export function compileTemplate(
         );
 
         fs.writeFileSync(filePath, content, { encoding: 'utf8' });
-    });
+    }
 }
 
 /**

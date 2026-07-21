@@ -71,9 +71,19 @@ export const { command, describe, handler } = {
         try {
             const config = loadConfig();
             const option = String((argv as any).option);
+            let value = prepareConfigValue((argv as any).value);
+
+            // `packages` is an array; accept a convenient comma-separated list
+            // (e.g. `config set packages opentelemetry,pg-cache`) as well as a
+            // JSON array
+            if (option === 'packages' && typeof value === 'string') {
+                value = value
+                    .split(/\s*,\s*/)
+                    .filter((v: string) => v.length > 0);
+            }
 
             // dot-path aware; a plain key (no dots) behaves as before
-            setPath(config, option, prepareConfigValue((argv as any).value));
+            setPath(config, option, value);
 
             // keep structured <-> legacy keys in sync when a structured key is
             // set, so a config written by v4 still works if downgraded to v3

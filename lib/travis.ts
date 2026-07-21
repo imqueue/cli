@@ -223,7 +223,7 @@ export async function trySyncBuilds(
         if (retry < maxRetries) {
             await sleep(delay);
 
-            return trySyncBuilds(travis, ++retry, maxRetries);
+            return trySyncBuilds(travis, ++retry, maxRetries, delay);
         }
 
         return false;
