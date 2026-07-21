@@ -21,13 +21,21 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { configEmpty } from '../../lib/index.js';
+import { configEmpty, printError } from '../../lib/index.js';
 
 export const { command, describe, handler } = {
     command: 'check',
     describe: 'Exits with 0 if config initialized, with 1 otherwise',
 
     handler() {
-        process.exit(configEmpty() ? 1 : 0);
+        try {
+            // configEmpty -> loadConfig throws on a malformed config; route it
+            // through printError for the same friendly message as get/set
+            // rather than crashing with a raw stack trace
+            process.exit(configEmpty() ? 1 : 0);
+        } catch (err) {
+            printError(err as Error);
+            process.exit(1);
+        }
     },
 };

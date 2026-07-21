@@ -178,19 +178,44 @@ describe('service create plan', () => {
         });
 
         it('should NOT reuse a legacy github token for a gitlab host', async () => {
+            // a real (non-dry-run) create: with the github token cleared for the
+            // gitlab host and no gitlab token supplied, resolution must fail on
+            // the missing token rather than silently reusing the github one
             await assert.rejects(
                 () =>
                     buildCreatePlan(
-                        { ...baseArgv, vcs: 'gitlab', u: 'myorg' },
+                        {
+                            ...baseArgv,
+                            vcs: 'gitlab',
+                            u: 'myorg',
+                            ci: 'circleci',
+                        },
                         {
                             global: legacyConfig,
                             service: {},
                             interactive: false,
-                            dryRun: true,
+                            dryRun: false,
                         },
                     ),
                 /GitLab auth token required/,
             );
+        });
+
+        it('should not demand credentials under --dry-run', async () => {
+            // a dry run makes no calls, so it must preview the plan without a
+            // real namespace/token (the documented CI-safe behavior)
+            const plan = await buildCreatePlan(
+                {
+                    ...baseArgv,
+                    author: 'J',
+                    email: 'j@d.io',
+                    vcs: 'gitlab',
+                    ci: 'circleci',
+                },
+                { global: {}, service: {}, interactive: false, dryRun: true },
+            );
+
+            assert.equal(plan.config.vcs.provider, 'gitlab');
         });
     });
 });

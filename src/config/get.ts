@@ -53,7 +53,36 @@ export const { command, describe, builder, handler } = {
             const program = (argv.$0 as string) || 'imq';
             const config = loadConfig();
             const options = (config && Object.keys(config)) || [];
+            const option = (argv as any).option as string;
 
+            // a single option was requested: emit ONLY its JSON value on stdout
+            // (scripting-friendly). An unset option is a stderr error + exit 1,
+            // never the literal string "undefined" on stdout at exit 0.
+            if (option) {
+                const value = getPath(config, option);
+
+                if (value === undefined) {
+                    process.stderr.write(
+                        styleText('yellow', `Option "${option}" is not set.`) +
+                            '\n',
+                    );
+                    process.exitCode = 1;
+
+                    return;
+                }
+
+                return process.stdout.write(JSON.stringify(value) + '\n');
+            }
+
+            // whole-config JSON dump: pure JSON on stdout, no header, so
+            // `imq config get --json | jq` works ({} for an empty config)
+            if ((argv as any).json) {
+                return process.stdout.write(
+                    JSON.stringify(config, null, 2) + '\n',
+                );
+            }
+
+            // human-readable listing
             if (!options.length) {
                 return process.stdout.write(
                     styleText(
@@ -67,23 +96,9 @@ export const { command, describe, builder, handler } = {
                 );
             }
 
-            if ((argv as any).option) {
-                // dot-path aware; a plain key (no dots) behaves as before
-                return process.stdout.write(
-                    JSON.stringify(getPath(config, (argv as any).option)) +
-                        '\n',
-                );
-            }
-
             process.stdout.write(
                 styleText(['bold', 'green'], 'IMQ CLI Config:') + '\n',
             );
-
-            if ((argv as any).json) {
-                return process.stdout.write(
-                    styleText('cyan', JSON.stringify(config, null, 2)) + '\n',
-                );
-            }
 
             for (let option of options) {
                 process.stdout.write(

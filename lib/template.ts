@@ -30,6 +30,7 @@ import {
     resolve,
 } from './index.js';
 import * as fs from 'fs';
+import { createHash } from 'crypto';
 import { execFileSync } from 'child_process';
 import { commandExists } from './node.js';
 import { DEFAULT_TEMPLATES_REF } from './config-schema.js';
@@ -85,7 +86,7 @@ export async function loadTemplates(ref: string = DEFAULT_TEMPLATES_REF) {
         await updateTemplates(ref);
     } else {
         checkGit();
-        console.log('Loading IMQ templates, please, wait...');
+        console.log('Loading IMQ templates, please wait...');
         // pin the templates branch so new-CLI installs never pick up template
         // changes meant for older CLIs (and vice versa)
         execFileSync('git', ['clone', '--branch', ref, TPL_REPO, TPL_HOME], {
@@ -115,7 +116,7 @@ export async function loadTemplates(ref: string = DEFAULT_TEMPLATES_REF) {
 export async function updateTemplates(ref: string = DEFAULT_TEMPLATES_REF) {
     checkGit();
 
-    console.log('Updating IMQ templates, please, wait...');
+    console.log('Updating IMQ templates, please wait...');
 
     // run in TPL_HOME via cwd (no global chdir to leak on failure); keep the
     // local copy usable if any step fails (e.g. offline)
@@ -132,16 +133,31 @@ export async function updateTemplates(ref: string = DEFAULT_TEMPLATES_REF) {
 
 // due to problematic testing of user-interaction
 /**
- * Loads custom template from a given git repository
+ * Loads a custom template from a given git repository into a local cache. The
+ * cache directory is namespaced by a hash of the URL so two different repos
+ * that share a basename (e.g. two `template.git`) never collide. When a cached
+ * copy exists it is reused; the "fetch again?" prompt is only offered in an
+ * interactive session (a non-TTY run silently reuses the cache rather than
+ * hanging or crashing at pipeline time).
  *
  * @param {string} url
+ * @param {boolean} [interactive] - whether the re-fetch prompt may be shown
  * @return {Promise<string>}
  */
-export async function loadTemplate(url: string): Promise<string> {
+export async function loadTemplate(
+    url: string,
+    interactive = false,
+): Promise<string> {
     const name = (url.split(/[/]/).pop() || '').replace(/\.git$/, '');
-    const path = resolve(CUSTOM_TPL_HOME, name);
+    const hash = createHash('sha1').update(url).digest('hex').slice(0, 8);
+    const path = resolve(CUSTOM_TPL_HOME, `${name}-${hash}`);
 
     if (fs.existsSync(path)) {
+        if (!interactive) {
+            // non-interactive: reuse the cached copy rather than prompt
+            return path;
+        }
+
         let answer = await inquirer.prompt<{ overwrite: boolean }>([
             {
                 type: 'confirm',
@@ -160,7 +176,7 @@ export async function loadTemplate(url: string): Promise<string> {
         rmdir(path);
     }
 
-    console.log(`Loading template from repository ${url}, please, wait...`);
+    console.log(`Loading template from repository ${url}, please wait...`);
     execFileSync('git', ['clone', url, path], { stdio: 'inherit' });
 
     return path;

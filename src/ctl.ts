@@ -30,7 +30,7 @@ import {
     readFileSync,
     writeFileSync,
 } from 'fs';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { styleText } from 'node:util';
 import { type Argv, type Arguments } from 'yargs';
 import {
@@ -235,9 +235,13 @@ export async function startServices(
     const services = discoverServices(opts.path, opts.services);
 
     if (!services.length) {
-        deps.log('No IMQ services found to start.');
-
-        return;
+        // a start that finds nothing is a failure, not a silent success: CI
+        // must be able to detect a wrong --path
+        throw new Error(
+            `No IMQ services found under ${resolve(opts.path)}. A service is ` +
+                'a directory whose src/ tree contains a class extending ' +
+                'IMQService or IMQClient (or pass -s <name> explicitly).',
+        );
     }
 
     const varHome = ensureVarHome(opts);

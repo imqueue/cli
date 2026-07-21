@@ -129,8 +129,9 @@ export const { command, describe, builder, handler } = {
                 .boolean('g')
 
                 .describe('vcs', 'VCS host (github, gitlab, bitbucket)')
+                .string('vcs')
 
-                .alias('u', 'github-namespace')
+                .alias('u', ['github-namespace', 'vcs-namespace'])
                 .describe(
                     'u',
                     'VCS namespace (user, organization or workspace)',
@@ -202,32 +203,38 @@ export const { command, describe, builder, handler } = {
                     'registry',
                     'Container registry (dockerhub, google, aws-ecr, azure-acr)',
                 )
+                .string('registry')
 
                 .alias('N', 'docker-namespace')
                 .describe('N', 'Registry namespace / repository / ACR name')
                 .string('N')
 
                 .describe('region', 'Registry region (google, aws-ecr)')
+                .string('region')
                 .describe('project', 'GCP project id (google)')
+                .string('project')
                 .describe('account-id', 'AWS account id (aws-ecr)')
+                .string('account-id')
 
-                .alias('T', 'github-token')
+                .alias('T', ['github-token', 'vcs-token'])
                 .describe('T', 'VCS auth token')
                 .string('T')
 
                 .alias('p', 'private')
-                .describe('p', 'Service repository will be private at GitHub')
+                .describe('p', 'Create the service repository as private')
                 .boolean('p')
 
                 .describe(
                     'ci',
                     'CI provider (github-actions, circleci, travis)',
                 )
+                .string('ci')
 
                 .describe(
                     'packages',
                     'Comma-separated @imqueue addon packages to include ' +
-                        '(use --no-packages for none)',
+                        '(use --no-packages for none; run `imq service ' +
+                        'packages` to list them)',
                 )
 
                 .describe('dry-run', 'Print the resolved plan and exit')
@@ -255,6 +262,43 @@ export const { command, describe, builder, handler } = {
                 .describe(
                     'path',
                     'Path to directory where service will be generated to',
+                )
+
+                // group options so the (large) --help is scannable
+                .group(['a', 'e', 'd', 'V', 'l'], 'Identity:')
+                .group(['g', 'vcs', 'u', 'T', 'p'], 'VCS (repository):')
+                .group(['ci'], 'CI:')
+                .group(
+                    [
+                        'D',
+                        'registry',
+                        'N',
+                        'region',
+                        'project',
+                        'account-id',
+                        'L',
+                    ],
+                    'Container registry:',
+                )
+                .group(['t', 'packages', 'n'], 'Template & packages:')
+                .group(
+                    ['install', 'dry-run', 'y', 'f', 'name', 'path'],
+                    'Behavior:',
+                )
+
+                .example(
+                    '$0 service create billing ./billing -a "Me" ' +
+                        '-e me@x.io --no-use-git',
+                    'Local-only service (no repository or CI)',
+                )
+                .example(
+                    '$0 service create billing -a "Me" -e me@x.io ' +
+                        '--vcs github -u my-org -T $TOKEN',
+                    'Create and push a GitHub repository',
+                )
+                .example(
+                    '$0 service create billing ./billing --dry-run',
+                    'Preview the resolved plan, make no changes',
                 )
         );
     },

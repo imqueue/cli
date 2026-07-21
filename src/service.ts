@@ -24,6 +24,7 @@
 import { type Argv } from 'yargs';
 import * as create from './service/create.js';
 import * as update_version from './service/update-version.js';
+import * as packages from './service/packages.js';
 
 export const { command, describe, builder } = {
     command: 'service',
@@ -33,6 +34,7 @@ export const { command, describe, builder } = {
         return yargs
             .command(create as any)
             .command(update_version as any)
+            .command(packages as any)
             .demandCommand()
             .help();
     },
