@@ -1,0 +1,145 @@
+# Configuration
+
+The CLI reads configuration from three layers, merged with a strict precedence
+so that scripted runs are deterministic:
+
+```
+CLI flag  →  per-service .imqrc.json  →  global ~/.imq/config.json  →  interactive prompt (TTY only)  →  built-in default
+```
+
+A prompt is only shown when the process is attached to a TTY and no earlier
+layer supplied a value; otherwise the default is used. This is what lets
+`imq service create … --dry-run` and CI pipelines run without hanging.
+
+## Quick start
+
+```bash
+imq config init
+```
+
+An interactive wizard walks you through the four axes and stores your answers
+globally. Do this once after installation to make later commands short.
+
+## Managing config values
+
+```bash
+imq config get                 # print every set option as "key = value"
+imq config get ci.provider     # print a single value
+imq config set ci.provider circleci
+imq config set vcs.namespace my-org
+imq config check               # exit 0 if initialized, 1 otherwise (for scripts)
+```
+
+`get`/`set` accept **dot-paths** into the structured config (e.g.
+`registry.region`, `vcs.auth.token`). The file is written with `0600`
+permissions because it may hold secrets (VCS token, registry password).
+
+## The structured (v4) schema
+
+`~/.imq/config.json` holds a structured view built from these groups:
+
+### `vcs` — version control host
+
+| Key | Meaning |
+|---|---|
+| `vcs.provider` | `github` \| `gitlab` \| `bitbucket` |
+| `vcs.namespace` | user / organization / workspace that owns new repos |
+| `vcs.private` | create repositories as private (`true`/`false`) |
+| `vcs.auth.token` | API/personal-access token for repo creation & secrets |
+
+### `ci` — continuous integration
+
+| Key | Meaning |
+|---|---|
+| `ci.provider` | `github-actions` \| `circleci` \| `travis` |
+| `ci.auth.token` | token used to enable the repo / set CI secrets (CircleCI, Travis) |
+
+### `registry` — container registry
+
+| Key | Meaning |
+|---|---|
+| `registry.provider` | `dockerhub` \| `google` \| `aws-ecr` \| `azure-acr` |
+| `registry.namespace` | image namespace / repository / ACR name |
+| `registry.region` | region (Google Artifact Registry, AWS ECR) |
+| `registry.project` | GCP project id (Google) |
+| `registry.accountId` | AWS account id (ECR) |
+| `registry.auth.user` / `registry.auth.password` | registry credentials (DockerHub) |
+
+### Top-level
+
+| Key | Meaning |
+|---|---|
+| `packages` | default addon packages added to new services (array) |
+| `templatesRef` | git ref of the templates repo to use (default `v4`) |
+
+Example `~/.imq/config.json`:
+
+```json
+{
+  "vcs":      { "provider": "github", "namespace": "my-org", "private": true },
+  "ci":       { "provider": "github-actions" },
+  "registry": { "provider": "google", "project": "my-gcp-proj", "region": "europe-west1" },
+  "packages": ["opentelemetry", "pg-cache"],
+  "templatesRef": "v4"
+}
+```
+
+## Per-service overrides: `.imqrc.json`
+
+When a service is created, its resolved providers and packages are written to a
+committed `.imqrc.json` at the service root. Later commands (and re-creations)
+read it, so a service always rebuilds with the tools it was born with — even if
+your global defaults have since changed. A `.imqrc.json` value overrides the
+global config but is still overridden by an explicit CLI flag.
+
+```json
+{
+  "vcs": { "provider": "gitlab", "namespace": "team-x" },
+  "ci":  { "provider": "circleci" },
+  "packages": ["sequelize", "tag-cache"]
+}
+```
+
+## Secrets and tokens
+
+Tokens can be provided by (in order of preference):
+
+1. A CLI flag for one-off use: `-T, --github-token <token>` (used for any VCS
+   host, not only GitHub).
+2. The config: `vcs.auth.token`, `ci.auth.token`, `registry.auth.password`.
+3. An interactive prompt.
+
+Because the config file may contain these, it is always written `0600`. Prefer
+per-invocation flags or environment injection in shared CI environments.
+
+## Backward compatibility
+
+A configuration written by 3.x uses legacy keys (`gitBaseUrl`,
+`gitHubAuthToken`, `gitRepoPrivate`, `useGit`, `useDocker`,
+`dockerHubNamespace`, `dockerHubUser`, `dockerHubPassword`). The CLI:
+
+- **reads** them transparently and derives an equivalent structured view
+  (github + travis + dockerhub, namespace parsed from `gitBaseUrl`);
+- **writes** both the structured keys *and* their legacy equivalents, so a
+  config remains usable if you downgrade the CLI.
+
+You do not need to migrate anything by hand.
+
+## Environment variable reference
+
+| Variable | Effect |
+|---|---|
+| `IMQ_CLI_HOME` | Base for `~/.imq` (sandboxing / CI). |
+| `IMQ_NO_UPDATE_CHECK` | Skip the npm self-update check. |
+| `IMQ_TEMPLATES_REPO` | Override the templates git URL (fork or SSH). |
+| `IMQ_GITHUB_API_URL` | GitHub API base — set to a GitHub Enterprise host. |
+| `IMQ_GITLAB_API_URL` | GitLab API base — self-managed GitLab. |
+| `IMQ_BITBUCKET_API_URL` | Bitbucket API base — Bitbucket Server/Data Center. |
+| `IMQ_CIRCLECI_API_URL` | CircleCI API base. |
+| `IMQ_TRAVIS_API_URL` | Travis API base. |
+| `IMQ_GIT_REMOTE_BASE` | Base for the git remote used on commit/push (testing seam). |
+
+These are also the seams used by the test harness; in production they enable
+enterprise / self-hosted deployments without any code change. See
+[Providers](Providers#enterprise--self-hosted) and
+[Extensibility](Extensibility).
