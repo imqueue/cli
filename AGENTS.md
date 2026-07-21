@@ -15,9 +15,11 @@ registry, generates typed RPC clients, and manages a local fleet of services.
 
 ## Toolchain & invariants (do not fight these)
 
-- **ESM only**, `"type": "module"`. No `require()` in `lib/`, `src/`, `index.ts`
-  (it is not defined). Use `import`. Import sibling modules with the **`.js`**
-  extension (NodeNext resolves it to the `.ts` source).
+- **ESM only**, `"type": "module"`. No bare `require()` in `lib/`, `src/`,
+  `index.ts` (it is not defined) — only `createRequire(import.meta.url)` for
+  loading JSON (`lib/constants.ts`, `lib/autoupdate.ts`, `src/catalog/load.ts`).
+  Use `import`. Import sibling modules with the **`.js`** extension (NodeNext
+  resolves it to the `.ts` source).
 - **TypeScript 7** (the native compiler), `module`/`moduleResolution: nodenext`,
   `verbatimModuleSyntax: true`, `isolatedModules: true`, `strict`. Use
   `import { type X }` / `import type` for type-only imports.
@@ -119,7 +121,12 @@ Getting this wrong yields `TS2307/TS2882` and a non-zero build that aborts
 Any new network endpoint MUST get an `IMQ_*_API_URL` override so it is testable
 and enterprise-ready. Default the templates repo to public **HTTPS** (no SSH
 key required). Non-`IMQ_` env inputs the code reads: `CIRCLE_TOKEN` (CircleCI
-token fallback), `SHELL`/`ZSH_VERSION` (shell detection).
+token fallback), `SHELL`/`ZSH_VERSION` (shell detection), and the cloud-registry
+credentials provisioned as CI secrets at create time — `GCP_SA_KEY` (google),
+`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` (aws-ecr),
+`AZURE_CLIENT_ID`/`AZURE_CLIENT_SECRET` (azure-acr). When those are unset the
+registry's `secrets()` returns empty and the pipeline reports that no secrets
+were provisioned (it does not claim otherwise).
 
 ## Local-fleet commands (ported from bash in 4.x)
 
@@ -129,12 +136,18 @@ source-level discovery lives in `lib/services.ts`
 `extends IMQ(Service|Client)`). Runtime state under `~/.imq/var`
 (`VAR_HOME` in `lib/constants.ts`): `<svc>.log` + `.pids` (`svc:pid` lines).
 `ctl` starts services detached (own process group) and stops them with a
-negative-pid `SIGTERM` (kills the tree) — no `ps` walking. `ctl` actions:
+negative-pid `SIGTERM`, escalating to `SIGKILL` if a process refuses to die and
+keeping its pid entry with a warning — no `ps` walking. `restart` waits for the
+old process to exit before truncating the log and respawning. `ctl` actions:
 `start|stop|restart|status`. Logs are truncated per start; calm mode checks
 pid liveness (via `isAlive`) so a startup crash is reported at once; a
-double-start is refused. `up` deps throw on failure; `runUp` isolates each
-service and exits non-zero with a summary. `up`/`update-version` accept
-`--bump` as a synonym for the version keyword.
+double-start is refused; `start` that finds nothing exits non-zero. `up` deps
+throw on failure; `runUp` isolates each service and exits non-zero with a
+summary, and refuses to commit a tree that was already dirty before the update.
+`up`/`update-version` accept `--bump` as a synonym for the version keyword.
+The `-s`/`--services` option is normalized via `parseServices` (comma list,
+repeated flag, or array all work). The process model is **POSIX-only**
+(`process.kill(-pid)` / detached groups) — Windows is unsupported.
 
 Note two *different* service-detection strategies, by design:
 - **source scan** (`lib/services.ts`) for `ctl`/`log`/`up` — no build/import

@@ -28,8 +28,9 @@ git -C <service> config user.email "you@example.com"
 
 Check the token and its scopes for the selected VCS host
 ([Providers](Providers#vcs-hosts---vcs)): GitHub needs `repo` (and `admin:org`
-for org repos / Actions secrets), GitLab needs `api`, Bitbucket needs an app
-password with repository admin. Pass it with `-T` or set `vcs.auth.token`.
+for org repos / Actions secrets), GitLab needs `api`, Bitbucket needs a
+repository-scoped access token (sent as a Bearer token). Pass it with `-T` or
+set `vcs.auth.token`.
 
 ## Nothing happens on an enterprise/self-hosted host
 

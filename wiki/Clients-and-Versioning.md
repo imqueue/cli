@@ -42,7 +42,7 @@ imq service update-version <path> [branch]
 |---|---|
 | (positional) `path` | directory containing the services (or a single service) |
 | (positional) `branch` / `-b` | branch to checkout/use (default `master`) |
-| `-n, --npm-version` | bump type: `major\|minor\|patch\|prerelease` (default `prerelease`) |
+| `-n, --npm-version`, `--bump` | bump type: `major\|minor\|patch\|prerelease` (default `prerelease`). Unlike `imq up`, `update-version` does not constrain the keyword — any value is passed through to `npm version`. |
 
 For each detected service it runs, stopping that service on the first failing
 step:

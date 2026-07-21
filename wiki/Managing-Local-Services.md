@@ -51,11 +51,19 @@ only sees the current run. If a service **exits during startup** it is reported
 at once (rather than waiting out the bounded timeout).
 
 **Stop** terminates each targeted service's entire process group with
-`SIGTERM` (so child processes die too) and runs its `npm run stop` script if it
-has one. Pids of services you did not target are preserved in the pid file.
+`SIGTERM` (so child processes die too), waits for it to actually exit, and
+escalates to `SIGKILL` if it refuses; a process that still won't die keeps its
+pid entry with a warning. It then runs each service's `npm run stop` script if
+it has one, and prints a summary. Pids of services you did not target are
+preserved. If no services are discoverable from the current directory (and no
+`-s` was given), `stop` falls back to stopping every tracked pid — so it works
+from anywhere.
 
-**Restart** = stop then start. **Status** lists each tracked service and
-whether its recorded pid is live or stale.
+**Restart** = stop then start; it waits for the old process to fully exit
+before relaunching, so the two never run concurrently. **Status** lists each
+tracked service and whether its recorded pid is live or stale (honoring `-s`,
+and pruning stale entries it reports). A **start** that finds no services exits
+non-zero. `-s` accepts a comma list, repeated flags (`-s a -s b`), or both.
 
 ```bash
 # start everything under ~/work/services, waiting for each to be ready

@@ -72,8 +72,10 @@ imq service create billing ./billing \
   --packages opentelemetry,pg-cache --dry-run -a "My Org" -e dev@my-org.io
 ```
 
-Use it in scripts and CI to validate inputs, or just to see what a given set of
-flags will do before committing to it.
+A dry run makes no network calls, so it does **not** require a VCS namespace or
+auth token — those are shown as `<prompted at create>` in the plan. It does
+still validate the always-required inputs (author and email). Use it in scripts
+and CI to preview a given set of flags before committing to a real run.
 
 ## What a run does (pipeline)
 
@@ -99,18 +101,32 @@ Without repo creation, the remote/CI-secret/commit/push steps (4, 5, 8) are
 skipped; scaffold, `.imqrc.json`, CI/docker token compilation and install
 still run.
 
+### Failure & rollback
+
+- The target directory is only removed on failure if the CLI **created** it —
+  a pre-existing directory (or the current/home directory) is never deleted.
+  A non-empty target is refused up front unless you pass `--force`.
+- If the remote repository was already created when a later step fails, you are
+  offered (interactively) to delete it to roll back; non-interactively it is
+  left in place with a notice so nothing is destroyed silently.
+- Enabling CI and provisioning secrets are **non-fatal**: on failure the CLI
+  prints what to do manually and continues. It reports which registry secrets
+  were actually provisioned rather than assuming success.
+
 > The generated service targets ESM + TypeScript + the native `node:test`
 > runner, matching the current default template. Run `npm test` inside it out
 > of the box.
 
 ## Non-interactive / CI usage
 
-Provide everything via flags (or config) and add `-y` to skip confirmation:
+Provide everything via flags (or config) and add `-y` to skip confirmation. A
+real (non-dry-run) create with a VCS host needs an auth token — pass `-T`/
+`--vcs-token` (or set `vcs.auth.token` in config):
 
 ```bash
 imq service create orders ./orders -y \
   -a "My Org" -e dev@my-org.io -l MIT \
-  --vcs github -u my-org --ci github-actions \
+  --vcs github -u my-org -T "$GITHUB_TOKEN" --ci github-actions \
   --registry dockerhub -N myorg --no-install
 ```
 

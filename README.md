@@ -2,11 +2,26 @@
 
 [![Build](https://github.com/imqueue/cli/actions/workflows/build.yml/badge.svg)](https://github.com/imqueue/cli/actions/workflows/build.yml)
 [![codebeat badge](https://codebeat.co/badges/0824c9af-d6fa-47ac-bc44-eb51d7b37eba)](https://codebeat.co/projects/github-com-imqueue-cli-master)
-[![License](https://img.shields.io/badge/license-GPL-blue.svg)](https://rawgit.com/imqueue/cli/master/LICENSE)
+[![License](https://img.shields.io/badge/license-GPL-blue.svg)](https://github.com/imqueue/cli/blob/master/LICENSE)
 
 ## Why?
 
 Frees you from writing boilerplate when making @imqueue services.
+
+## Documentation
+
+This README is a quick reference. The full user manual lives in the
+[project wiki](https://github.com/imqueue/cli/wiki):
+
+- [Installation](https://github.com/imqueue/cli/wiki/Installation)
+- [Configuration](https://github.com/imqueue/cli/wiki/Configuration) — layers, schema, secrets, env vars
+- [Creating Services](https://github.com/imqueue/cli/wiki/Creating-Services) — the four axes, dry-run, CI usage
+- [Package Catalog](https://github.com/imqueue/cli/wiki/Package-Catalog) · [Providers](https://github.com/imqueue/cli/wiki/Providers) · [Custom Templates](https://github.com/imqueue/cli/wiki/Custom-Templates)
+- [Managing Local Services](https://github.com/imqueue/cli/wiki/Managing-Local-Services) — `ctl` / `log` / `up`
+- [Real-World Scenarios](https://github.com/imqueue/cli/wiki/Real-World-Scenarios) · [Extensibility](https://github.com/imqueue/cli/wiki/Extensibility) · [Troubleshooting](https://github.com/imqueue/cli/wiki/Troubleshooting)
+
+(The command listings below are abridged; run `imq <command> --help` for the
+authoritative, always-current options.)
 
 ## Install
 
@@ -36,7 +51,7 @@ Commands:
   imq client            Manage IMQ client
   imq completions       Generates completions script for your shell
   imq config            Manage IMQ CLI settings
-  imq ctl <action>      Start/stop/restart a bulk of local services
+  imq ctl <action>      Start/stop/restart/status a bulk of local services
   imq log [services..]  Tail and combine local service logs
   imq service           Manage IMQ service
   imq up                Bulk-update service dependencies

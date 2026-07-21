@@ -16,6 +16,13 @@ You can also set a default list globally so every new service gets them:
 imq config set packages opentelemetry,pg-cache
 ```
 
+To see every available package id (grouped, with a one-line description):
+
+```bash
+imq service packages          # human-readable
+imq service packages --json   # machine-readable
+```
+
 ## Groups
 
 Packages belong to groups. **Exclusive** groups accept at most one member;

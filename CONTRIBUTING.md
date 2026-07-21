@@ -23,6 +23,10 @@ terms.** In short:
 
 ## How to contribute
 
+> During an active release cycle the development branch may differ from
+> `master` (the 4.0 work happens on `v4`). Check the "Current state" section of
+> [AGENTS.md](./AGENTS.md) and branch from / PR against whatever it names.
+
 1. **Open an issue first** for anything non-trivial, so we can agree on the
    approach before you invest time.
 2. **Fork** the repository and create a topic branch from `master`
