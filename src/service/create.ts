@@ -27,7 +27,6 @@ import * as fs from 'fs';
 import { type Argv } from 'yargs';
 import inquirer, { type QuestionCollection } from 'inquirer';
 import {
-    type IMQCLIConfig,
     loadConfig,
     loadServiceConfig,
     printError,
@@ -46,8 +45,6 @@ import {
     printPlanSummary,
     runCreate,
 } from './create-pipeline.js';
-
-let config: IMQCLIConfig;
 
 /**
  * Attempts to roll back a repository this run created, prompting first when
@@ -110,132 +107,147 @@ export const { command, describe, builder, handler } = {
         'under given path.',
 
     builder(yargs: Argv) {
-        config = loadConfig();
+        // NOTE: config values are intentionally NOT injected as yargs defaults.
+        // Doing so would make a global-config value look like a passed flag and
+        // out-rank a per-service .imqrc.json. Resolution (flag -> .imqrc.json ->
+        // global -> prompt -> default) is handled in buildCreatePlan instead.
+        return (
+            yargs
+                .alias('a', 'author')
+                .describe(
+                    'a',
+                    'Service author full name (person or organization)',
+                )
+                .string('a')
 
-        return yargs
-            .alias('a', 'author')
-            .describe('a', 'Service author full name (person or organization)')
-            .default('a', config.author || '')
+                .alias('e', 'email')
+                .describe('e', "Service author's contact email")
+                .string('e')
 
-            .alias('e', 'email')
-            .describe('e', "Service author's contact email")
-            .default('e', config.email || '')
+                .alias('g', 'use-git')
+                .describe('g', 'Turns on automatic git repo creation')
+                .boolean('g')
 
-            .alias('g', 'use-git')
-            .describe('g', 'Turns on automatic git repo creation')
-            .boolean('g')
+                .describe('vcs', 'VCS host (github, gitlab, bitbucket)')
 
-            .describe('vcs', 'VCS host (github, gitlab, bitbucket)')
+                .alias('u', 'github-namespace')
+                .describe(
+                    'u',
+                    'VCS namespace (user, organization or workspace)',
+                )
+                .string('u')
 
-            .alias('u', 'github-namespace')
-            .describe('u', 'VCS namespace (user, organization or workspace)')
-            .default('u', (config.gitBaseUrl || '').split(':').pop() || '')
+                // declared as the positive `install` (default true) so that, under
+                // yargs strict mode, the negated `--no-install` is a known flag
+                .describe(
+                    'install',
+                    'Install npm packages after creation (use --no-install to skip)',
+                )
+                .boolean('install')
+                .default('install', true)
 
-            .describe(
-                'no-install',
-                'Do not install npm packages automatically on service creation',
-            )
-            .boolean('no-install')
-            .default('no-install', false)
+                .alias('V', 'service-version')
+                .describe('V', 'Initial service version')
+                .default('V', DEFAULT_SERVICE_VERSION)
 
-            .alias('V', 'service-version')
-            .describe('V', 'Initial service version')
-            .default('V', DEFAULT_SERVICE_VERSION)
+                .alias('H', 'homepage')
+                .describe('H', 'Homepage URL for service, if required')
+                .default('H', '')
 
-            .alias('H', 'homepage')
-            .describe('H', 'Homepage URL for service, if required')
-            .default('H', '')
+                .alias('B', 'bugs-url')
+                .describe('B', 'Bugs url for service, if required')
+                .default('B', '')
 
-            .alias('B', 'bugs-url')
-            .describe('B', 'Bugs url for service, if required')
-            .default('B', '')
+                .alias('l', 'license')
+                .describe(
+                    'l',
+                    'License for created service, should be either license name ' +
+                        'in SPDX format or path to a custom license file',
+                )
+                .string('l')
 
-            .alias('l', 'license')
-            .describe(
-                'l',
-                'License for created service, should be either license name ' +
-                    'in SPDX format or path to a custom license file',
-            )
-            .default('l', config.license || 'UNLICENSED')
+                .alias('t', 'template')
+                .describe(
+                    't',
+                    'Template used to create service (should be either template ' +
+                        'name, git url or file system directory)',
+                )
+                .string('t')
 
-            .alias('t', 'template')
-            .describe(
-                't',
-                'Template used to create service (should be either template ' +
-                    'name, git url or file system directory)',
-            )
-            .default('t', config.template || 'default')
+                .alias('d', 'description')
+                .describe('d', 'Service description')
+                .default('d', '')
 
-            .alias('d', 'description')
-            .describe('d', 'Service description')
-            .default('d', '')
+                .alias('n', 'node-versions')
+                .describe(
+                    'n',
+                    'Node version tags to use for builds, separated by comma if ' +
+                        'multiple. First one will be used for docker build, if ' +
+                        'dockerize option enabled.',
+                )
+                .default('n', '')
 
-            .alias('n', 'node-versions')
-            .describe(
-                'n',
-                'Node version tags to use for builds, separated by comma if ' +
-                    'multiple. First one will be used for docker build, if ' +
-                    'dockerize option enabled.',
-            )
-            .default('n', '')
+                .alias('D', 'dockerize')
+                .describe('D', 'Enable service dockerization with CI builds')
+                .boolean('D')
 
-            .alias('D', 'dockerize')
-            .describe('D', 'Enable service dockerization with CI builds')
-            .boolean('D')
+                .alias('L', 'node-docker-tag')
+                .describe(
+                    'L',
+                    'Node docker tag to use as base docker image for docker builds',
+                )
+                .default('L', '')
 
-            .alias('L', 'node-docker-tag')
-            .describe(
-                'L',
-                'Node docker tag to use as base docker image for docker builds',
-            )
-            .default('L', '')
+                .describe(
+                    'registry',
+                    'Container registry (dockerhub, google, aws-ecr, azure-acr)',
+                )
 
-            .describe(
-                'registry',
-                'Container registry (dockerhub, google, aws-ecr, azure-acr)',
-            )
+                .alias('N', 'docker-namespace')
+                .describe('N', 'Registry namespace / repository / ACR name')
+                .string('N')
 
-            .alias('N', 'docker-namespace')
-            .describe('N', 'Registry namespace / repository / ACR name')
-            .default('N', config.dockerHubNamespace)
+                .describe('region', 'Registry region (google, aws-ecr)')
+                .describe('project', 'GCP project id (google)')
+                .describe('account-id', 'AWS account id (aws-ecr)')
 
-            .describe('region', 'Registry region (google, aws-ecr)')
-            .describe('project', 'GCP project id (google)')
-            .describe('account-id', 'AWS account id (aws-ecr)')
+                .alias('T', 'github-token')
+                .describe('T', 'VCS auth token')
+                .string('T')
 
-            .alias('T', 'github-token')
-            .describe('T', 'GitHub auth token')
-            .default('T', config.gitHubAuthToken)
+                .alias('p', 'private')
+                .describe('p', 'Service repository will be private at GitHub')
+                .boolean('p')
 
-            .alias('p', 'private')
-            .describe('p', 'Service repository will be private at GitHub')
-            .boolean('p')
+                .describe(
+                    'ci',
+                    'CI provider (github-actions, circleci, travis)',
+                )
 
-            .describe('ci', 'CI provider (github-actions, circleci, travis)')
+                .describe(
+                    'packages',
+                    'Comma-separated @imqueue addon packages to include ' +
+                        '(use --no-packages for none)',
+                )
 
-            .describe(
-                'packages',
-                'Comma-separated @imqueue addon packages to include ' +
-                    '(use --no-packages for none)',
-            )
+                .describe('dry-run', 'Print the resolved plan and exit')
+                .boolean('dry-run')
+                .default('dry-run', false)
 
-            .describe('dry-run', 'Print the resolved plan and exit')
-            .boolean('dry-run')
-            .default('dry-run', false)
+                .alias('y', 'yes')
+                .describe('y', 'Skip the confirmation prompt')
+                .boolean('y')
+                .default('y', false)
 
-            .alias('y', 'yes')
-            .describe('y', 'Skip the confirmation prompt')
-            .boolean('y')
-            .default('y', false)
+                .default('name', path.basename(process.cwd()))
+                .describe('name', 'Service name to create with')
 
-            .default('name', path.basename(process.cwd()))
-            .describe('name', 'Service name to create with')
-
-            .default('path', '.')
-            .describe(
-                'path',
-                'Path to directory where service will be generated to',
-            );
+                .default('path', '.')
+                .describe(
+                    'path',
+                    'Path to directory where service will be generated to',
+                )
+        );
     },
 
     async handler(argv: any) {

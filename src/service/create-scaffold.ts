@@ -60,6 +60,11 @@ export interface ServiceTokenInput {
     license: ResolvedLicense;
     addonPreload?: string;
     addonConfig?: string;
+    // provider-derived URLs for the selected VCS host; when omitted, github
+    // URLs are derived from `namespace` (backward-compatible default)
+    repoUrl?: string;
+    homeUrl?: string;
+    bugsUrl?: string;
 }
 
 /**
@@ -294,42 +299,36 @@ export function writeLicense(path: string, text: string): void {
 }
 
 /**
- * Builds the package.json repository fragment token.
+ * Builds the package.json repository fragment token from a resolved repo URL.
  */
-function serviceRepoToken(namespace: string, name: string): string {
-    if (!namespace) {
+function serviceRepoToken(repoUrl: string): string {
+    if (!repoUrl) {
         return '';
     }
 
     return `\n  "repository": {
     "type": "git",
-    "url": "git@github.com:${namespace}/${name}.git"
+    "url": "${repoUrl}"
   },\n`;
 }
 
 /**
- * Builds the homepage and bugs package.json fragment tokens, deriving GitHub
- * urls from the namespace only when not provided explicitly.
+ * Builds the homepage and bugs package.json fragment tokens, preferring the
+ * explicit `-H`/`-B` values and otherwise the provider-derived URLs.
  */
 function servicePagesTokens(
-    namespace: string,
-    name: string,
+    homeUrl: string,
+    bugsUrl: string,
     homepage: string,
     bugs: string,
 ): { home: string; bugs: string } {
-    let home = homepage.trim();
-    let bugsUrl = bugs.trim();
-
-    if (!home && namespace) {
-        home = `https://github.com/${namespace}/${name}`;
-    }
-
-    if (!bugsUrl && namespace) {
-        bugsUrl = `https://github.com/${namespace}/${name}/issues`;
-    }
+    const home = homepage.trim() || homeUrl;
+    const bugsFinal = bugs.trim() || bugsUrl;
 
     return {
-        bugs: bugsUrl ? `\n  "bugs": {\n    "url": "${bugsUrl}"\n  },\n` : '',
+        bugs: bugsFinal
+            ? `\n  "bugs": {\n    "url": "${bugsFinal}"\n  },\n`
+            : '',
         home: home ? `\n  "homepage": "${home}",\n` : '',
     };
 }
@@ -344,9 +343,19 @@ function servicePagesTokens(
 export function buildServiceTokens(
     input: ServiceTokenInput,
 ): Record<string, string> {
+    const ns = input.namespace;
+    // provider-derived URLs win; otherwise fall back to github URLs built from
+    // the namespace (keeps behaviour for callers that pass only a namespace)
+    const repoUrl =
+        input.repoUrl || (ns ? `git@github.com:${ns}/${input.name}.git` : '');
+    const homeUrl =
+        input.homeUrl || (ns ? `https://github.com/${ns}/${input.name}` : '');
+    const bugsUrl =
+        input.bugsUrl ||
+        (ns ? `https://github.com/${ns}/${input.name}/issues` : '');
     const { home, bugs } = servicePagesTokens(
-        input.namespace,
-        input.name,
+        homeUrl,
+        bugsUrl,
         input.homepage,
         input.bugs,
     );
@@ -356,7 +365,7 @@ export function buildServiceTokens(
         SERVICE_CLASS_NAME: input.className,
         SERVICE_VERSION: input.version,
         SERVICE_DESCRIPTION: input.description,
-        SERVICE_REPO: serviceRepoToken(input.namespace, input.name),
+        SERVICE_REPO: serviceRepoToken(repoUrl),
         SERVICE_BUGS: bugs,
         SERVICE_HOMEPAGE: home,
         SERVICE_AUTHOR_NAME: input.author,

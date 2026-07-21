@@ -129,7 +129,14 @@ export function deriveStructured(cfg: IMQCLIConfig): StructuredConfig {
 
     vcs.auth = { ...vcs.auth };
 
-    if (vcs.auth.token === undefined && cfg.gitHubAuthToken) {
+    // the legacy gitHubAuthToken is github-specific: never reuse it as the
+    // credential for an explicitly-selected gitlab/bitbucket host
+    if (
+        vcs.auth.token === undefined &&
+        cfg.gitHubAuthToken &&
+        vcs.provider !== 'gitlab' &&
+        vcs.provider !== 'bitbucket'
+    ) {
         vcs.auth.token = cfg.gitHubAuthToken;
     }
 
