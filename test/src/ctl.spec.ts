@@ -43,6 +43,7 @@ interface Recorder {
     killed: number[];
     logs: string[];
     logContent: Map<string, string>;
+    alive: Map<number, boolean>;
     pidSeq: number;
 }
 
@@ -54,6 +55,7 @@ function recorder(logContent: Record<string, string> = {}): Recorder {
         killed: [],
         logs: [],
         logContent: new Map(Object.entries(logContent)),
+        alive: new Map(),
         pidSeq: 1000,
         deps: {} as CtlDeps,
     };
@@ -72,6 +74,11 @@ function recorder(logContent: Record<string, string> = {}): Recorder {
         },
         killGroup(pid: number): void {
             rec.killed.push(pid);
+        },
+        isAlive(pid: number): boolean {
+            // by default every recorded pid is considered alive; individual
+            // tests override rec.deps.isAlive to simulate dead/crashed procs
+            return rec.alive.has(pid) ? rec.alive.get(pid)! : true;
         },
         readLog(logFile: string): string {
             return rec.logContent.get(logFile) ?? '';
@@ -158,19 +165,36 @@ describe('service ctl', () => {
         it('should return ready when the marker appears', async () => {
             const rec = recorder({ '/l': 'reader channel connected' });
 
-            assert.equal(await ctl.waitForReady('/l', rec.deps, 3), 'ready');
+            assert.equal(await ctl.waitForReady('/l', 1, rec.deps, 3), 'ready');
         });
 
         it('should return errored on an unhandled rejection', async () => {
             const rec = recorder({ '/l': 'UnhandledPromiseRejectionWarning:' });
 
-            assert.equal(await ctl.waitForReady('/l', rec.deps, 3), 'errored');
+            assert.equal(
+                await ctl.waitForReady('/l', 1, rec.deps, 3),
+                'errored',
+            );
         });
 
-        it('should time out when nothing is logged', async () => {
+        it('should return errored when the process is dead', async () => {
             const rec = recorder();
 
-            assert.equal(await ctl.waitForReady('/l', rec.deps, 3), 'timeout');
+            rec.alive.set(7, false);
+
+            assert.equal(
+                await ctl.waitForReady('/l', 7, rec.deps, 3),
+                'errored',
+            );
+        });
+
+        it('should time out when nothing is logged and the process lives', async () => {
+            const rec = recorder();
+
+            assert.equal(
+                await ctl.waitForReady('/l', 1, rec.deps, 3),
+                'timeout',
+            );
         });
     });
 

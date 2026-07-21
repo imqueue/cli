@@ -22,7 +22,6 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import {
-    createReadStream,
     existsSync,
     readdirSync,
     readFileSync,
@@ -80,23 +79,33 @@ export function resolveLogFiles(
 }
 
 /**
- * Deletes all `*.log` files in the runtime working directory.
+ * Deletes collected log files in the runtime working directory. With an
+ * explicit list of service names, only `<name>.log` for those services is
+ * removed; with none, every `*.log` is removed.
  *
  * @param {string} varHome - runtime working directory
+ * @param {string[]} [services] - service names to scope the clean to
  * @return {number} - number of files removed
  */
-export function cleanLogs(varHome: string): number {
+export function cleanLogs(varHome: string, services?: string[]): number {
     if (!existsSync(varHome)) {
         return 0;
     }
 
+    const scoped = services && services.length ? new Set(services) : undefined;
     let removed = 0;
 
     for (const file of readdirSync(varHome)) {
-        if (file.endsWith('.log')) {
-            unlinkSync(join(varHome, file));
-            removed++;
+        if (!file.endsWith('.log')) {
+            continue;
         }
+
+        if (scoped && !scoped.has(file.replace(/\.log$/, ''))) {
+            continue;
+        }
+
+        unlinkSync(join(varHome, file));
+        removed++;
     }
 
     return removed;
@@ -153,10 +162,16 @@ export function tailFiles(
     const out = opts.out || ((chunk: string) => process.stdout.write(chunk));
     const labels = files.map(f => basename(f).replace(/\.log$/, ''));
 
-    // dump the current contents of every file first (tail -f -n +1)
+    // capture each file's size BEFORE dumping, so bytes appended during the
+    // dump are picked up by the follower rather than lost in the gap
+    const positions = files.map(f => safeSize(f));
+
+    // dump the current contents of every file first (tail -f -n +1), bounded
+    // to the captured size
     files.forEach((file, i) => {
         try {
-            const text = readFileSync(file, 'utf8');
+            const buf = readFileSync(file);
+            const text = buf.subarray(0, positions[i]).toString('utf8');
 
             if (text) {
                 out(labelText(labels[i], text, i, opts.prefix));
@@ -172,39 +187,99 @@ export function tailFiles(
 
     // then follow appended bytes on each file, forever
     return new Promise<void>(() => {
-        files.forEach((file, i) => {
-            let position = safeSize(file);
+        files.forEach((file, i) =>
+            followFile(file, labels[i], i, positions[i], out, opts.prefix),
+        );
+    });
+}
 
-            watch(file, { persistent: true }, eventType => {
-                if (eventType !== 'change') {
+/**
+ * Follows one log file, emitting appended data as whole labelled lines. A
+ * partial trailing line is buffered until its newline arrives, so a `[svc]`
+ * tag is never injected mid-line. Survives truncation/rotation and never
+ * crashes the process on watcher errors.
+ *
+ * @param {string} file - log file path
+ * @param {string} label - service name for the prefix
+ * @param {number} index - source index (colour cycle)
+ * @param {number} startPos - byte offset to start following from
+ * @param {(chunk: string) => void} out - output sink
+ * @param {boolean} prefix - whether to prefix lines
+ * @return {void}
+ */
+function followFile(
+    file: string,
+    label: string,
+    index: number,
+    startPos: number,
+    out: (chunk: string) => void,
+    prefix: boolean,
+): void {
+    let position = startPos;
+    let buffer = '';
+
+    const drain = () => {
+        const size = safeSize(file);
+
+        if (size < position) {
+            // truncated/rotated - start over from the top
+            position = 0;
+            buffer = '';
+        }
+
+        if (size <= position) {
+            return;
+        }
+
+        try {
+            const data = readFileSync(file)
+                .subarray(position, size)
+                .toString('utf8');
+
+            position = size;
+            buffer += data;
+
+            const nl = buffer.lastIndexOf('\n');
+
+            if (nl >= 0) {
+                out(labelText(label, buffer.slice(0, nl + 1), index, prefix));
+                buffer = buffer.slice(nl + 1);
+            }
+        } catch {
+            /* transient read error - try again on the next event */
+        }
+    };
+
+    const start = () => {
+        try {
+            const watcher = watch(file, { persistent: true }, eventType => {
+                if (eventType === 'rename') {
+                    // the file was replaced (e.g. `ctl start` truncates by
+                    // recreating): rebind the watcher to the path
+                    try {
+                        watcher.close();
+                    } catch {
+                        /* ignore */
+                    }
+
+                    position = 0;
+                    buffer = '';
+                    setTimeout(start, 100).unref();
+
                     return;
                 }
 
-                const size = safeSize(file);
-
-                if (size < position) {
-                    // file was truncated/rotated - start over
-                    position = 0;
-                }
-
-                if (size > position) {
-                    const stream = createReadStream(file, {
-                        start: position,
-                        end: size - 1,
-                        encoding: 'utf8',
-                    });
-
-                    position = size;
-                    stream.on('data', chunk =>
-                        out(
-                            labelText(labels[i], String(chunk), i, opts.prefix),
-                        ),
-                    );
-                    stream.on('error', () => undefined);
-                }
+                drain();
             });
-        });
-    });
+
+            // a watcher 'error' event is otherwise fatal (unhandled) - swallow it
+            watcher.on('error', () => undefined);
+        } catch {
+            /* file vanished before we could watch it - give up on this one */
+        }
+    };
+
+    start();
 }
 
 /**
@@ -250,31 +325,45 @@ export const { command, describe, builder, handler } = {
                     'data. Use --no-follow to dump current logs and exit.',
                 type: 'boolean',
             })
-            .option('P', {
-                alias: 'no-prefix',
-                default: false,
-                describe: 'Do not prefix log lines with the service name.',
+            .option('prefix', {
+                default: true,
+                describe:
+                    'Prefix each combined log line with the service name ' +
+                    '(applies when more than one log is shown). ' +
+                    'Use --no-prefix to disable.',
                 type: 'boolean',
+            })
+            .option('P', {
+                // short, hidden alias for --no-prefix: yargs cannot invert an
+                // alias, so this is a separate flag combined in the handler
+                default: false,
+                describe: 'Shorthand for --no-prefix.',
+                type: 'boolean',
+                hidden: true,
             });
     },
 
     async handler(argv: Arguments) {
         try {
             const varHome = VAR_HOME;
+            const services = (argv.services as string[] | undefined)?.filter(
+                Boolean,
+            );
 
             if (argv.clean) {
-                const n = cleanLogs(varHome);
+                const n = cleanLogs(varHome, services);
+                const scope =
+                    services && services.length
+                        ? ` for ${services.join(', ')}`
+                        : '';
 
                 process.stdout.write(
-                    styleText('green', `Removed ${n} log file(s).\n`),
+                    styleText('green', `Removed ${n} log file(s)${scope}.\n`),
                 );
 
                 return;
             }
 
-            const services = (argv.services as string[] | undefined)?.filter(
-                Boolean,
-            );
             const files = resolveLogFiles(varHome, services, msg =>
                 process.stderr.write(styleText('yellow', msg + '\n')),
             );
@@ -285,9 +374,12 @@ export const { command, describe, builder, handler } = {
                 return;
             }
 
+            const prefix =
+                argv.prefix !== false && argv.P !== true && files.length > 1;
+
             await tailFiles(files, {
                 follow: argv.follow !== false,
-                prefix: !argv.noPrefix && files.length > 1,
+                prefix,
             });
         } catch (err) {
             printError(err as Error);
