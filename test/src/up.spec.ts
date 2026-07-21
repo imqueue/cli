@@ -216,5 +216,41 @@ describe('service up', () => {
 
             assert.ok(rec.calls.includes('version:billing:prerelease'));
         });
+
+        it('should throw a summary when a service step fails', () => {
+            makeService('billing');
+
+            const rec = recorder({
+                gitPull: () => {
+                    throw new Error('merge conflict');
+                },
+            });
+
+            assert.throws(
+                () => up.runUp(opts(), rec.deps),
+                /Updated 0\/1 services; failed: billing/,
+            );
+        });
+
+        it('should abort before destructive steps on failure', () => {
+            makeService('billing');
+
+            const rec = recorder({
+                gitPull: () => {
+                    throw new Error('offline');
+                },
+            });
+
+            try {
+                up.runUp(opts(), rec.deps);
+            } catch {
+                /* expected */
+            }
+
+            // a failed git pull must stop before ncu/rm/install run
+            assert.ok(!rec.calls.some(c => c.startsWith('ncuUpgrade')));
+            assert.ok(!rec.calls.some(c => c.startsWith('rm:')));
+            assert.ok(!rec.calls.some(c => c.startsWith('npmInstall')));
+        });
     });
 });

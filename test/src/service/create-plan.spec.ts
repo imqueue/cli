@@ -124,4 +124,73 @@ describe('service create plan', () => {
             assert.equal(plan.description, 'svc2 - IMQ based service');
         });
     });
+
+    describe('buildCreatePlan() resolution precedence (review phase C)', () => {
+        const argvNoLicense = { name: 'svc2', path: '/tmp/imq-plan-test' };
+
+        it('should let a per-service license win over the global one', async () => {
+            const plan = await buildCreatePlan(argvNoLicense, {
+                global: { ...legacyConfig, license: 'MIT' },
+                service: { license: 'Apache-2.0' },
+                interactive: false,
+                dryRun: true,
+            });
+
+            assert.equal(plan.license.tag, 'Apache-2.0');
+        });
+
+        it('should honor --no-use-git over a configured useGit:true', async () => {
+            const plan = await buildCreatePlan(
+                { ...baseArgv, g: false },
+                {
+                    global: legacyConfig,
+                    service: {},
+                    interactive: false,
+                    dryRun: true,
+                },
+            );
+
+            assert.equal(plan.useVcs, false);
+        });
+
+        it('should deep-merge a partial .imqrc.json over global vcs', async () => {
+            // a partial service vcs override must keep the global provider,
+            // namespace and token rather than wiping the whole section
+            const plan = await buildCreatePlan(baseArgv, {
+                global: {
+                    author: 'A',
+                    email: 'a@b.io',
+                    vcs: {
+                        provider: 'github',
+                        namespace: 'globalns',
+                        auth: { token: 'ghp_x' },
+                    },
+                },
+                service: { vcs: { private: false } },
+                interactive: false,
+                dryRun: true,
+            });
+
+            assert.equal(plan.config.vcs.provider, 'github');
+            assert.equal(plan.config.vcs.namespace, 'globalns');
+            assert.equal(plan.config.vcs.private, false);
+            assert.equal(plan.config.vcs.auth?.token, 'ghp_x');
+        });
+
+        it('should NOT reuse a legacy github token for a gitlab host', async () => {
+            await assert.rejects(
+                () =>
+                    buildCreatePlan(
+                        { ...baseArgv, vcs: 'gitlab', u: 'myorg' },
+                        {
+                            global: legacyConfig,
+                            service: {},
+                            interactive: false,
+                            dryRun: true,
+                        },
+                    ),
+                /GitLab auth token required/,
+            );
+        });
+    });
 });

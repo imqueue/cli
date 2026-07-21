@@ -122,6 +122,17 @@ describe('package catalog', () => {
             assert.equal(addons.devDeps['prisma'], '*');
             assert.equal(addons.deps['@prisma/client'], '*');
         });
+
+        it('should skip an unknown package id instead of throwing', () => {
+            // guards the plan-time vs pipeline catalog mismatch (review F26)
+            const addons = resolveAddons(
+                ['pg-cache', 'not-a-real-addon'],
+                catalog,
+            );
+
+            assert.equal(addons.deps['@imqueue/pg-cache'], '*');
+            assert.equal(addons.deps['@imqueue/not-a-real-addon'], undefined);
+        });
     });
 
     describe('mergeDependencies()', () => {
