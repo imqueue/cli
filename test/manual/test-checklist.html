@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@imqueue/cli — Local Test Checklist</title>
+<style>
+  :root {
+    --ground: #f7f8fa; --surface: #ffffff; --surface-2: #f1f3f5;
+    --ink: #1a1d23; --muted: #5c6470; --faint: #868e96;
+    --border: #e3e6eb; --border-strong:#d0d5dd;
+    --accent: #3b5bdb; --accent-soft: #e7ecfd;
+    --pass: #2f9e44; --pass-soft:#e6f4ea;
+    --fail: #e03131; --fail-soft:#fce9e9;
+    --net:#f08c00; --redis:#9c36b5; --tty:#0c8599;
+    --shadow: 0 1px 2px rgba(20,25,40,.06), 0 4px 16px rgba(20,25,40,.04);
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground:#0f1115; --surface:#171a21; --surface-2:#1e222b;
+      --ink:#e6e8ec; --muted:#9aa3b2; --faint:#6b7280;
+      --border:#2a2f3a; --border-strong:#3a4150;
+      --accent:#748ffc; --accent-soft:#1e2540;
+      --pass:#51cf66; --pass-soft:#173123;
+      --fail:#ff6b6b; --fail-soft:#3a1d1f;
+      --net:#ffc078; --redis:#e599f7; --tty:#66d9e8;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="light"]{
+    --ground:#f7f8fa; --surface:#fff; --surface-2:#f1f3f5;
+    --ink:#1a1d23; --muted:#5c6470; --faint:#868e96;
+    --border:#e3e6eb; --border-strong:#d0d5dd;
+    --accent:#3b5bdb; --accent-soft:#e7ecfd;
+    --pass:#2f9e44; --pass-soft:#e6f4ea; --fail:#e03131; --fail-soft:#fce9e9;
+    --net:#f08c00; --redis:#9c36b5; --tty:#0c8599;
+    --shadow:0 1px 2px rgba(20,25,40,.06), 0 4px 16px rgba(20,25,40,.04);
+  }
+  :root[data-theme="dark"]{
+    --ground:#0f1115; --surface:#171a21; --surface-2:#1e222b;
+    --ink:#e6e8ec; --muted:#9aa3b2; --faint:#6b7280;
+    --border:#2a2f3a; --border-strong:#3a4150;
+    --accent:#748ffc; --accent-soft:#1e2540;
+    --pass:#51cf66; --pass-soft:#173123; --fail:#ff6b6b; --fail-soft:#3a1d1f;
+    --net:#ffc078; --redis:#e599f7; --tty:#66d9e8;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.3);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); line-height:1.5; -webkit-font-smoothing:antialiased; }
+  a { color:var(--accent); }
+
+  /* ---- header ---- */
+  header {
+    position:sticky; top:0; z-index:10; background:color-mix(in srgb, var(--surface) 88%, transparent);
+    backdrop-filter:blur(8px); border-bottom:1px solid var(--border);
+  }
+  .bar { max-width:920px; margin:0 auto; padding:14px 22px 12px;
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .brand { display:flex; flex-direction:column; gap:2px; margin-right:auto; }
+  .brand h1 { font-size:15px; margin:0; font-weight:650; letter-spacing:-.01em; }
+  .brand h1 code { font-family:var(--mono); font-size:13.5px; color:var(--accent); }
+  .brand .sub { font-size:12px; color:var(--muted); }
+  .tally { display:flex; align-items:center; gap:14px; font-size:13px;
+    font-variant-numeric:tabular-nums; }
+  .tally b { font-weight:650; }
+  .tally .n-pass{ color:var(--pass); } .tally .n-fail{ color:var(--fail); }
+  .tally .n-left{ color:var(--faint); }
+  .actions { display:flex; gap:8px; }
+  button.btn {
+    font-family:var(--sans); font-size:12.5px; font-weight:550; color:var(--ink);
+    background:var(--surface); border:1px solid var(--border-strong); border-radius:8px;
+    padding:7px 11px; cursor:pointer; transition:background .12s, border-color .12s, transform .05s;
+  }
+  button.btn:hover { background:var(--surface-2); }
+  button.btn:active { transform:translateY(1px); }
+  button.btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  :root[data-theme="dark"] button.btn.primary,
+  @media (prefers-color-scheme: dark){ button.btn.primary{ color:#0f1115; } }
+  button.btn.primary:hover { filter:brightness(1.06); background:var(--accent); }
+  .progress { max-width:920px; margin:0 auto; padding:0 22px 12px; }
+  .track { height:6px; border-radius:99px; background:var(--surface-2);
+    overflow:hidden; border:1px solid var(--border); }
+  .fill { height:100%; width:0; background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 60%, var(--pass)));
+    transition:width .3s ease; }
+
+  /* ---- layout ---- */
+  main { max-width:920px; margin:0 auto; padding:26px 22px 80px; }
+  .intro { color:var(--muted); font-size:14px; margin:0 0 22px; }
+  .intro b { color:var(--ink); }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--muted);
+    margin:14px 0 26px; padding:12px 14px; background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); }
+  .legend .k { display:inline-flex; align-items:center; gap:6px; }
+
+  section.grp { margin:0 0 30px; }
+  .grp-h { display:flex; align-items:baseline; gap:10px; margin:0 0 12px; }
+  .grp-h .num { font-family:var(--mono); font-size:13px; color:var(--accent);
+    font-weight:600; }
+  .grp-h h2 { font-size:17px; margin:0; font-weight:640; letter-spacing:-.01em; }
+  .grp-h .gcount { margin-left:auto; font-size:12px; color:var(--faint);
+    font-variant-numeric:tabular-nums; }
+
+  .card { background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+
+  .setup { padding:16px 18px; }
+  .setup p { margin:0 0 10px; font-size:13.5px; color:var(--muted); }
+
+  .test { display:grid; grid-template-columns:118px 1fr; gap:16px;
+    padding:16px 18px; border-top:1px solid var(--border); }
+  .test:first-child { border-top:none; }
+  .test.is-pass { background:linear-gradient(90deg, var(--pass-soft), transparent 60%); }
+  .test.is-fail { background:linear-gradient(90deg, var(--fail-soft), transparent 60%); }
+
+  .seg { display:flex; flex-direction:column; gap:6px; }
+  .seg .row2 { display:flex; gap:6px; }
+  .seg button {
+    flex:1; font-family:var(--sans); font-size:12px; font-weight:600; cursor:pointer;
+    padding:7px 0; border-radius:7px; border:1px solid var(--border-strong);
+    background:var(--surface); color:var(--muted); transition:all .12s;
+  }
+  .seg button:hover { border-color:var(--faint); }
+  .seg button.pass[aria-pressed="true"]{ background:var(--pass); border-color:var(--pass); color:#fff; }
+  .seg button.fail[aria-pressed="true"]{ background:var(--fail); border-color:var(--fail); color:#fff; }
+  @media (prefers-color-scheme: dark){
+    .seg button.pass[aria-pressed="true"], .seg button.fail[aria-pressed="true"]{ color:#0f1115; }
+  }
+  :root[data-theme="dark"] .seg button.pass[aria-pressed="true"],
+  :root[data-theme="dark"] .seg button.fail[aria-pressed="true"]{ color:#0f1115; }
+  :root[data-theme="light"] .seg button.pass[aria-pressed="true"],
+  :root[data-theme="light"] .seg button.fail[aria-pressed="true"]{ color:#fff; }
+
+  .body .top { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:5px; }
+  .tid { font-family:var(--mono); font-size:12px; font-weight:650; color:var(--ink);
+    background:var(--surface-2); border:1px solid var(--border); padding:1px 7px; border-radius:6px; }
+  .ttl { font-size:14px; font-weight:600; letter-spacing:-.005em; }
+  .chip { font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+    padding:2px 7px; border-radius:99px; border:1px solid transparent; }
+  .chip.offline { color:var(--pass); background:var(--pass-soft); border-color:color-mix(in srgb,var(--pass) 30%, transparent); }
+  .chip.net { color:var(--net); background:color-mix(in srgb,var(--net) 14%, transparent); border-color:color-mix(in srgb,var(--net) 34%, transparent); }
+  .chip.redis { color:var(--redis); background:color-mix(in srgb,var(--redis) 12%, transparent); border-color:color-mix(in srgb,var(--redis) 32%, transparent); }
+  .chip.tty { color:var(--tty); background:color-mix(in srgb,var(--tty) 12%, transparent); border-color:color-mix(in srgb,var(--tty) 32%, transparent); }
+  .expect { font-size:13px; color:var(--muted); margin:2px 0 0; }
+  .expect b { color:var(--ink); font-weight:600; }
+
+  .cmd { position:relative; margin:10px 0 0; }
+  .cmd pre { margin:0; font-family:var(--mono); font-size:12.5px; line-height:1.55;
+    background:var(--surface-2); border:1px solid var(--border); border-radius:8px;
+    padding:11px 40px 11px 13px; overflow-x:auto; color:var(--ink); }
+  .cmd .copy { position:absolute; top:7px; right:7px; font-size:11px; padding:3px 8px;
+    border-radius:6px; border:1px solid var(--border-strong); background:var(--surface);
+    color:var(--muted); cursor:pointer; }
+  .cmd .copy:hover { color:var(--ink); }
+  .cmd .copy.done { color:var(--pass); border-color:var(--pass); }
+
+  textarea.note { width:100%; margin-top:10px; resize:vertical; min-height:0; height:38px;
+    font-family:var(--mono); font-size:12.5px; color:var(--ink); background:var(--surface);
+    border:1px dashed var(--border-strong); border-radius:8px; padding:8px 11px; }
+  textarea.note:focus { min-height:64px; height:auto; }
+  .test.is-fail textarea.note { border-style:solid; border-color:color-mix(in srgb,var(--fail) 45%, var(--border)); }
+  textarea.note::placeholder { color:var(--faint); }
+
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:4px; }
+
+  footer { max-width:920px; margin:0 auto; padding:0 22px 60px; color:var(--faint); font-size:12.5px; }
+
+  .toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--ink); color:var(--ground); font-size:13px; font-weight:550;
+    padding:10px 16px; border-radius:9px; opacity:0; pointer-events:none;
+    transition:opacity .2s, transform .2s; z-index:50; box-shadow:var(--shadow); }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+  @media (max-width:560px){
+    .test { grid-template-columns:1fr; }
+    .seg { flex-direction:row; } .seg .row2{ flex:1; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <div class="brand">
+      <h1><code>@imqueue/cli</code> · local test checklist</h1>
+      <span class="sub">v4 · click Pass / Fail · progress saves in this browser</span>
+    </div>
+    <div class="tally">
+      <span><b class="n-pass" id="t-pass">0</b> pass</span>
+      <span><b class="n-fail" id="t-fail">0</b> fail</span>
+      <span><b class="n-left" id="t-left">0</b> left</span>
+    </div>
+    <div class="actions">
+      <button class="btn" id="theme" title="Toggle theme">◐ Theme</button>
+      <button class="btn" id="reset">Reset</button>
+      <button class="btn" id="download">Download .md</button>
+      <button class="btn primary" id="copy">Copy results</button>
+    </div>
+  </div>
+  <div class="progress"><div class="track"><div class="fill" id="fill"></div></div></div>
+</header>
+
+<main>
+  <p class="intro">Work top-to-bottom. Tick <b>Pass</b> if it behaves as described, <b>Fail</b> if not — a
+    notes box appears to record what went wrong. When you're done (or done enough), hit
+    <b>Copy results</b> and paste the summary back to me. Everything runs against a throwaway
+    <code>~/.imq</code>, so your real config is never touched.</p>
+
+  <div class="legend">
+    <span class="k"><span class="chip offline">offline</span> no network needed</span>
+    <span class="k"><span class="chip net">net</span> needs internet + a token</span>
+    <span class="k"><span class="chip redis">redis</span> needs a running service + Redis</span>
+    <span class="k"><span class="chip tty">tty</span> run in a real terminal (interactive)</span>
+  </div>
+
+  <div id="root"></div>
+</main>
+
+<footer>Progress is stored locally in your browser (localStorage). “Reset” clears it. Nothing is uploaded.</footer>
+<div class="toast" id="toast"></div>
+
+<script type="application/json" id="data">
+{
+  "setup": "# isolate config/runtime state + silence the update check\nexport IMQ_CLI_HOME=\"$(mktemp -d)\"        # ~/.imq → $IMQ_CLI_HOME/.imq\nexport IMQ_NO_UPDATE_CHECK=1\nexport SBX=\"$(mktemp -d)\"                  # scratch workspace\necho \"IMQ_CLI_HOME=$IMQ_CLI_HOME\"; echo \"SBX=$SBX\"\nwhich imq && imq --version",
+  "fleet": "export FLEET=\"$SBX/fleet\"; mkdir -p \"$FLEET\"\nmkservice () {  # $1=name  $2=dev-command\n  mkdir -p \"$FLEET/$1/src\"\n  cat > \"$FLEET/$1/package.json\" <<JSON\n{ \"name\": \"$1\", \"version\": \"1.0.0\",\n  \"scripts\": { \"dev\": \"$2\", \"stop\": \"true\" } }\nJSON\n  printf 'import { IMQService } from \"@imqueue/rpc\";\\nexport class Svc extends IMQService {}\\n' > \"$FLEET/$1/src/index.ts\"\n}\nmkservice alpha 'sh -c \"echo reader channel connected; sleep 1000000\"'\nmkservice beta  'sh -c \"echo reader channel connected; sleep 1000000\"'\nmkservice gamma 'sh -c \"echo UnhandledPromiseRejection; exit 1\"'   # crashes on start\nls \"$FLEET\"",
+  "groups": [
+    { "num":"1", "title":"Global smoke & branding", "tests":[
+      {"id":"T1.1","tags":["offline"],"title":"Version","expect":"<code>imq --version</code> → <b>4.0.0</b>.","cmd":"imq --version"},
+      {"id":"T1.2","tags":["offline"],"title":"Help banner is rebranded","expect":"First line is exactly <b>@imqueue Command Line Interface</b>; command list shows <b>Manage @imqueue client/service</b>, <b>@imqueue CLI settings</b>, <b>@imqueue services</b>. No bare <code>IMQ</code>.","cmd":"imq --help"},
+      {"id":"T1.3","tags":["offline"],"title":"No command → help + non-zero","expect":"Prints help and exits <b>non-zero</b> (a command is required).","cmd":"imq; echo \"exit=$?\""},
+      {"id":"T1.4","tags":["offline"],"title":"Unknown command rejected","expect":"Error about an unknown command (strict mode), <b>non-zero</b>.","cmd":"imq bogus; echo \"exit=$?\""},
+      {"id":"T1.5","tags":["offline"],"title":"Unknown option rejected","expect":"Rejects the unknown flag (strict), <b>non-zero</b>.","cmd":"imq service create --frobnicate x; echo \"exit=$?\""},
+      {"id":"T1.6","tags":["offline"],"title":"client generate describe","expect":"Describes <b>Generates @imqueue/rpc client…</b> (not IMQ-RPC).","cmd":"imq client generate --help"},
+      {"id":"T1.7","tags":["offline"],"title":"Brand sweep across all help","expect":"Prints <b>CLEAN — no obsolete brand</b>.","cmd":"for c in \"\" client \"client generate\" config \"config init\" \"config get\" \"config set\" service \"service create\" \"service packages\" \"service update-version\" ctl log up completions; do imq $c --help 2>&1; done \\\n  | grep -nE \"\\bIMQ\\b|IMQ-CLI|IMQ-RPC\" || echo \"CLEAN — no obsolete brand\""}
+    ]},
+    { "num":"2", "title":"config — check / get / set / init", "tests":[
+      {"id":"T2.1","tags":["offline"],"title":"check on empty → exit 1","expect":"<code>exit=1</code> (not initialized).","cmd":"imq config check; echo \"exit=$?\""},
+      {"id":"T2.2","tags":["offline"],"title":"get on empty is friendly","expect":"A “not initialized / run imq config init” message — not a crash.","cmd":"imq config get"},
+      {"id":"T2.3","tags":["offline"],"title":"set + read back","expect":"<b>@imqueue CLI Config:</b> header, each <code>key = value</code> shown.","cmd":"imq config set vcs.provider github\nimq config set vcs.namespace my-org\nimq config set ci.provider circleci\nimq config set registry.provider google\nimq config get"},
+      {"id":"T2.4","tags":["offline"],"title":"check after init → exit 0","expect":"<code>exit=0</code> (initialized).","cmd":"imq config check; echo \"exit=$?\""},
+      {"id":"T2.5","tags":["offline"],"title":"single value + JSON forms","expect":"1st → <code>\"github\"</code>; 2nd → whole config as JSON, no header; 3rd → “not set” on stderr, <code>exit=1</code>.","cmd":"imq config get vcs.provider\nimq config get --json\nimq config get vcs.nope; echo \"exit=$?\""},
+      {"id":"T2.6","tags":["offline"],"title":"invalid provider rejected","expect":"<code>Invalid … \"giturb\"</code> + non-zero; value unchanged.","cmd":"imq config set vcs.provider giturb; echo \"exit=$?\"\nimq config get vcs.provider"},
+      {"id":"T2.7","tags":["offline"],"title":"packages: comma list OR JSON array","expect":"Both forms round-trip to a JSON array.","cmd":"imq config set packages opentelemetry,pg-cache\nimq config get packages\nimq config set packages '[\"sequelize\",\"tag-cache\"]'\nimq config get packages"},
+      {"id":"T2.8","tags":["offline"],"title":"config file is 0600","expect":"<code>600 …</code>","cmd":"stat -c '%a %n' \"$IMQ_CLI_HOME/.imq/config.json\""},
+      {"id":"T2.9","tags":["offline"],"title":"legacy keys mirrored","expect":"Structured keys <b>and</b> legacy equivalents (e.g. <code>gitBaseUrl</code>, <code>useGit</code>) both present.","cmd":"cat \"$IMQ_CLI_HOME/.imq/config.json\""},
+      {"id":"T2.10","tags":["offline"],"title":"init non-TTY is guarded","expect":"Clear “requires an interactive terminal” message + non-zero — <b>not</b> a hang.","cmd":"imq config init < /dev/null; echo \"exit=$?\""},
+      {"id":"T2.11","tags":["tty"],"title":"init interactive wizard","expect":"Walks VCS→CI→registry→packages→author; token input masked (<code>*</code>); ends <b>@imqueue/cli successfully configured!</b>","cmd":"imq config init"}
+    ]},
+    { "num":"3", "title":"service packages (catalog)", "tests":[
+      {"id":"T3.1","tags":["offline"],"title":"grouped catalog listing","expect":"Groups listed; exclusive groups (tracing, orm) marked; features group shown.","cmd":"imq service packages"},
+      {"id":"T3.2","tags":["offline"],"title":"--json is valid JSON","expect":"Prints <b>valid JSON</b>.","cmd":"imq service packages --json | node -e 'JSON.parse(require(\"fs\").readFileSync(0));console.log(\"valid JSON\")'"}
+    ]},
+    { "num":"4", "title":"service create --dry-run (axes, precedence, guards)", "tests":[
+      {"id":"T4.0","tags":["offline"],"title":"clean slate for section 4","expect":"Fresh empty config so precedence tests are predictable.","cmd":"export IMQ_CLI_HOME=\"$(mktemp -d)\""},
+      {"id":"T4.1","tags":["offline"],"title":"minimal dry-run, empty config","expect":"Plan: <b>useVcs=false, dockerize=false</b>, no providers; exit 0; nothing created.","cmd":"imq service create demo \"$SBX/demo\" -a \"Jane Dev\" -e jane@dev.io --dry-run < /dev/null\nls \"$SBX/demo\" 2>/dev/null || echo \"no dir (good)\""},
+      {"id":"T4.2","tags":["offline"],"title":"missing email fails in dry-run","expect":"<code>Author's email is required…</code> + non-zero.","cmd":"imq service create demo \"$SBX/demo\" -a Jane --dry-run < /dev/null; echo \"exit=$?\""},
+      {"id":"T4.3","tags":["offline"],"title":"default description rebranded","expect":"<code>demo - @imqueue based service</code> (no bare IMQ).","cmd":"imq service create demo \"$SBX/demo\" -a J -e j@d.io --dry-run < /dev/null | grep -i description"},
+      {"id":"T4.4","tags":["offline"],"title":"four axes resolve via flags","expect":"vcs=gitlab/team-x, ci=circleci, registry=aws-ecr (acct 12345), dockerize=true, packages listed; missing token shows <code>&lt;prompted at create&gt;</code>.","cmd":"imq service create demo \"$SBX/demo\" -a J -e j@d.io --dry-run < /dev/null \\\n  --use-git --vcs gitlab -u team-x --ci circleci --registry aws-ecr --account-id 12345 -D \\\n  --packages opentelemetry,pg-cache"},
+      {"id":"T4.5","tags":["offline"],"title":"flag overrides config","expect":"Plan shows <b>gitlab</b> (flag wins over configured github).","cmd":"imq config set vcs.provider github\nimq config set ci.provider github-actions\nimq service create demo \"$SBX/demo\" -a J -e j@d.io --use-git -u me --vcs gitlab --dry-run < /dev/null | grep -iE \"gitlab|github\""},
+      {"id":"T4.6","tags":["offline"],"title":"travis + non-dockerhub fails fast","expect":"<code>Travis CI supports the dockerhub registry only…</code> + non-zero.","cmd":"imq service create demo \"$SBX/demo\" -a J -e j@d.io --use-git -u me --vcs github \\\n  --ci travis --registry google -D --dry-run < /dev/null; echo \"exit=$?\""},
+      {"id":"T4.7","tags":["offline"],"title":"required namespace fails, no dir leak","expect":"<code>GitHub namespace required…</code> + non-zero; <b>no directory created</b>.","cmd":"export IMQ_CLI_HOME=\"$(mktemp -d)\"\nimq service create demo \"$SBX/nsfail\" -a J -e j@d.io --use-git --vcs github < /dev/null; echo \"exit=$?\"\nls \"$SBX/nsfail\" 2>/dev/null && echo \"LEAKED (bad)\" || echo \"no dir (good)\""},
+      {"id":"T4.8","tags":["offline"],"title":"non-empty target guard + --force","expect":"First refuses: <code>Target directory … is not empty … pass --force</code>, non-zero; keep.txt untouched.","cmd":"mkdir -p \"$SBX/occupied\" && touch \"$SBX/occupied/keep.txt\"\nimq service create demo \"$SBX/occupied\" -a J -e j@d.io < /dev/null; echo \"exit=$?\"\nimq service create demo \"$SBX/occupied\" -a J -e j@d.io --force --dry-run < /dev/null"},
+      {"id":"T4.9","tags":["offline"],"title":"custom template accepted","expect":"Plan reflects the requested template; no crash.","cmd":"imq service create demo \"$SBX/demo\" -a J -e j@d.io -t some-template --dry-run < /dev/null | grep -i template"}
+    ]},
+    { "num":"5", "title":"service create — real repo creation (optional)", "tests":[
+      {"id":"T5.1","tags":["net"],"title":"real scaffold + repo push","expect":"Local scaffold created; git repo initialised and pushed to a throwaway namespace.","cmd":"imq config set vcs.auth.token <token>\nimq service create <name> <path> --use-git --vcs github -u <your-test-org> -y"},
+      {"id":"T5.2","tags":["net"],"title":".imqrc.json has no secrets","expect":"Resolved providers/packages present; <b>no</b> token/password/user fields.","cmd":"cat <service>/.imqrc.json"},
+      {"id":"T5.3","tags":["net"],"title":"honest secrets report","expect":"With cloud-registry env vars unset, output states which CI secrets were/weren't provisioned (no silent success).","cmd":""}
+    ]},
+    { "num":"6", "title":"ctl — start / stop / restart / status", "tests":[
+      {"id":"T6.0","tags":["offline"],"title":"create the local fleet","expect":"Three dummy services created under <code>$FLEET</code>: alpha, beta, gamma.","cmd":"__FLEET__"},
+      {"id":"T6.1","tags":["offline"],"title":"start with calm mode","expect":"<code>Starting alpha, master pid is …</code> then beta; both come up; exit 0.","cmd":"imq ctl start -p \"$FLEET\" -s alpha,beta -c"},
+      {"id":"T6.2","tags":["offline"],"title":"status shows both live","expect":"<code>alpha: running (pid …)</code>, <code>beta: running (pid …)</code>.","cmd":"imq ctl status -p \"$FLEET\""},
+      {"id":"T6.3","tags":["offline"],"title":"already-running is skipped","expect":"<code>warn: alpha is already running … use restart</code>.","cmd":"imq ctl start -p \"$FLEET\" -s alpha"},
+      {"id":"T6.4","tags":["offline"],"title":"restart gives a new pid","expect":"alpha relaunches with a <b>new</b> pid, still running.","cmd":"imq ctl restart -p \"$FLEET\" -s alpha\nimq ctl status -p \"$FLEET\""},
+      {"id":"T6.5","tags":["offline"],"title":"repeated -s and comma list parse","expect":"Both alpha and beta listed.","cmd":"imq ctl status -p \"$FLEET\" -s alpha -s beta"},
+      {"id":"T6.6","tags":["offline"],"title":"crashing service is reported","expect":"<code>Failed to start gamma.</code> and/or <code>Started 0/1 … failed: gamma.</code>; non-zero.","cmd":"imq ctl start -p \"$FLEET\" -s gamma -c; echo \"exit=$?\""},
+      {"id":"T6.7","tags":["offline"],"title":"stop terminates the group","expect":"<code>Stopping alpha (pid …)</code>, then beta; status then shows them stopped/pruned.","cmd":"imq ctl stop -p \"$FLEET\" -s alpha,beta\nimq ctl status -p \"$FLEET\""},
+      {"id":"T6.8","tags":["offline"],"title":"no services → non-zero + path","expect":"<code>No @imqueue services found under &lt;path&gt;…</code>, non-zero.","cmd":"mkdir -p \"$SBX/empty\"; imq ctl start -p \"$SBX/empty\"; echo \"exit=$?\""},
+      {"id":"T6.9","tags":["offline"],"title":"stop-from-anywhere fallback","expect":"alpha is stopped via the pidfile fallback even though nothing is discoverable in the cwd.","cmd":"imq ctl start -p \"$FLEET\" -s alpha\ncd \"$SBX/empty\" && imq ctl stop\nimq ctl status -p \"$FLEET\"; cd - >/dev/null"}
+    ]},
+    { "num":"7", "title":"log", "tests":[
+      {"id":"T7.1","tags":["offline"],"title":"no-follow dump, prefixed","expect":"Interleaved lines prefixed <code>[alpha]</code>/<code>[beta]</code>; returns immediately.","cmd":"imq ctl start -p \"$FLEET\" -s alpha,beta -c\nimq log --no-follow"},
+      {"id":"T7.2","tags":["offline"],"title":"scoped to one service","expect":"Only <code>alpha</code> lines.","cmd":"imq log alpha --no-follow"},
+      {"id":"T7.3","tags":["offline"],"title":"--no-prefix drops the tag","expect":"No <code>[alpha]</code> prefix.","cmd":"imq log alpha --no-follow --no-prefix"},
+      {"id":"T7.4","tags":["offline","tty"],"title":"follow streams, Ctrl-C clean","expect":"Tails live; Ctrl-C returns to prompt with no stack trace.","cmd":"imq log alpha   # follow is on by default; watch, then Ctrl-C"},
+      {"id":"T7.5","tags":["offline"],"title":"scoped vs global clean","expect":"Scoped clean removes only alpha.log; global clean wipes all.","cmd":"imq log alpha --clean\nls \"$IMQ_CLI_HOME/.imq/var\"\nimq log --clean\nls \"$IMQ_CLI_HOME/.imq/var\""},
+      {"id":"T7.6","tags":["offline"],"title":"cleanup: stop the fleet","expect":"All services stopped.","cmd":"imq ctl stop -p \"$FLEET\""}
+    ]},
+    { "num":"8", "title":"up", "tests":[
+      {"id":"T8.1","tags":["offline"],"title":"no services message","expect":"<code>No @imqueue services found to update.</code>","cmd":"imq up -p \"$SBX/empty\""},
+      {"id":"T8.2","tags":["offline"],"title":"--skip-update w/o --commit rejected","expect":"Message to remove --skip-update or add --commit; non-zero.","cmd":"imq up -p \"$FLEET\" --skip-update; echo \"exit=$?\""},
+      {"id":"T8.3","tags":["offline"],"title":"bump keyword validation","expect":"Rejected — only major|minor|patch|prerelease; non-zero.","cmd":"imq up -p \"$FLEET\" -v banana; echo \"exit=$?\""},
+      {"id":"T8.4","tags":["net"],"title":"full dependency update","expect":"git pull → ncu -u → reinstall; a failing step aborts that service before destructive steps; summary + non-zero on any failure.","cmd":""}
+    ]},
+    { "num":"9", "title":"client generate (optional)", "tests":[
+      {"id":"T9.1","tags":["redis"],"title":"generate against running service","expect":"A typed client file is generated.","cmd":"imq client generate <service> ./src/clients"},
+      {"id":"T9.2","tags":["redis"],"title":"not-running fails cleanly","expect":"Fails clearly (non-zero); doesn't hang past the timeout (<code>-w</code>, default 30s).","cmd":""},
+      {"id":"T9.3","tags":["redis"],"title":"-o overwrite behaviour","expect":"<code>-o</code> overwrites without prompt; without it an existing client is protected.","cmd":""}
+    ]},
+    { "num":"10", "title":"service update-version (optional)", "tests":[
+      {"id":"T10.1","tags":["net"],"title":"release flow across services","expect":"checkout → pull → npm version → push --follow-tags; detection by module load; a failing step stops that service and is reported.","cmd":"imq service update-version ./services main -n patch"}
+    ]},
+    { "num":"11", "title":"completions", "tests":[
+      {"id":"T11.1","tags":["offline"],"title":"prints a completion script","expect":"<code>imq completions</code> prints a script to stdout.","cmd":"imq completions"},
+      {"id":"T11.2","tags":["tty"],"title":"on is idempotent, off removes","expect":"1st <code>on</code> appends + prints <code>source ~/.zshrc</code> hint; 2nd <code>on</code> says it already exists; <code>off</code> removes it; no crash if rc missing.","cmd":"imq completions on\nimq completions on\nimq completions off"}
+    ]},
+    { "num":"12", "title":"config security & backward-compat", "tests":[
+      {"id":"T12.1","tags":["offline"],"title":"token stays 0600 & unlisted","expect":"file mode <code>600</code>; plain <code>config get</code> doesn't print the token.","cmd":"imq config set vcs.auth.token ghp_exampletoken123\nstat -c '%a' \"$IMQ_CLI_HOME/.imq/config.json\"\nimq config get | grep -i token || echo \"token not shown (good)\""},
+      {"id":"T12.2","tags":["offline"],"title":"v3 legacy config is read","expect":"Derives github + dockerhub (+ travis), namespace <code>imqueue</code>; no crash.","cmd":"D=\"$(mktemp -d)\"; export IMQ_CLI_HOME=\"$D\"; mkdir -p \"$D/.imq\"\ncat > \"$D/.imq/config.json\" <<'JSON'\n{ \"useGit\": true, \"gitBaseUrl\": \"git@github.com:imqueue\",\n  \"gitHubAuthToken\": \"ghp_x\", \"gitRepoPrivate\": true,\n  \"useDocker\": true, \"dockerHubNamespace\": \"imqueue\" }\nJSON\nimq service create demo \"$SBX/legacy\" -a J -e j@d.io --dry-run < /dev/null | grep -iE \"github|imqueue|dockerhub|travis\""}
+    ]},
+    { "num":"13", "title":"teardown", "tests":[
+      {"id":"T13.1","tags":["offline"],"title":"remove sandbox, real ~/.imq intact","expect":"Sandbox dirs gone; your real <code>~/.imq</code> unchanged.","cmd":"imq ctl stop -p \"$FLEET\" 2>/dev/null || true\nrm -rf \"$IMQ_CLI_HOME\" \"$SBX\"\nunset IMQ_CLI_HOME IMQ_NO_UPDATE_CHECK SBX FLEET"}
+    ]}
+  ]
+}
+</script>
+
+<script>
+(function(){
+  var DATA = JSON.parse(document.getElementById('data').textContent);
+  var FLEET = DATA.fleet;
+  var KEY = 'imq-testplan-v4';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch(e){ state = {}; }
+
+  var root = document.getElementById('root');
+  var allTests = [];
+
+  // setup card
+  var setupCard = document.createElement('div');
+  setupCard.className = 'grp';
+  setupCard.innerHTML =
+    '<div class="grp-h"><span class="num">0</span><h2>Sandbox setup</h2></div>' +
+    '<div class="card setup"><p>Run this once and keep the <b>same terminal open</b> for the whole run — the exports isolate config, logs and pids into a throwaway directory.</p></div>';
+  var setupBody = setupCard.querySelector('.setup');
+  setupBody.appendChild(cmdBlock(DATA.setup));
+  root.appendChild(setupCard);
+
+  DATA.groups.forEach(function(g){
+    var sec = document.createElement('section');
+    sec.className = 'grp';
+    var head = document.createElement('div');
+    head.className = 'grp-h';
+    head.innerHTML = '<span class="num">'+g.num+'</span><h2></h2><span class="gcount" id="gc-'+g.num+'"></span>';
+    head.querySelector('h2').textContent = g.title;
+    sec.appendChild(head);
+
+    var card = document.createElement('div');
+    card.className = 'card';
+
+    g.tests.forEach(function(t){
+      allTests.push(t.id);
+      var cmd = t.cmd === '__FLEET__' ? FLEET : t.cmd;
+      var el = document.createElement('div');
+      el.className = 'test';
+      el.id = 'test-' + t.id;
+
+      // segmented pass/fail
+      var seg = document.createElement('div');
+      seg.className = 'seg';
+      seg.innerHTML =
+        '<div class="row2">' +
+          '<button class="pass" data-act="pass" aria-pressed="false">Pass</button>' +
+          '<button class="fail" data-act="fail" aria-pressed="false">Fail</button>' +
+        '</div>';
+      el.appendChild(seg);
+
+      // body
+      var body = document.createElement('div');
+      body.className = 'body';
+      var chips = (t.tags||[]).map(function(tag){ return '<span class="chip '+tag+'">'+tag+'</span>'; }).join('');
+      var top = document.createElement('div');
+      top.className = 'top';
+      top.innerHTML = '<span class="tid">'+t.id+'</span><span class="ttl"></span>'+chips;
+      top.querySelector('.ttl').textContent = t.title;
+      body.appendChild(top);
+
+      var exp = document.createElement('p');
+      exp.className = 'expect';
+      exp.innerHTML = t.expect;
+      body.appendChild(exp);
+
+      if (cmd) body.appendChild(cmdBlock(cmd));
+
+      var note = document.createElement('textarea');
+      note.className = 'note';
+      note.placeholder = 'Notes / what went wrong (optional)…';
+      note.value = (state[t.id] && state[t.id].note) || '';
+      note.addEventListener('input', function(){
+        ensure(t.id).note = note.value; save();
+      });
+      body.appendChild(note);
+
+      el.appendChild(body);
+      card.appendChild(el);
+
+      // wire seg buttons
+      seg.querySelectorAll('button').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var act = btn.getAttribute('data-act');
+          var cur = state[t.id] && state[t.id].status;
+          ensure(t.id).status = (cur === act) ? null : act;  // toggle off if same
+          save(); render();
+        });
+      });
+    });
+
+    sec.appendChild(card);
+    root.appendChild(sec);
+  });
+
+  function cmdBlock(text){
+    var wrap = document.createElement('div');
+    wrap.className = 'cmd';
+    var pre = document.createElement('pre');
+    pre.textContent = text;
+    var copy = document.createElement('button');
+    copy.className = 'copy'; copy.textContent = 'copy';
+    copy.addEventListener('click', function(){
+      navigator.clipboard.writeText(text).then(function(){
+        copy.textContent = 'copied'; copy.classList.add('done');
+        setTimeout(function(){ copy.textContent='copy'; copy.classList.remove('done'); }, 1200);
+      });
+    });
+    wrap.appendChild(pre); wrap.appendChild(copy);
+    return wrap;
+  }
+
+  function ensure(id){ if(!state[id]) state[id] = {}; return state[id]; }
+  function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+
+  function render(){
+    var pass=0, fail=0;
+    allTests.forEach(function(id){
+      var st = state[id] && state[id].status;
+      var el = document.getElementById('test-'+id);
+      el.classList.toggle('is-pass', st==='pass');
+      el.classList.toggle('is-fail', st==='fail');
+      var pb = el.querySelector('button.pass'), fb = el.querySelector('button.fail');
+      pb.setAttribute('aria-pressed', st==='pass'); fb.setAttribute('aria-pressed', st==='fail');
+      if(st==='pass') pass++; else if(st==='fail') fail++;
+    });
+    var total = allTests.length, left = total - pass - fail;
+    document.getElementById('t-pass').textContent = pass;
+    document.getElementById('t-fail').textContent = fail;
+    document.getElementById('t-left').textContent = left;
+    document.getElementById('fill').style.width = total ? ((pass+fail)/total*100)+'%' : '0';
+    // per-group counts
+    DATA.groups.forEach(function(g){
+      var done=0; g.tests.forEach(function(t){ if(state[t.id]&&state[t.id].status) done++; });
+      var gc = document.getElementById('gc-'+g.num);
+      if(gc) gc.textContent = done+'/'+g.tests.length;
+    });
+  }
+
+  // ---- results export ----
+  function buildMarkdown(){
+    var pass=0,fail=0;
+    allTests.forEach(function(id){var s=state[id]&&state[id].status; if(s==='pass')pass++; else if(s==='fail')fail++;});
+    var total=allTests.length, left=total-pass-fail;
+    var out = [];
+    out.push('# @imqueue/cli — local test results');
+    out.push('Generated: ' + new Date().toISOString());
+    out.push('Passed '+pass+' · Failed '+fail+' · Untested '+left+'  (of '+total+')');
+    out.push('');
+    DATA.groups.forEach(function(g){
+      out.push('## '+g.num+'. '+g.title);
+      g.tests.forEach(function(t){
+        var s = state[t.id] && state[t.id].status;
+        var mark = s==='pass' ? '[x]' : '[ ]';
+        var label = s==='pass' ? 'PASS' : (s==='fail' ? 'FAIL' : 'untested');
+        out.push('- '+mark+' '+t.id+' '+label+' — '+t.title);
+        var n = state[t.id] && state[t.id].note;
+        if(n && n.trim()) out.push('      notes: '+n.trim().replace(/\n/g,' / '));
+      });
+      out.push('');
+    });
+    return out.join('\n');
+  }
+
+  function toast(msg){
+    var el = document.getElementById('toast');
+    el.textContent = msg; el.classList.add('show');
+    setTimeout(function(){ el.classList.remove('show'); }, 1600);
+  }
+
+  document.getElementById('copy').addEventListener('click', function(){
+    navigator.clipboard.writeText(buildMarkdown()).then(function(){
+      toast('Results copied — paste them back into chat');
+    }, function(){ toast('Copy failed — use Download .md'); });
+  });
+
+  document.getElementById('download').addEventListener('click', function(){
+    var blob = new Blob([buildMarkdown()], {type:'text/markdown'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'imq-test-results.md';
+    a.click(); URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById('reset').addEventListener('click', function(){
+    if(!confirm('Clear all pass/fail marks and notes?')) return;
+    state = {}; save(); render();
+    document.querySelectorAll('textarea.note').forEach(function(t){ t.value=''; });
+    toast('Cleared');
+  });
+
+  // ---- theme ----
+  var THKEY='imq-testplan-theme';
+  var th = localStorage.getItem(THKEY);
+  if(th) document.documentElement.setAttribute('data-theme', th);
+  document.getElementById('theme').addEventListener('click', function(){
+    var cur = document.documentElement.getAttribute('data-theme');
+    if(!cur){ cur = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark':'light'; }
+    var next = cur==='dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem(THKEY, next);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
