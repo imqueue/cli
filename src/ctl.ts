@@ -23,6 +23,7 @@
  */
 import { spawn, spawnSync } from 'child_process';
 import {
+    closeSync,
     existsSync,
     mkdirSync,
     openSync,
@@ -47,14 +48,19 @@ const MAX_READY_ATTEMPTS = 60;
  * command wires in process spawning, git and the filesystem.
  */
 export interface CtlDeps {
-    /** Starts `npm run dev` for a service, piping output to logFile; pid. */
+    /**
+     * Starts `npm run dev` for a service, truncating logFile and piping output
+     * to it. Returns the master pid, or 0 if the process failed to start.
+     */
     startService(dir: string, logFile: string): number;
-    /** Runs `git pull` in the service directory. */
+    /** Runs `git pull` in the service directory; throws on failure. */
     gitPull(dir: string): void;
     /** Runs `npm run stop` in the service directory (best-effort). */
     stopService(dir: string): void;
     /** Terminates a started process (and its group) by pid. */
     killGroup(pid: number): void;
+    /** True if a process with the given pid is currently running. */
+    isAlive(pid: number): boolean;
     /** Reads a service log file, returning '' when it does not exist yet. */
     readLog(logFile: string): string;
     /** Resolves after the given number of milliseconds. */
@@ -132,17 +138,21 @@ export function writePids(varHome: string, entries: PidEntry[]): void {
 }
 
 /**
- * Polls a service log file until it reports readiness, reports a startup
- * error, or the attempt budget is exhausted. Used by calm mode so services
- * start one-at-a-time rather than all at once.
+ * Polls a service log file until it reports readiness, the process exits
+ * (crashed during startup), or the attempt budget is exhausted. Used by calm
+ * mode so services start one-at-a-time rather than all at once. Because the
+ * log is truncated on start, the readiness scan only ever sees the current
+ * run - it cannot be fooled by a marker left over from a previous run.
  *
  * @param {string} logFile - path to the service log
+ * @param {number} pid - master pid of the started service
  * @param {CtlDeps} deps - injected primitives
  * @param {number} [maxAttempts] - number of one-second polls before timing out
  * @return {Promise<ReadyState>}
  */
 export async function waitForReady(
     logFile: string,
+    pid: number,
     deps: CtlDeps,
     maxAttempts: number = MAX_READY_ATTEMPTS,
 ): Promise<ReadyState> {
@@ -153,7 +163,9 @@ export async function waitForReady(
             return 'ready';
         }
 
-        if (log.includes(ERROR_MARKER)) {
+        // a dead process (or a logged unhandled rejection) means the service
+        // crashed on startup - report it now instead of waiting out the budget
+        if (log.includes(ERROR_MARKER) || !deps.isAlive(pid)) {
             return 'errored';
         }
 
@@ -206,6 +218,16 @@ export async function startServices(
         pids.set(svc, pid);
     }
 
+    // persist the pid file after every change so an interrupt mid-loop (e.g.
+    // Ctrl+C during a calm start) still leaves a record of what was started
+    const persist = () =>
+        writePids(
+            varHome,
+            [...pids].map(([svc, pid]) => ({ svc, pid })),
+        );
+
+    let startedAny = false;
+
     for (const svc of services) {
         const dir = join(opts.path, svc);
 
@@ -215,26 +237,63 @@ export async function startServices(
             continue;
         }
 
+        // don't orphan an already-running instance: skip it and tell the user
+        // to restart if that is what they meant
+        const running = pids.get(svc);
+
+        if (running !== undefined && deps.isAlive(running)) {
+            deps.log(
+                styleText(
+                    'yellow',
+                    `warn: ${svc} is already running (pid ${running}); ` +
+                        "use 'imq ctl restart' to restart it.",
+                ),
+            );
+
+            continue;
+        }
+
         if (opts.update) {
             deps.log(`Updating ${svc}...`);
-            deps.gitPull(dir);
+
+            try {
+                deps.gitPull(dir);
+            } catch (err) {
+                deps.log(
+                    styleText(
+                        'yellow',
+                        `warn: skipping ${svc} - git pull failed: ` +
+                            `${(err as Error).message}`,
+                    ),
+                );
+
+                continue;
+            }
         }
 
         const logFile = join(varHome, `${svc}.log`);
         const pid = deps.startService(dir, logFile);
 
+        if (!pid) {
+            deps.log(styleText('red', `Failed to start ${svc}.`));
+
+            continue;
+        }
+
         pids.set(svc, pid);
+        persist();
+        startedAny = true;
         deps.log(`Starting ${svc}, master pid is ${pid}...`);
 
         if (opts.calm) {
-            const state = await waitForReady(logFile, deps);
+            const state = await waitForReady(logFile, pid, deps);
 
             if (state === 'errored') {
                 deps.log(
                     styleText(
                         'yellow',
-                        `warn: service ${svc} errored, ` +
-                            'please, consider watching logs...',
+                        `warn: ${svc} exited during startup, please check ` +
+                            `its logs ('imq log ${svc}').`,
                     ),
                 );
             } else if (state === 'timeout') {
@@ -249,12 +308,9 @@ export async function startServices(
         }
     }
 
-    writePids(
-        varHome,
-        [...pids].map(([svc, pid]) => ({ svc, pid })),
-    );
+    persist();
 
-    if (!opts.calm) {
+    if (startedAny && !opts.calm) {
         deps.log('Bulk service start initiated, please, be patient...');
     }
 }
@@ -333,19 +389,42 @@ export async function runCtl(
 export function defaultDeps(): CtlDeps {
     return {
         startService(dir: string, logFile: string): number {
-            const out = openSync(logFile, 'a');
-            const child = spawn('npm', ['run', '--silent', 'dev'], {
-                cwd: dir,
-                detached: true,
-                stdio: ['ignore', out, out],
-            });
+            // truncate ('w'): the log and the calm-mode readiness scan must
+            // reflect only this run, never a stale marker from a previous one
+            const out = openSync(logFile, 'w');
 
-            child.unref();
+            try {
+                const child = spawn('npm', ['run', '--silent', 'dev'], {
+                    cwd: dir,
+                    detached: true,
+                    stdio: ['ignore', out, out],
+                });
 
-            return child.pid ?? 0;
+                // swallow async spawn errors (e.g. npm not on PATH) so they
+                // don't crash the CLI with an unhandled 'error' event; a failed
+                // spawn leaves child.pid undefined -> reported as a start error
+                child.on('error', () => undefined);
+                child.unref();
+
+                return child.pid ?? 0;
+            } finally {
+                // the child dup'd the fd; close the parent's copy to avoid a leak
+                closeSync(out);
+            }
         },
         gitPull(dir: string): void {
-            spawnSync('git', ['pull'], { cwd: dir, stdio: 'inherit' });
+            const res = spawnSync('git', ['pull'], {
+                cwd: dir,
+                stdio: 'inherit',
+            });
+
+            if (res.error) {
+                throw new Error(res.error.message);
+            }
+
+            if (res.status !== 0) {
+                throw new Error(`git pull exited with code ${res.status}`);
+            }
         },
         stopService(dir: string): void {
             // best-effort: services without a `stop` script simply no-op
@@ -365,6 +444,18 @@ export function defaultDeps(): CtlDeps {
                 } catch {
                     /* already gone */
                 }
+            }
+        },
+        isAlive(pid: number): boolean {
+            try {
+                // signal 0 performs existence/permission checks without
+                // actually sending a signal
+                process.kill(pid, 0);
+
+                return true;
+            } catch (err) {
+                // ESRCH -> no such process; EPERM -> alive but not ours
+                return (err as NodeJS.ErrnoException).code === 'EPERM';
             }
         },
         readLog(logFile: string): string {

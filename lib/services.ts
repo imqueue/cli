@@ -21,7 +21,13 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { existsSync, readdirSync, readFileSync, statSync } from 'fs';
+import {
+    type Dirent,
+    existsSync,
+    readdirSync,
+    readFileSync,
+    statSync,
+} from 'fs';
 import { join } from 'path';
 
 /**
@@ -46,8 +52,17 @@ function tsFiles(dir: string): string[] {
     }
 
     const out: string[] = [];
+    let entries: Dirent[];
 
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    try {
+        entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+        // unreadable directory (e.g. EACCES on one subtree) must not abort
+        // discovery for every other service - skip it
+        return out;
+    }
+
+    for (const entry of entries) {
         const full = join(dir, entry.name);
 
         if (entry.isDirectory()) {
