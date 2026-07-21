@@ -74,6 +74,9 @@ function recorder(logContent: Record<string, string> = {}): Recorder {
         },
         killGroup(pid: number): void {
             rec.killed.push(pid);
+            // model a successful kill so waitForDeath sees the process exit;
+            // tests simulating a stubborn process override killGroup/isAlive
+            rec.alive.set(pid, false);
         },
         isAlive(pid: number): boolean {
             // by default every recorded pid is considered alive; individual
@@ -177,14 +180,14 @@ describe('service ctl', () => {
             );
         });
 
-        it('should return errored when the process is dead', async () => {
+        it('should return crashed when the process is dead', async () => {
             const rec = recorder();
 
             rec.alive.set(7, false);
 
             assert.equal(
                 await ctl.waitForReady('/l', 7, rec.deps, 3),
-                'errored',
+                'crashed',
             );
         });
 
@@ -354,7 +357,7 @@ describe('service ctl', () => {
     });
 
     describe('stopServices()', () => {
-        it('should kill targeted pids and keep the rest', () => {
+        it('should kill targeted pids and keep the rest', async () => {
             makeService('billing');
 
             const varHome = join(root, '.var');
@@ -364,7 +367,7 @@ describe('service ctl', () => {
 
             const rec = recorder();
 
-            ctl.stopServices(opts(), rec.deps);
+            await ctl.stopServices(opts(), rec.deps);
 
             assert.deepEqual(rec.killed, [111]);
             assert.deepEqual(rec.stopped, [join(root, 'billing')]);
