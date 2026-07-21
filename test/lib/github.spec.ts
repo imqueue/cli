@@ -331,7 +331,11 @@ describe.skip('github', () => {
             const git: any = await github.getInstance(token);
 
             try {
-                await github.createRepository(url, token, '@imqueue/cli test repo');
+                await github.createRepository(
+                    url,
+                    token,
+                    '@imqueue/cli test repo',
+                );
                 const data = await git.get(`/repos/${owner}/${repo}`);
                 assert.ok(data);
                 assert.equal(data.name, repo);
@@ -391,8 +395,16 @@ describe.skip('github', () => {
             const git: any = await github.getInstance(token);
 
             try {
-                await github.createRepository(url, token, '@imqueue/cli test repo');
-                await github.createRepository(url, token, '@imqueue/cli test repo');
+                await github.createRepository(
+                    url,
+                    token,
+                    '@imqueue/cli test repo',
+                );
+                await github.createRepository(
+                    url,
+                    token,
+                    '@imqueue/cli test repo',
+                );
             } catch (err) {
                 assert.ok(err instanceof Error);
                 assert.equal(err.message, 'Repository already exists!');
