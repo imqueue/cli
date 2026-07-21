@@ -33,15 +33,22 @@ IMQ Command Line Interface
 Usage: imq <command>
 
 Commands:
-  imq client       Manage IMQ client
-  imq completions  Generates completions script for your shell
-  imq config       Manage IMQ CLI settings
-  imq service      Manage IMQ service
+  imq client            Manage IMQ client
+  imq completions       Generates completions script for your shell
+  imq config            Manage IMQ CLI settings
+  imq ctl <action>      Start/stop/restart a bulk of local services
+  imq log [services..]  Tail and combine local service logs
+  imq service           Manage IMQ service
+  imq up                Bulk-update service dependencies
 
 Options:
   --version  Show version number                                       [boolean]
   --help     Show help                                                 [boolean]
 ~~~
+
+> **Upgrading from 3.x:** the standalone `imqctl`, `imqlog` and `imqup` shell
+> tools are now native subcommands — `imq ctl`, `imq log` and `imq up`. The
+> options are unchanged; see [Controlling Local Services](#controlling-local-services).
 
 > On every interactive run `imq` checks npm for a newer release and offers to
 > self-update. Set `IMQ_NO_UPDATE_CHECK=1` to skip that check.
@@ -244,47 +251,67 @@ run your services locally on host OS, which is really useful scenario
 during development and the tools below will dramatically improve your
 experience, especially, when the number of services to manage significant.
 
-### imqctl
+All three commands share the same **service discovery**: when `-s` is omitted
+they scan the given path for immediate sub-directories whose `src/` tree
+contains a class extending `IMQService` or `IMQClient`. Runtime state (per
+service logs and process ids) lives under `~/.imq/var`.
+
+### imq ctl
+
+Starts, stops or restarts a bulk of local services. On start each service is
+launched via its `npm run dev` script in its own process group, with output
+redirected to `~/.imq/var/<service>.log`; stop terminates the whole process
+group and runs each service's `npm run stop` script.
 
 ~~~
-Usage: imqctl <command> [-p path] [-s services] [-hu]
-  <command> is one of start|stop|restart
-  [-p path] - path to a directory with services repositories, by default is 
-              current directory
-  [-s services] - comma-separated services list (repositories names),
-                  if not passed will scan path for a services presence
-  [-u] - if passed service will be updated using 'git pull' before start
-  [-c] - calm down services start - wait before staring next
-  [-v] - verbose mode, shows command execution time
-  [-h] - print this usage information
+imq ctl <action> [-p path] [-s services] [-ucv]
+
+  <action>          one of start | stop | restart
+  -p, --path        directory with the service repositories (default: cwd)
+  -s, --services    comma-separated service names (skips discovery)
+  -u, --update      run 'git pull' on each service before starting
+  -c, --calm        calm start - wait for each service to become ready
+                    (log line "reader channel connected") before the next
+  -v, --verbose     show command execution time
 ~~~
 
-### imqlog
+### imq log
+
+Combines and tails the logs collected by `imq ctl`. With no service names all
+available logs are combined; lines are prefixed with a coloured `[service]`
+tag when more than one log is shown.
 
 ~~~
-Usage: imqlog [-hc] [service1, ...serviceN]
-  [service1, ...serviceN] - list of service repositories directories names to 
-                            combine logs for, if omitted all existing logs are
-                            combined.
-  [-c] - clean previous logs
-  [-h] - print this usage information
+imq log [services..] [-cfP]
+
+  [services..]      service names to combine logs for (default: all)
+  -c, --clean       delete previously collected logs and exit
+  -f, --follow      follow appended data (default: true; --no-follow to
+                    dump current logs and exit)
+  -P, --no-prefix   do not prefix log lines with the service name
 ~~~
 
-### imqup
+### imq up
+
+Updates dependencies of local services (via `npm-check-updates`, installed
+automatically if missing) and, optionally, version-bumps, commits and pushes
+them. Make sure the services are not in a dirty git state before running an
+update.
 
 ~~~
-Usage: imqup [-hcu] [-p path] [-s services] [-v type]
-  Performs a dependencies update on services located under a given path.
-  Before running, make sure the services are not in a dirty git state.
-  [-p path] - path to a directory with services repositories, by default is
-              current directory
-  [-s services] - comma-separated services list (repositories names),
-                  if not passed will scan path for a services presence
-  [-v type] - new version to set: major|minor|patch|prerelease (default: prerelease)
-  [-c] - commit and push the update
-  [-u] - do NOT update dependencies, perform other tasks only
-  [-h] - print this usage information
+imq up [-p path] [-s services] [-v type] [-cu]
+
+  -p, --path         directory with the service repositories (default: cwd)
+  -s, --services     comma-separated service names (skips discovery)
+  -v, --npm-version  version bump on commit: major|minor|patch|prerelease
+                     (default: prerelease)
+  -c, --commit       commit, version-bump and push the update
+  -u, --skip-update  skip the dependency update, perform other tasks only
 ~~~
+
+For each service the update runs `git pull` → `ncu -u` → reinstall, then (with
+`-c`) commits `chore: dependencies update`, runs `npm version <type>` and
+`git push --follow-tags` — but only when the working tree actually changed.
 
 ## License
 
