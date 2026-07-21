@@ -37,6 +37,13 @@ Thumbs.db
 
 test/
 
+# dev-only material - not needed at runtime by consumers
+wiki/
+AGENTS.md
+CONTRIBUTING.md
+.github/
+scripts/
+
 *.js.map
 *.ts
 !*.d.ts

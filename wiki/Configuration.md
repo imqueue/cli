@@ -8,8 +8,11 @@ CLI flag  →  per-service .imqrc.json  →  global ~/.imq/config.json  →  int
 ```
 
 A prompt is only shown when the process is attached to a TTY and no earlier
-layer supplied a value; otherwise the default is used. This is what lets
-`imq service create … --dry-run` and CI pipelines run without hanging.
+layer supplied a value; otherwise the default is used, or — for a required
+value with no default (author, email, and a VCS namespace/token on a real
+create) — the command fails fast with a clear error instead of hanging. This
+is what lets `imq service create … --dry-run` and CI pipelines run without
+blocking on input.
 
 ## Quick start
 
@@ -28,7 +31,8 @@ imq config get --json          # print the whole config as JSON (-j for short)
 imq config get ci.provider     # print a single value
 imq config set ci.provider circleci
 imq config set vcs.namespace my-org
-imq config set packages otel,pg-cache   # comma list OR a JSON array
+imq config set packages opentelemetry,pg-cache   # comma list OR a JSON array
+imq config set vcs.provider giturb       # rejected: prints the valid list
 imq config check               # exit 0 if initialized, 1 otherwise (for scripts)
 ```
 
@@ -143,8 +147,26 @@ You do not need to migrate anything by hand.
 | `IMQ_CIRCLECI_API_URL` | CircleCI API base. |
 | `IMQ_TRAVIS_API_URL` | Travis API base. |
 | `IMQ_GIT_REMOTE_BASE` | Base for the git remote used on commit/push (testing seam). |
+| `CIRCLE_TOKEN` | CircleCI token fallback (used when `ci.auth.token` is unset). |
 
 These are also the seams used by the test harness; in production they enable
 enterprise / self-hosted deployments without any code change. See
 [Providers](Providers#enterprise--self-hosted) and
 [Extensibility](Extensibility).
+
+### Cloud-registry credentials (read at create time)
+
+When a service is dockerized against a cloud registry, `imq service create`
+reads the following from the invoking environment and provisions them as CI
+secrets on the new repository. If a variable is unset, **no secret is
+provisioned** for it — the CLI reports which secrets were and weren't set, and
+the CI's `docker login` will fail until you add them manually.
+
+| Registry | Environment variables |
+|---|---|
+| `google` (Artifact Registry) | `GCP_SA_KEY` (service-account JSON key) |
+| `aws-ecr` | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` |
+| `azure-acr` | `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` |
+
+Docker Hub credentials come from `registry.auth.user`/`registry.auth.password`
+(config) or an interactive prompt instead.
