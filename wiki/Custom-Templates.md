@@ -15,7 +15,7 @@ own — pointed at by name, git URL, or local path.
 | **local directory** | `-t ./my-template` |
 
 With no flag, the default template is fetched over public **HTTPS** and pinned
-to the `templatesRef` from your config (default `v4`). Override the source repo
+to the `templatesRef` from your config (default `master`). Override the source repo
 entirely with `IMQ_TEMPLATES_REPO` (e.g. your fork, or an SSH URL for
 contributors):
 

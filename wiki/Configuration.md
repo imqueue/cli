@@ -79,7 +79,7 @@ still works if the CLI is downgraded to v3.
 | Key | Meaning |
 |---|---|
 | `packages` | default addon packages added to new services (array) |
-| `templatesRef` | git ref of the templates repo to use (default `v4`) |
+| `templatesRef` | git ref of the templates repo to use (default `master`) |
 
 Example `~/.imq/config.json`:
 
@@ -89,7 +89,7 @@ Example `~/.imq/config.json`:
   "ci":       { "provider": "github-actions" },
   "registry": { "provider": "google", "project": "my-gcp-proj", "region": "europe-west1" },
   "packages": ["opentelemetry", "pg-cache"],
-  "templatesRef": "v4"
+  "templatesRef": "master"
 }
 ```
 

@@ -99,8 +99,8 @@ Getting this wrong yields `TS2307/TS2882` and a non-zero build that aborts
   `deriveStructured()` reads either; writes emit both. A 3.x config must keep
   working (github+travis+dockerhub) and a downgrade must still read what we
   wrote.
-- **Templates**: templates repo `master` is frozen; the CLI pins
-  `templatesRef = v4` (config-overridable). A template is **v2** iff it has an
+- **Templates**: the CLI reads the templates repo at `templatesRef`
+  (default `master`, config-overridable). A template is **v2** iff it has an
   `imq-template.json` manifest, else v1. Don't assume v2.
 - **Option precedence everywhere**: flag → `.imqrc.json` (service root) →
   global config → prompt (TTY only) → default. Resolution lives in
@@ -180,9 +180,9 @@ Note two *different* service-detection strategies, by design:
 
 ## Current state
 
-Active work is on the **`v4`** branch (target release `4.0.0`), not yet merged
-to `master`. During the 4.0 cycle, branch from and PR against `v4` (note:
-CONTRIBUTING.md still says `master`, which applies once 4.0 has shipped).
-Templates repo `v4` branch holds the v2 default template + `catalog.json`; its
-`master` stays frozen until CLI 4.0 ships. Full suite green (`npm test`), lint
-+ format clean, docker harness "ALL CHECKS PASSED".
+The `v4` work (release `4.0.0`) has been merged to **`master`**; `master` is now
+the active branch — branch from and PR against it (`v4` is retained as the
+pre-merge snapshot, no longer updated). Templates repo `master` holds the v2
+default template + `catalog.json`, and the CLI reads `master` by default. Full
+suite green (`npm test`), lint + format clean, docker harness
+"ALL CHECKS PASSED".
