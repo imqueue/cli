@@ -56,10 +56,13 @@ export const dockerhub: ContainerRegistryProvider = {
     secrets(ctx: CreateContext): Secret[] {
         const auth = ctx.config.registry.auth || {};
 
+        // omit empty credentials: provisioning empty secrets to CI only causes
+        // an opaque `docker login` failure later; the "add them manually"
+        // instruction path fires instead
         return [
             { name: 'DOCKER_USER', value: auth.user || '' },
             { name: 'DOCKER_PASS', value: auth.password || '' },
-        ];
+        ].filter(s => s.value);
     },
 
     loginCmd(): string {

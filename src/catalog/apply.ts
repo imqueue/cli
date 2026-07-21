@@ -65,6 +65,18 @@ export function resolveAddons(
     for (const id of selection) {
         const entry = catalog.packages[id];
 
+        if (!entry) {
+            // the id passed plan-time validation against one catalog but is
+            // absent from the one loaded here (e.g. bundled vs templates-repo);
+            // skip it with a warning rather than crashing
+            console.log(
+                `Skipping unknown addon package "${id}" ` +
+                    '(not found in the active catalog).',
+            );
+
+            continue;
+        }
+
         Object.assign(deps, entry.deps || {});
         Object.assign(devDeps, entry.devDeps || {});
 

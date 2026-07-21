@@ -272,7 +272,7 @@ export const { command, describe, builder, handler } = {
                 type: 'string',
             })
             .option('v', {
-                alias: 'npm-version',
+                alias: ['npm-version', 'bump'],
                 default: 'prerelease',
                 choices: VERSION_TYPES,
                 describe: 'Version bump to apply on commit.',
