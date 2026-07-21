@@ -101,16 +101,25 @@ Getting this wrong yields `TS2307/TS2882` and a non-zero build that aborts
   `templatesRef = v4` (config-overridable). A template is **v2** iff it has an
   `imq-template.json` manifest, else v1. Don't assume v2.
 - **Option precedence everywhere**: flag → `.imqrc.json` (service root) →
-  global config → prompt (TTY only) → default. Never prompt when not a TTY.
+  global config → prompt (TTY only) → default. Resolution lives in
+  `buildCreatePlan` (`create-plan.ts`); do NOT inject config values as yargs
+  `.default()`s (they'd out-rank `.imqrc.json`). `service create` writes
+  `.imqrc.json` (secrets excluded); `config set` mirrors structured keys to
+  legacy via `applyStructured`.
+- **Never prompt when not a TTY** — with two known exceptions: `client generate`
+  prompts before overwriting an existing client unless `-o`, and `loadTemplate`
+  prompts before re-fetching an already-cached custom git template.
 
 ## Environment seams (used for enterprise *and* testing)
 
 `IMQ_CLI_HOME`, `IMQ_NO_UPDATE_CHECK`, `IMQ_TEMPLATES_REPO`,
 `IMQ_GITHUB_API_URL`, `IMQ_GITLAB_API_URL`, `IMQ_BITBUCKET_API_URL`,
-`IMQ_CIRCLECI_API_URL`, `IMQ_TRAVIS_API_URL`, `IMQ_GIT_REMOTE_BASE`.
+`IMQ_CIRCLECI_API_URL`, `IMQ_TRAVIS_API_URL`, `IMQ_GIT_REMOTE_BASE`,
+`IMQ_CLI_MISSING_COMMANDS` (test seam for `commandExists`).
 Any new network endpoint MUST get an `IMQ_*_API_URL` override so it is testable
 and enterprise-ready. Default the templates repo to public **HTTPS** (no SSH
-key required).
+key required). Non-`IMQ_` env inputs the code reads: `CIRCLE_TOKEN` (CircleCI
+token fallback), `SHELL`/`ZSH_VERSION` (shell detection).
 
 ## Local-fleet commands (ported from bash in 4.x)
 
@@ -120,7 +129,12 @@ source-level discovery lives in `lib/services.ts`
 `extends IMQ(Service|Client)`). Runtime state under `~/.imq/var`
 (`VAR_HOME` in `lib/constants.ts`): `<svc>.log` + `.pids` (`svc:pid` lines).
 `ctl` starts services detached (own process group) and stops them with a
-negative-pid `SIGTERM` (kills the tree) — no `ps` walking.
+negative-pid `SIGTERM` (kills the tree) — no `ps` walking. `ctl` actions:
+`start|stop|restart|status`. Logs are truncated per start; calm mode checks
+pid liveness (via `isAlive`) so a startup crash is reported at once; a
+double-start is refused. `up` deps throw on failure; `runUp` isolates each
+service and exits non-zero with a summary. `up`/`update-version` accept
+`--bump` as a synonym for the version keyword.
 
 Note two *different* service-detection strategies, by design:
 - **source scan** (`lib/services.ts`) for `ctl`/`log`/`up` — no build/import
@@ -142,10 +156,20 @@ Note two *different* service-detection strategies, by design:
   nodejs.org are stubbed — keep tests offline/deterministic.
 - Author commits **repo-locally** as the project identity; **never modify the
   machine-global git config**.
+- The CLI runs yargs `.strict()`: a failed command exits non-zero. Two
+  consequences to respect: (1) an option offered as `--no-x` MUST be declared
+  as the positive boolean `x` (e.g. `install`), or strict rejects `--no-x` as
+  unknown; (2) never read `yargs.argv` inside a `builder` — that early parse
+  runs strict validation before positionals are declared and rejects them.
+- Failure reporting is centralized: `printError` sets `process.exitCode = 1`,
+  so every handler's `catch (e) { printError(e) }` makes the command exit
+  non-zero. Don't call `printError` on a recoverable path.
 
 ## Current state
 
 Active work is on the **`v4`** branch (target release `4.0.0`), not yet merged
-to `master`. Templates repo `v4` branch holds the v2 default template +
-`catalog.json`; its `master` stays frozen until CLI 4.0 ships. Full suite
-green (`npm test`), lint + format clean, docker harness "ALL CHECKS PASSED".
+to `master`. During the 4.0 cycle, branch from and PR against `v4` (note:
+CONTRIBUTING.md still says `master`, which applies once 4.0 has shipped).
+Templates repo `v4` branch holds the v2 default template + `catalog.json`; its
+`master` stays frozen until CLI 4.0 ships. Full suite green (`npm test`), lint
++ format clean, docker harness "ALL CHECKS PASSED".

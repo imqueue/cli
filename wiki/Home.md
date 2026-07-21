@@ -49,7 +49,7 @@ and adapting the tool to real-world projects.
   live in a separate repo, so they can evolve without a CLI release.
 - **Testable and portable.** Every network endpoint has an environment-variable
   override, which also enables GitHub Enterprise, self-managed GitLab and
-  Bitbucket Server.
+  Bitbucket Cloud-compatible endpoints.
 
 ## Conventions in this manual
 

@@ -8,7 +8,8 @@ pushes and tags it.
 imq service create <name> [path]
 ```
 
-If `name`/`path` are omitted and you are on a TTY, you will be prompted.
+If omitted, `name` defaults to the current directory's name and `path` to `.`
+(the current directory).
 
 ## The four axes
 
@@ -81,16 +82,22 @@ run performs, in order:
 
 1. **Resolve** the plan from all config layers.
 2. **Scaffold** the service from the template (token substitution + addon
-   overlays); generate `src/<ServiceClass>.ts` and its test.
-3. **Create** the remote repository on the VCS host.
-4. **Provision CI** — enable the repo and set secrets (e.g. GitHub Actions
+   overlays); generate `src/<ServiceClass>.ts` and its test; merge addon
+   dependencies.
+3. **Write `.imqrc.json`** with the resolved choices (no secrets).
+4. **Create** the remote repository on the VCS host.
+5. **Provision CI** — enable the repo and set secrets (e.g. GitHub Actions
    sealed secrets, CircleCI env vars, Travis RSA-encrypted vars).
-5. **Initialize git** locally (sets a local commit identity from the author/
+6. Compile the **CI/docker** tokens.
+7. **Install** dependencies (`npm install`) unless `--no-install`.
+8. **Initialize git** locally (sets a local commit identity from the author/
    email so it works even without a global git identity), **commit**, add the
    **remote**, **push**, and **tag** the initial version.
-6. Write `.imqrc.json` and print any addon environment variables you must set.
+9. **Report** any addon instructions and environment variables you must set.
 
-Without repo creation, only steps 1–2 and the local scaffold run.
+Without repo creation, the remote/CI-secret/commit/push steps (4, 5, 8) are
+skipped; scaffold, `.imqrc.json`, CI/docker token compilation and install
+still run.
 
 > The generated service targets ESM + TypeScript + the native `node:test`
 > runner, matching the current default template. Run `npm test` inside it out

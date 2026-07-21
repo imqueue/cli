@@ -30,7 +30,8 @@ GitHub wikis are a separate git repository (`<repo>.wiki.git`). To publish:
 ```bash
 # one-time: create the wiki by adding the first page via the GitHub UI, then:
 git clone https://github.com/imqueue/cli.wiki.git /tmp/cli.wiki
-cp wiki/*.md /tmp/cli.wiki/
+# copy every page except this meta README (which is not a wiki page)
+for f in wiki/*.md; do [ "$(basename "$f")" = README.md ] || cp "$f" /tmp/cli.wiki/; done
 cd /tmp/cli.wiki
 git add -A
 git commit -m "docs: sync wiki from cli repo"

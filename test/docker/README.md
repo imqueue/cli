@@ -32,5 +32,9 @@ bash test/docker/run.sh
 3. Real `service create` for each CI provider (and, online, addon packages),
    then install + build + test of the generated service.
 4. `config check`/`set`/`get` (incl. dot-paths) and `completions on`.
+5. `imq ctl`/`log`/`up` real process orchestration (offline): `ctl start -c`
+   with fake services, pid-file write, readiness-marker detection,
+   `log --no-follow`, `ctl stop`, the `up` no-op guard, and a real
+   `up --commit` bump/commit/push against a local bare git remote.
 
 Exit code is non-zero if any check fails.

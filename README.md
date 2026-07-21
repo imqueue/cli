@@ -120,7 +120,8 @@ the generated service, so later commands and re-creations reuse them.
 #### Package Catalog
 
 `imq service create --packages <list>` adds secondary @imqueue libraries and
-wires them in. The catalog is data (`catalog.json` in the templates repo), so
+wires them in. The catalog is data (`catalog.json` bundled with the CLI, with
+the templates-repo copy preferred when present), so
 new addons can be published without a CLI release. Groups marked *exclusive*
 allow a single choice:
 
@@ -196,7 +197,8 @@ values, stored in a configuration file:
 ~~~bash
 imq config get
 ~~~
-will print all upset configuration options in `option = value` format.
+will print all set configuration options in `option = value` format
+(add `-j`/`--json` to print the whole config as JSON).
 
 ~~~bash
 imq config get [option_name]
@@ -251,29 +253,35 @@ run your services locally on host OS, which is really useful scenario
 during development and the tools below will dramatically improve your
 experience, especially, when the number of services to manage significant.
 
-All three commands share the same **service discovery**: when `-s` is omitted
-they scan the given path for immediate sub-directories whose `src/` tree
-contains a class extending `IMQService` or `IMQClient`. Runtime state (per
-service logs and process ids) lives under `~/.imq/var`.
+`imq ctl` and `imq up` share the same **service discovery**: when `-s` is
+omitted they scan the given path for immediate sub-directories whose `src/`
+tree contains a class extending `IMQService` or `IMQClient`. `imq log` works
+off the `*.log` files already collected under `~/.imq/var` (per-service logs
+and process ids live there).
 
 ### imq ctl
 
-Starts, stops or restarts a bulk of local services. On start each service is
-launched via its `npm run dev` script in its own process group, with output
-redirected to `~/.imq/var/<service>.log`; stop terminates the whole process
-group and runs each service's `npm run stop` script.
+Starts, stops, restarts or reports status of a bulk of local services. On
+start each service is launched via its `npm run dev` script in its own process
+group (output redirected to `~/.imq/var/<service>.log`, truncated per run); a
+service already running is skipped (use `restart`). Stop terminates the whole
+process group and runs each service's `npm run stop` script.
 
 ~~~
 imq ctl <action> [-p path] [-s services] [-ucv]
 
-  <action>          one of start | stop | restart
+  <action>          one of start | stop | restart | status
   -p, --path        directory with the service repositories (default: cwd)
   -s, --services    comma-separated service names (skips discovery)
   -u, --update      run 'git pull' on each service before starting
   -c, --calm        calm start - wait for each service to become ready
-                    (log line "reader channel connected") before the next
+                    (log line "reader channel connected") before the next;
+                    a service that crashes on startup is reported at once
   -v, --verbose     show command execution time
 ~~~
+
+`imq ctl status` lists each tracked service and whether its recorded pid is
+live or stale.
 
 ### imq log
 
@@ -285,10 +293,11 @@ tag when more than one log is shown.
 imq log [services..] [-cfP]
 
   [services..]      service names to combine logs for (default: all)
-  -c, --clean       delete previously collected logs and exit
+  -c, --clean       delete collected logs and exit (scoped to the named
+                    services, or all logs when none are named)
   -f, --follow      follow appended data (default: true; --no-follow to
                     dump current logs and exit)
-  -P, --no-prefix   do not prefix log lines with the service name
+      --no-prefix   do not prefix log lines with the service name (-P for short)
 ~~~
 
 ### imq up
@@ -304,14 +313,16 @@ imq up [-p path] [-s services] [-v type] [-cu]
   -p, --path         directory with the service repositories (default: cwd)
   -s, --services     comma-separated service names (skips discovery)
   -v, --npm-version  version bump on commit: major|minor|patch|prerelease
-                     (default: prerelease)
+                     (default: prerelease; also --bump)
   -c, --commit       commit, version-bump and push the update
   -u, --skip-update  skip the dependency update, perform other tasks only
 ~~~
 
 For each service the update runs `git pull` → `ncu -u` → reinstall, then (with
 `-c`) commits `chore: dependencies update`, runs `npm version <type>` and
-`git push --follow-tags` — but only when the working tree actually changed.
+`git push --follow-tags` — but only when the working tree actually changed. A
+step that fails aborts that service (before any destructive step) and is
+reported in a summary; the command exits non-zero if any service failed.
 
 ## License
 

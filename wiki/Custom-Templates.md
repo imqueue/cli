@@ -43,7 +43,7 @@ otherwise it is treated as legacy **v1**. New templates should be v2.
 |---|---|
 | `version` | manifest version — `2` for the current format |
 | `description` | human-readable description |
-| `ciFiles` | `"provider"` means CI files are emitted by the selected CI provider (rather than shipped in the template), so one template serves all CI providers |
+| `ciFiles` | documents that CI files are emitted by the selected CI provider (rather than shipped in the template). This is descriptive: **any** v2 template gets provider-emitted CI files - the field is not a switch |
 
 An absent or unreadable manifest → the template is compiled as v1.
 
@@ -57,9 +57,15 @@ The base tokens available to template files:
 | `%SERVICE_NAME` | the service name |
 | `%SERVICE_CLASS_NAME` | the generated service class name |
 | `%SERVICE_VERSION` | the initial version |
-| `%LICENSE_HEADER` | the license header block |
+| `%SERVICE_DESCRIPTION` | the service description |
+| `%SERVICE_AUTHOR_NAME` / `%SERVICE_AUTHOR_EMAIL` | author name / `<email>` |
+| `%SERVICE_REPO` / `%SERVICE_HOMEPAGE` / `%SERVICE_BUGS` | package.json repository / homepage / bugs fragments (from the VCS host) |
+| `%LICENSE_HEADER` / `%LICENSE_TEXT` / `%LICENSE_NAME` / `%LICENSE_TAG` | the license header block / full text / name / SPDX tag |
 | `%ADDON_PRELOAD` | addon early-init snippets (empty when no addons) |
 | `%ADDON_CONFIG` | addon configuration snippets (empty when no addons) |
+
+A token value is inserted verbatim, so `$` characters in an author name or
+license text are safe.
 
 Provider/registry/CI composition tokens (filled from the chosen providers) are
 also available in CI/Docker files — see
