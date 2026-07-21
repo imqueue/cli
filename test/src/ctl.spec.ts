@@ -279,6 +279,78 @@ describe('service ctl', () => {
             // calm mode does not print the bulk-start banner
             assert.ok(!rec.logs.some(l => l.includes('Bulk service start')));
         });
+
+        it('should skip an already-running service instead of orphaning it', async () => {
+            makeService('billing');
+
+            const varHome = join(root, '.var');
+
+            mkdirSync(varHome, { recursive: true });
+            writeFileSync(join(varHome, '.pids'), 'billing:4242\n');
+
+            const rec = recorder();
+
+            rec.alive.set(4242, true); // pretend billing is still running
+
+            await ctl.startServices(opts(), rec.deps);
+
+            assert.equal(rec.started.length, 0);
+            assert.ok(rec.logs.some(l => l.includes('already running')));
+            // the live pid is preserved untouched
+            assert.deepEqual(ctl.readPids(varHome), [
+                { svc: 'billing', pid: 4242 },
+            ]);
+        });
+
+        it('should (re)start a service whose recorded pid is dead', async () => {
+            makeService('billing');
+
+            const varHome = join(root, '.var');
+
+            mkdirSync(varHome, { recursive: true });
+            writeFileSync(join(varHome, '.pids'), 'billing:4242\n');
+
+            const rec = recorder();
+
+            rec.alive.set(4242, false); // stale pid
+
+            await ctl.startServices(opts(), rec.deps);
+
+            assert.deepEqual(rec.started, [join(root, 'billing')]);
+        });
+    });
+
+    describe('statusServices()', () => {
+        it('should report live and stale pids', () => {
+            const varHome = join(root, '.var');
+
+            mkdirSync(varHome, { recursive: true });
+            writeFileSync(join(varHome, '.pids'), 'alive:11\ndead:22\n');
+
+            const rec = recorder();
+
+            rec.alive.set(11, true);
+            rec.alive.set(22, false);
+
+            ctl.statusServices({ ...opts(), varHome }, rec.deps);
+
+            assert.ok(
+                rec.logs.some(
+                    l => l.includes('alive') && l.includes('running'),
+                ),
+            );
+            assert.ok(
+                rec.logs.some(l => l.includes('dead') && l.includes('stale')),
+            );
+        });
+
+        it('should report when nothing is tracked', () => {
+            const rec = recorder();
+
+            ctl.statusServices(opts(), rec.deps);
+
+            assert.ok(rec.logs.some(l => l.includes('No services')));
+        });
     });
 
     describe('stopServices()', () => {

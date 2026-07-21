@@ -26,6 +26,7 @@ import assert from 'node:assert/strict';
 import '../../mocks/index.js';
 import {
     existsSync,
+    mkdirSync,
     mkdtempSync,
     readFileSync,
     rmSync,
@@ -34,6 +35,8 @@ import {
 import { tmpdir } from 'os';
 import { join } from 'path';
 import {
+    buildServiceTokens,
+    compileTemplate,
     isEsmService,
     loadTemplateManifest,
     overlayFragments,
@@ -136,6 +139,73 @@ describe('service create scaffolding', () => {
                         's',
                     ),
                 /Unknown license/,
+            );
+        });
+    });
+
+    describe('buildServiceTokens() (review phase C/D)', () => {
+        const lic = resolveLicense('MIT', 'Me', 'me@x.io', '', 'svc');
+        const base = {
+            name: 'svc',
+            className: 'Svc',
+            version: '1.0.0',
+            description: 'd',
+            author: 'Me',
+            email: 'me@x.io',
+            namespace: 'ns',
+            homepage: '',
+            bugs: '',
+            license: lic,
+        };
+
+        it('should use provider-derived URLs when given', () => {
+            const t = buildServiceTokens({
+                ...base,
+                repoUrl: 'git@gitlab.com:ns/svc.git',
+                homeUrl: 'https://gitlab.com/ns/svc',
+                bugsUrl: 'https://gitlab.com/ns/svc/issues',
+            });
+
+            assert.ok(t.SERVICE_REPO.includes('git@gitlab.com:ns/svc.git'));
+            assert.ok(t.SERVICE_HOMEPAGE.includes('https://gitlab.com/ns/svc'));
+            assert.ok(t.SERVICE_BUGS.includes('gitlab.com/ns/svc/issues'));
+        });
+
+        it('should fall back to github URLs from the namespace', () => {
+            const t = buildServiceTokens(base);
+
+            assert.ok(t.SERVICE_REPO.includes('git@github.com:ns/svc.git'));
+            assert.ok(t.SERVICE_HOMEPAGE.includes('github.com/ns/svc'));
+        });
+    });
+
+    describe('compileTemplate() (review phase D)', () => {
+        it('should insert token values with $ verbatim', () => {
+            const sub = join(dir, 'compile');
+
+            mkdirSync(sub, { recursive: true });
+            writeFileSync(join(sub, 'f.txt'), 'name=%SERVICE_AUTHOR_NAME');
+
+            // a `$&` in the value must not be treated as a replacement pattern
+            compileTemplate(sub, { SERVICE_AUTHOR_NAME: 'A$&B$`C' });
+
+            assert.equal(
+                readFileSync(join(sub, 'f.txt'), 'utf8'),
+                'name=A$&B$`C',
+            );
+        });
+
+        it('should skip node_modules and .git', () => {
+            const sub = join(dir, 'compile2');
+
+            mkdirSync(join(sub, 'node_modules'), { recursive: true });
+            writeFileSync(join(sub, 'node_modules', 'x.txt'), '%SERVICE_NAME');
+            compileTemplate(sub, { SERVICE_NAME: 'svc' });
+
+            // untouched (still contains the raw token)
+            assert.equal(
+                readFileSync(join(sub, 'node_modules', 'x.txt'), 'utf8'),
+                '%SERVICE_NAME',
             );
         });
     });

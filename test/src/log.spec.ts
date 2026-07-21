@@ -92,6 +92,14 @@ describe('service log', () => {
         it('should return 0 for a missing var dir', () => {
             assert.equal(log.cleanLogs(join(varHome, 'missing')), 0);
         });
+
+        it('should scope the clean to named services', () => {
+            writeFileSync(join(varHome, 'alpha.log'), 'a');
+            writeFileSync(join(varHome, 'beta.log'), 'b');
+
+            assert.equal(log.cleanLogs(varHome, ['alpha']), 1);
+            assert.deepEqual(readdirSync(varHome), ['beta.log']);
+        });
     });
 
     describe('labelText()', () => {
