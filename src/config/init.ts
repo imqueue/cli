@@ -661,6 +661,21 @@ export const { command, describe, handler } = {
 
     async handler() {
         try {
+            // init is entirely interactive; refuse up front in a non-TTY
+            // (piped/CI) rather than emitting a garbled prompt and dying with a
+            // raw ERR_USE_AFTER_CLOSE. Point scripted setups at `config set`.
+            if (!process.stdin.isTTY) {
+                printError(
+                    new Error(
+                        'config init is interactive and requires a terminal. ' +
+                            'For scripted setup use: imq config set <option> ' +
+                            '<value> (e.g. imq config set vcs.provider github).',
+                    ),
+                );
+
+                return;
+            }
+
             if (!configEmpty()) {
                 process.stdout.write(
                     styleText(

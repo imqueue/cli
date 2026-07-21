@@ -40,6 +40,14 @@ export const { command, describe, builder, promptOverride, handler } = {
                 describe: 'Overwrite existing client without prompt',
                 boolean: true,
             })
+            .option('w', {
+                alias: 'timeout',
+                describe:
+                    'Seconds to wait for the service to respond before ' +
+                    'giving up (0 = wait forever)',
+                number: true,
+                default: 30,
+            })
             .describe('path', 'Directory where client file should be placed')
             .default('path', '.');
     },
@@ -74,10 +82,38 @@ export const { command, describe, builder, promptOverride, handler } = {
                 await promptOverride(filePath);
             }
 
-            await IMQClient.create(name as string, {
+            // IMQClient.create connects to the broker and waits for the target
+            // service to answer; if the service isn't running it would hang
+            // forever. Race it against a timeout so CI/interactive runs fail
+            // with an actionable message instead of blocking.
+            const seconds = Number(argv.timeout ?? argv.w ?? 30);
+            const create = IMQClient.create(name as string, {
                 compile: false,
                 path: path as string,
             });
+
+            if (seconds > 0) {
+                let timer: ReturnType<typeof setTimeout>;
+                const timeout = new Promise<never>((_, reject) => {
+                    timer = setTimeout(() => {
+                        reject(
+                            new Error(
+                                `Service "${name}" did not respond within ` +
+                                    `${seconds}s. Is it running? ` +
+                                    "(check 'imq ctl status'), or raise " +
+                                    '--timeout / use --timeout 0 to wait.',
+                            ),
+                        );
+                    }, seconds * 1000);
+                    timer.unref?.();
+                });
+
+                await Promise.race([create, timeout]).finally(() =>
+                    clearTimeout(timer),
+                );
+            } else {
+                await create;
+            }
 
             process.stdout.write(
                 styleText('green', 'Successfully created. Path: ') +
@@ -86,6 +122,9 @@ export const { command, describe, builder, promptOverride, handler } = {
             );
         } catch (err) {
             printError(err as Error);
+            // the broker connection may keep the event loop alive; exit so a
+            // timeout/failure doesn't leave the process hanging
+            process.exit(1);
         }
     },
 };

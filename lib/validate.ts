@@ -22,7 +22,10 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 const RX_EMAIL = /^[-a-z0-9.]+@[-a-z0-9.]+$/i;
-const RX_NS = /^[-_a-z-0-9]+$/i;
+// github / bitbucket: a single user/org/workspace slug
+const RX_NS = /^[-_a-z0-9]+$/i;
+// gitlab: dotted names and nested groups (group/subgroup/...) are valid
+const RX_NS_GITLAB = /^[-_.a-z0-9]+(?:\/[-_.a-z0-9]+)*$/i;
 // a token is any non-empty run of non-whitespace characters
 const RX_TOKEN = /^\S+$/;
 
@@ -37,13 +40,16 @@ export function isEmail(email: string) {
 }
 
 /**
- * Checks if a given string satisfying namespace rules
- *s
+ * Checks if a given string satisfies the namespace rules for the VCS host.
+ * GitLab additionally allows dotted names and nested groups (`group/subgroup`);
+ * github/bitbucket accept a single slug.
+ *
  * @param {string} ns
+ * @param {string} [provider] - vcs provider id (defaults to the strict slug)
  * @return {boolean}
  */
-export function isNamespace(ns: string) {
-    return RX_NS.test(ns);
+export function isNamespace(ns: string, provider?: string) {
+    return (provider === 'gitlab' ? RX_NS_GITLAB : RX_NS).test(ns);
 }
 
 /**

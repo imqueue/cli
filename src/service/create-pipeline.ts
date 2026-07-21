@@ -23,6 +23,8 @@
  */
 import { styleText } from 'node:util';
 import { execFileSync } from 'child_process';
+import { rmSync } from 'fs';
+import { join } from 'path';
 import {
     DEFAULT_TEMPLATES_REF,
     commandExists,
@@ -120,6 +122,10 @@ function scaffold(
 ): void {
     console.log(`Building service from template "${templatePath}"...`);
     cpr(templatePath, plan.path);
+
+    // the template's own manifest is build-time metadata; it must not ship in
+    // the generated service (it would mark the service dir as a v2 template)
+    rmSync(join(plan.path, 'imq-template.json'), { force: true });
 
     // v2: overlay provider/addon fragments before compilation so their
     // %TOKENS are substituted alongside the template's own
@@ -288,6 +294,7 @@ export async function runCreate(
     const templatePath = await ensureTemplate(
         plan.template,
         plan.config.templatesRef || DEFAULT_TEMPLATES_REF,
+        plan.interactive,
     );
     const manifest = loadTemplateManifest(templatePath);
     const isV2 = !!manifest && (manifest.version ?? 0) >= 2;
@@ -330,16 +337,31 @@ export async function runCreate(
 
     // 3. SECRETS - provision registry credentials to CIs that support it
     //    (travis bakes them into its config instead, so has no setSecrets)
+    let secretsProvisioned = false;
+
     if (state.repoCreated && plan.dockerize && ci.setSecrets) {
         const registryId = plan.config.registry.provider;
         const registry = registryId
             ? containerRegistries.tryGet(registryId)
             : undefined;
+        const secrets = registry ? registry.secrets(plan) : [];
 
-        if (registry) {
+        if (!secrets.length) {
+            // registry credentials weren't available (e.g. no stored docker
+            // password / unset cloud env vars): don't claim they were stored
+            console.log(
+                styleText(
+                    'yellow',
+                    'No registry credentials were available, so no CI secrets ' +
+                        'were provisioned. Add them manually in your CI ' +
+                        'provider before the first dockerized build.',
+                ),
+            );
+        } else {
             try {
                 console.log('Provisioning CI secrets...');
-                await ci.setSecrets(plan, registry.secrets(plan));
+                await ci.setSecrets(plan, secrets);
+                secretsProvisioned = true;
             } catch {
                 console.log(
                     styleText(
@@ -375,8 +397,23 @@ export async function runCreate(
     }
 
     // 7. REPORT
-    for (const note of ci.instructions(plan)) {
-        console.log(styleText('cyan', note));
+    // only surface CI instructions when a repository actually exists to run
+    // the CI against (otherwise "runs automatically on push" is misleading);
+    // report the true secret-provisioning outcome
+    if (state.repoCreated) {
+        for (const note of ci.instructions(plan)) {
+            console.log(styleText('cyan', note));
+        }
+
+        if (plan.dockerize && ci.setSecrets && secretsProvisioned) {
+            console.log(
+                styleText(
+                    'cyan',
+                    'CI: registry credentials were stored as encrypted CI ' +
+                        'secrets (verify in your CI provider settings).',
+                ),
+            );
+        }
     }
 
     for (const note of addons.instructions) {

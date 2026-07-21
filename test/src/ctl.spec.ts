@@ -260,13 +260,14 @@ describe('service ctl', () => {
             assert.ok(pids.find(p => p.svc === 'billing'));
         });
 
-        it('should report when no services are found', async () => {
+        it('should throw (non-zero exit) when no services are found', async () => {
             const rec = recorder();
 
-            await ctl.startServices(opts(), rec.deps);
-
+            await assert.rejects(
+                () => ctl.startServices(opts(), rec.deps),
+                /No IMQ services found under/,
+            );
             assert.equal(rec.started.length, 0);
-            assert.ok(rec.logs.some(l => l.includes('No IMQ services')));
         });
 
         it('should wait for readiness in calm mode', async () => {

@@ -144,18 +144,11 @@ export const githubActions: CiProvider = {
         }
     },
 
-    instructions(ctx: CreateContext): string[] {
-        const notes = [
+    instructions(): string[] {
+        // the pipeline reports the actual secret-provisioning outcome; keep
+        // this to the always-true note so nothing over-claims
+        return [
             'GitHub Actions: the workflow runs automatically on push and tags.',
         ];
-
-        if (ctx.dockerize) {
-            notes.push(
-                'GitHub Actions: registry credentials were stored as encrypted ' +
-                    'repository secrets (verify under Settings > Secrets).',
-            );
-        }
-
-        return notes;
     },
 };

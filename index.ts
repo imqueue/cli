@@ -39,6 +39,9 @@ import * as up from './src/up.js';
     await checkForUpdate();
 
     await y
+        // fixed program name so help/usage/hints read `imq`, not `index.js`
+        // (or whatever argv[1] happens to be when run via `node index.js`)
+        .scriptName('imq')
         .usage(
             'IMQ Command Line Interface' +
                 `\nVersion: ${VERSION}` +

@@ -24,6 +24,7 @@
 import * as fs from 'fs';
 import * as p from 'path';
 import {
+    CUSTOM_TPL_HOME,
     findLicense,
     loadTemplate,
     loadTemplates,
@@ -68,15 +69,20 @@ export interface ServiceTokenInput {
 }
 
 /**
- * Resolves a template reference (a filesystem path, a git url, or a known
- * template name) to a local template directory.
+ * Resolves a template reference to a local template directory. A reference may
+ * be a filesystem path, a git url (ssh/https/bare `*.git`), the name of a
+ * template in the pinned templates repo, or the name of a custom template
+ * directory the user placed under `~/.imq/custom-templates/<name>`.
  *
  * @param {string} template
+ * @param {string} [ref] - templates-repo git ref
+ * @param {boolean} [interactive] - whether prompts are allowed (git-url reuse)
  * @return {Promise<string>}
  */
 export async function ensureTemplate(
     template: string,
     ref?: string,
+    interactive = false,
 ): Promise<string> {
     if (fs.existsSync(template)) {
         return template;
@@ -88,13 +94,25 @@ export async function ensureTemplate(
         /^https?:\/\//.test(template) ||
         template.endsWith('.git')
     ) {
-        return await loadTemplate(template);
+        return await loadTemplate(template, interactive);
+    }
+
+    // a bare name may be a custom template the user dropped under
+    // ~/.imq/custom-templates/<name> (documented workflow)
+    const custom = resolve(CUSTOM_TPL_HOME, template);
+
+    if (fs.existsSync(custom)) {
+        return custom;
     }
 
     const templates = await loadTemplates(ref);
 
     if (!templates[template]) {
-        throw new Error(`No such template exists - "${template}"`);
+        throw new Error(
+            `No such template exists - "${template}". Provide a template ` +
+                'name from the templates repo, a path, a git url, or place a ' +
+                `custom template at ${resolve(CUSTOM_TPL_HOME, template)}.`,
+        );
     }
 
     return templates[template];

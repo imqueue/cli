@@ -249,54 +249,79 @@ async function resolveVcs(
     structured: StructuredConfig,
     providerId: string,
     interactive: boolean,
+    dryRun: boolean,
 ): Promise<{ namespace: string; token: string; private: boolean }> {
     const title = vcsHosts.get(providerId).title;
+    // placeholder shown in a dry-run plan when a credential is not yet supplied
+    // - a dry run makes no calls, so it must never demand a real value
+    const PENDING = '<prompted at create>';
+
     let namespace = (argv.u || structured.vcs.namespace || '').trim();
 
-    if (!isNamespace(namespace)) {
+    if (!isNamespace(namespace, providerId)) {
         if (!interactive) {
-            throw new TypeError(
-                `${title} namespace required, but was not given!`,
-            );
+            if (dryRun) {
+                namespace = namespace || PENDING;
+            } else if (namespace) {
+                throw new TypeError(
+                    `${title} namespace "${namespace}" is invalid.`,
+                );
+            } else {
+                throw new TypeError(
+                    `${title} namespace required. Pass -u/--vcs-namespace ` +
+                        '<name>, set vcs.namespace in config (imq config set ' +
+                        'vcs.namespace <name>), or run interactively.',
+                );
+            }
+        } else {
+            const answer = await inquirer.prompt<{ ns: string }>([
+                {
+                    type: 'input',
+                    name: 'ns',
+                    message: `Enter ${title} namespace (user, org or workspace):`,
+                },
+            ] as QuestionCollection);
+
+            if (!isNamespace(answer.ns.trim(), providerId)) {
+                throw new TypeError(
+                    `${title} namespace "${answer.ns.trim()}" is invalid.`,
+                );
+            }
+
+            namespace = answer.ns.trim();
         }
-
-        const answer = await inquirer.prompt<{ ns: string }>([
-            {
-                type: 'input',
-                name: 'ns',
-                message: `Enter ${title} namespace (user, org or workspace):`,
-            },
-        ] as QuestionCollection);
-
-        if (!isNamespace(answer.ns)) {
-            throw new TypeError(`Given ${title} namespace is invalid!`);
-        }
-
-        namespace = answer.ns;
     }
 
     let token = (argv.T || structured.vcs.auth?.token || '').trim();
 
     if (!isGithubToken(token)) {
         if (!interactive) {
-            throw new Error(`${title} auth token required, but was not given!`);
+            if (dryRun) {
+                token = token || PENDING;
+            } else {
+                throw new Error(
+                    `${title} auth token required. Pass -T/--vcs-token ` +
+                        '<token>, set vcs.auth.token in config (imq config set ' +
+                        'vcs.auth.token <token>), or run interactively.',
+                );
+            }
+        } else {
+            const answer = await inquirer.prompt<{ token: string }>([
+                {
+                    // masked: a token must never be echoed to the terminal
+                    type: 'password',
+                    mask: '*',
+                    name: 'token',
+                    message: `Enter your ${title} auth token:`,
+                },
+            ] as QuestionCollection);
+
+            if (!isGithubToken(answer.token.trim())) {
+                throw new Error(`Given ${title} auth token is invalid.`);
+            }
+
+            token = answer.token.trim();
         }
-
-        const answer = await inquirer.prompt<{ token: string }>([
-            {
-                // masked: a token must not be echoed to the terminal/scrollback
-                type: 'password',
-                mask: '*',
-                name: 'token',
-                message: `Enter your ${title} auth token:`,
-            },
-        ] as QuestionCollection);
-
-        if (!isGithubToken(answer.token.trim())) {
-            throw new Error(`Given ${title} auth token is invalid!`);
-        }
-
-        token = answer.token.trim();
     }
 
     let isPrivate = argv.p ?? structured.vcs.private;
@@ -750,7 +775,13 @@ export async function buildCreatePlan(
             };
         }
 
-        const vcs = await resolveVcs(argv, structured, providerId, interactive);
+        const vcs = await resolveVcs(
+            argv,
+            structured,
+            providerId,
+            interactive,
+            !!dryRun,
+        );
 
         vcsConfig.provider = providerId;
         vcsConfig.namespace = vcs.namespace;
@@ -770,12 +801,30 @@ export async function buildCreatePlan(
         : EMPTY_REGISTRY;
 
     const dockerize = registry.want;
+    // don't prompt for a CI provider when git integration is off - a CI has no
+    // repository to run against; silently take the default instead
     const ciProvider = await resolveCi(
         argv,
         structured,
         vcsConfig.provider,
-        interactive,
+        interactive && useVcs,
     );
+
+    // travis only knows how to push to Docker Hub (it hardcodes the dockerhub
+    // login/env); fail fast rather than generate a broken .travis.yml for a
+    // cloud registry
+    if (
+        ciProvider === 'travis' &&
+        dockerize &&
+        registry.provider &&
+        registry.provider !== 'dockerhub'
+    ) {
+        throw new Error(
+            `Travis CI supports the dockerhub registry only, not ` +
+                `"${registry.provider}". Choose --ci github-actions or ` +
+                '--ci circleci for cloud registries, or --registry dockerhub.',
+        );
+    }
     const nodeTags = await resolveNodeTags(argv, interactive);
     const packages = await resolvePackages(
         argv.packages,
