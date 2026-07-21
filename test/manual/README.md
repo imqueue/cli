@@ -1,9 +1,17 @@
 # Manual test checklist
 
-`test-checklist.html` is a self-contained, click-through checklist for a manual
-QA pass of the `imq` CLI — the counterpart to the automated suite (`npm test`).
+A click-through checklist for a manual QA pass of the `imq` CLI — the
+counterpart to the automated suite (`npm test`). It comes in two equivalent
+forms; use whichever you prefer:
 
-## Use it
+| File | Best for |
+|---|---|
+| [`test-checklist.html`](test-checklist.html) | interactive use — clickable Pass/Fail, saved progress, copy-command buttons |
+| [`test-checklist.md`](test-checklist.md) | plain text — read in any editor, tick `- [ ]` boxes, or diff/commit a filled-in copy |
+
+Both cover the same tests; pick one per session.
+
+## HTML version (interactive)
 
 Open the file in a browser (no server needed):
 
@@ -18,6 +26,12 @@ open     test/manual/test-checklist.html   # macOS
 - **Copy results** produces a markdown summary you can paste into an issue, a PR,
   or a chat with an assistant; **Download .md** saves the same to a file.
 - **Reset** clears all marks; **◐ Theme** toggles light/dark.
+
+## Markdown version (plain text)
+
+Open [`test-checklist.md`](test-checklist.md) in any editor. Tick a box `- [x]`
+when a test passes; if it fails, leave it unchecked and fill the `↳ Notes:`
+line. Copy the file first if you want to keep a filled-in record of a session.
 
 ## What it covers
 
