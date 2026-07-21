@@ -21,7 +21,11 @@ imq config init
 ```
 
 An interactive wizard walks you through the four axes and stores your answers
-globally. Do this once after installation to make later commands short.
+globally. Do this once after installation to make later commands short. When
+you enable a VCS host, the wizard **auto-detects the git transport**: it
+defaults to `ssh` if you have SSH keys in `~/.ssh` (overridable with
+`IMQ_SSH_DIR`) and `https` otherwise, reports which it picked and why, and lets
+you change it — see [Git transport](#git-transport-for-the-initial-push-https-vs-ssh).
 
 ## Managing config values
 
@@ -54,6 +58,7 @@ still works if the CLI is downgraded to v3.
 | `vcs.provider` | `github` \| `gitlab` \| `bitbucket` |
 | `vcs.namespace` | user / organization / workspace that owns new repos |
 | `vcs.private` | create repositories as private (`true`/`false`) |
+| `vcs.protocol` | git transport for the create-time push: `https` (default) \| `ssh` |
 | `vcs.auth.token` | API/personal-access token for repo creation & secrets |
 
 ### `ci` — continuous integration
@@ -121,6 +126,35 @@ Tokens can be provided by (in order of preference):
 Because the config file may contain these, it is always written `0600`. Prefer
 per-invocation flags or environment injection in shared CI environments.
 
+## Git transport for the initial push (HTTPS vs SSH)
+
+When `imq service create` commits and pushes the new repository, it uses one of
+two transports, selected by `vcs.protocol` (or the `--git-protocol` flag):
+
+| `vcs.protocol` | Push behavior |
+|---|---|
+| `https` (**default**) | Push over `https://…` **authenticated with the access token** that created the repo. The token is used **only for that push** (via an ephemeral `http.extraHeader`) and is never written into the repository's `.git/config`, which keeps a clean, token-free remote URL. |
+| `ssh` | Push over the host's `git@…:…` SSH URL using **your own SSH keys/agent**. No token is injected — you need working SSH access to the namespace. |
+
+Precedence is the usual one: `--git-protocol` flag → `.imqrc.json` →
+global config → the `https` default.
+
+**Why HTTPS is the default.** The access token that just created the repo is
+guaranteed to have write access, so the push succeeds even for a private
+organization repo where your SSH key — or a *different* "active" git/gh
+account — has no access (the classic misleading `Repository not found` on
+push). Choose `ssh` when you specifically rely on SSH keys (e.g. org policy,
+hardware-key signing, or an SSH-only host):
+
+```bash
+imq config set vcs.protocol ssh        # make ssh the default for new services
+imq service create my-svc ./my-svc --git-protocol https   # or override per run
+```
+
+> `IMQ_GIT_REMOTE_BASE` still overrides the push target entirely (custom /
+> self-hosted git or integration testing) and takes precedence over
+> `vcs.protocol`; no token is injected in that mode.
+
 ## Backward compatibility
 
 A configuration written by 3.x uses legacy keys (`gitBaseUrl`,
@@ -147,6 +181,7 @@ You do not need to migrate anything by hand.
 | `IMQ_CIRCLECI_API_URL` | CircleCI API base. |
 | `IMQ_TRAVIS_API_URL` | Travis API base. |
 | `IMQ_GIT_REMOTE_BASE` | Base for the git remote used on commit/push (testing seam). |
+| `IMQ_SSH_DIR` | SSH directory inspected for keys when auto-detecting the git transport (defaults to `~/.ssh`). |
 | `CIRCLE_TOKEN` | CircleCI token fallback (used when `ci.auth.token` is unset). |
 
 These are also the seams used by the test harness; in production they enable

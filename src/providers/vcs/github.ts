@@ -37,6 +37,10 @@ export const github: VcsHostProvider = {
         describe: 'GitHub auth token',
     },
 
+    // GitHub HTTPS basic-auth: any username with the token as the password;
+    // `x-access-token` is the documented convention (matches actions/checkout)
+    httpAuthUser: 'x-access-token',
+
     remoteUrl(
         namespace: string,
         name: string,

@@ -82,6 +82,16 @@ function validateProvider(option: string, value: unknown): void {
                 `Valid: ${spec.registry.ids().join(', ')}.`,
         );
     }
+
+    // enum-valued structured key: git transport for the create-time push
+    if (
+        option === 'vcs.protocol' &&
+        typeof value === 'string' &&
+        value !== 'https' &&
+        value !== 'ssh'
+    ) {
+        throw new Error(`Invalid git protocol "${value}". Valid: https, ssh.`);
+    }
 }
 
 /**

@@ -86,7 +86,8 @@ export function printPlanSummary(plan: CreatePlan): void {
         'vcs',
         plan.useVcs
             ? `${plan.config.vcs.provider} (${plan.config.vcs.namespace}, ` +
-                  `${plan.config.vcs.private ? 'private' : 'public'})`
+                  `${plan.config.vcs.private ? 'private' : 'public'}, ` +
+                  `${plan.config.vcs.protocol === 'ssh' ? 'ssh' : 'https'})`
             : styleText('gray', 'disabled'),
     );
     line('ci', plan.config.ci.provider || styleText('gray', 'none'));
@@ -274,6 +275,7 @@ export function writeServiceConfig(plan: CreatePlan): void {
                   provider: vcs.provider,
                   namespace: vcs.namespace,
                   private: vcs.private,
+                  protocol: vcs.protocol,
               })
             : undefined,
         ci: ci.provider ? { provider: ci.provider } : undefined,
@@ -407,14 +409,33 @@ export async function runCreate(
     if (state.repoCreated) {
         const vcs = vcsHosts.get(plan.config.vcs.provider as string);
         const scm = scmTools.get('git');
-        // IMQ_GIT_REMOTE_BASE overrides the push target (custom/self-hosted
-        // git or integration testing); otherwise use the host's ssh url
+        // Transport selection:
+        //  - IMQ_GIT_REMOTE_BASE overrides the target entirely (custom/
+        //    self-hosted git or integration testing); pushed as given.
+        //  - `https` (default): push over HTTPS authenticated with the access
+        //    token we already hold. Chosen as the default because that token
+        //    just created the repo, so it is guaranteed to have write access -
+        //    whereas the user's ssh identity (or a different active git/gh
+        //    account) frequently does not, which surfaced as a misleading
+        //    "Repository not found" on push.
+        //  - `ssh`: push over the host's ssh url using the user's ssh
+        //    keys/agent; the token is NOT injected.
         const remoteBase = process.env.IMQ_GIT_REMOTE_BASE;
+        const protocol = plan.config.vcs.protocol === 'ssh' ? 'ssh' : 'https';
+        const token = plan.config.vcs.auth?.token;
         const remoteUrl = remoteBase
             ? `${remoteBase.replace(/\/+$/, '')}/${plan.name}.git`
-            : vcs.remoteUrl(plan.config.vcs.namespace as string, plan.name);
+            : vcs.remoteUrl(
+                  plan.config.vcs.namespace as string,
+                  plan.name,
+                  protocol,
+              );
+        const auth =
+            !remoteBase && protocol === 'https' && vcs.httpAuthUser && token
+                ? { user: vcs.httpAuthUser, token }
+                : undefined;
 
-        await scm.initAndPush(plan, remoteUrl);
+        await scm.initAndPush(plan, remoteUrl, auth);
     }
 
     // 7. REPORT

@@ -114,13 +114,34 @@ export interface VcsHostProvider extends Provider {
     /** optional rollback of a repository this run created */
     deleteRepository?(ctx: CreateContext): Promise<void>;
     authSpec: AuthSpec;
+    /**
+     * Basic-auth username to pair with the access token when pushing over
+     * HTTPS (the token goes in the password field). Host-specific:
+     * `x-access-token` (GitHub), `oauth2` (GitLab), `x-token-auth`
+     * (Bitbucket). Absent means the host has no token-over-HTTPS push scheme.
+     */
+    httpAuthUser?: string;
+}
+
+/**
+ * Credentials for an HTTPS git push: the basic-auth username plus the access
+ * token used as the password. Injected ephemerally per push so the token is
+ * never persisted into the repository's git config.
+ */
+export interface ScmAuth {
+    user: string;
+    token: string;
 }
 
 /**
  * Source control tool operating on the local working copy (git only, for now).
  */
 export interface ScmProvider extends Provider {
-    initAndPush(ctx: CreateContext, remoteUrl: string): Promise<void>;
+    initAndPush(
+        ctx: CreateContext,
+        remoteUrl: string,
+        auth?: ScmAuth,
+    ): Promise<void>;
 }
 
 /**

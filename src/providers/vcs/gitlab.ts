@@ -72,6 +72,10 @@ export const gitlab: VcsHostProvider = {
 
     authSpec: { path: 'vcs.auth.token', describe: 'GitLab access token' },
 
+    // GitLab HTTPS basic-auth: username `oauth2`, personal/project access
+    // token as the password
+    httpAuthUser: 'oauth2',
+
     remoteUrl(
         namespace: string,
         name: string,

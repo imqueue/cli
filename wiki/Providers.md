@@ -20,6 +20,14 @@ SCMs could be added later).
 Provide the token with `-T/--github-token` (works for any host) or via
 `vcs.auth.token` in the config.
 
+The initial commit/push transport is set by `vcs.protocol` (`--git-protocol`):
+`https` (default) authenticates the push with the access token — injected only
+for that push, never persisted to `.git/config` — while `ssh` pushes over the
+host's SSH URL with your own keys. Each host declares the basic-auth username
+its token uses for HTTPS (`x-access-token` for GitHub, `oauth2` for GitLab,
+`x-token-auth` for Bitbucket). See
+[Configuration → Git transport](Configuration#git-transport-for-the-initial-push-https-vs-ssh).
+
 ## CI providers (`--ci`)
 
 | Provider | Secret mechanism | Token | API base override |

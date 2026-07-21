@@ -16,7 +16,10 @@ imq service create billing ./billing -y \
 
 This scaffolds the service, creates the `acme/billing` repo, provisions GitHub
 Actions sealed secrets, commits, pushes and tags `1.0.0-0`, and enables
-dockerized CI builds pushing to `acme/billing` on Docker Hub.
+dockerized CI builds pushing to `acme/billing` on Docker Hub. The push goes
+over HTTPS authenticated with your token by default, so it works even for a
+private org repo your SSH key can't reach; add `--git-protocol ssh` to push
+with your own keys instead.
 
 ## 2. GitLab + CircleCI + Google Artifact Registry
 

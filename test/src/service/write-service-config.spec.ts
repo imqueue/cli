@@ -44,6 +44,7 @@ describe('writeServiceConfig()', () => {
                     provider: 'github',
                     namespace: 'acme',
                     private: true,
+                    protocol: 'ssh',
                     auth: { token: 'ghp_SUPER_SECRET' },
                 },
                 ci: { provider: 'circleci', auth: { token: 'circle-secret' } },
@@ -65,6 +66,7 @@ describe('writeServiceConfig()', () => {
         // structural expectations are preserved...
         assert.equal(parsed.vcs.provider, 'github');
         assert.equal(parsed.vcs.namespace, 'acme');
+        assert.equal(parsed.vcs.protocol, 'ssh');
         assert.equal(parsed.ci.provider, 'circleci');
         assert.equal(parsed.registry.provider, 'dockerhub');
         assert.deepEqual(parsed.packages, ['pg-cache']);

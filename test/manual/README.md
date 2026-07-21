@@ -36,8 +36,10 @@ line. Copy the file first if you want to keep a filled-in record of a session.
 ## What it covers
 
 Sandbox setup (isolated `~/.imq`) plus every command group: global/branding,
-`config`, `service packages`, `service create --dry-run` (axes, precedence,
-guards), `ctl`/`log`/`up` fleet lifecycle, `client generate`,
+`config` (including git-transport auto-detection and `vcs.protocol`),
+`service packages`, `service create --dry-run` (axes, precedence, guards, the
+HTTPS/SSH `--git-protocol`), real repo creation (token-authenticated HTTPS push
+and the rollback prompt), `ctl`/`log`/`up` fleet lifecycle, `client generate`,
 `service update-version`, `completions`, and config security / v3 back-compat.
 Sections are tagged **offline** / **net** / **redis** / **tty** so you can run
 the fast offline pass first and skip what needs external services.
