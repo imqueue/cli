@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: service create - pipeline
+ * @imqueue/cli command: service create - pipeline
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

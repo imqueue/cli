@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI providers: vcs/bitbucket
+ * @imqueue/cli providers: vcs/bitbucket
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

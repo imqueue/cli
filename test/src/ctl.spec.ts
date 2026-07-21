@@ -265,7 +265,7 @@ describe('service ctl', () => {
 
             await assert.rejects(
                 () => ctl.startServices(opts(), rec.deps),
-                /No IMQ services found under/,
+                /No @imqueue services found under/,
             );
             assert.equal(rec.started.length, 0);
         });

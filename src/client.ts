@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: client
+ * @imqueue/cli command: client
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
@@ -26,7 +26,7 @@ import * as generate from './client/generate.js';
 
 export const { command, describe, builder } = {
     command: 'client',
-    describe: 'Manage IMQ client',
+    describe: 'Manage @imqueue client',
 
     builder(yargs: Argv) {
         return yargs

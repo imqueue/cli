@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: CI providers (github-actions, circleci)
+ * @imqueue/cli Unit Tests: CI providers (github-actions, circleci)
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI providers: registry/google
+ * @imqueue/cli providers: registry/google
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

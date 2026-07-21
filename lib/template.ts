@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI library: template
+ * @imqueue/cli library: template
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
@@ -77,7 +77,7 @@ export function checkGit() {
 
 // due to problematic testing of user-interaction
 /**
- * Load IMQ templates from templates git repository
+ * Load @imqueue templates from templates git repository
  *
  * @return {Promise<any>}
  */
@@ -86,7 +86,7 @@ export async function loadTemplates(ref: string = DEFAULT_TEMPLATES_REF) {
         await updateTemplates(ref);
     } else {
         checkGit();
-        console.log('Loading IMQ templates, please wait...');
+        console.log('Loading @imqueue templates, please wait...');
         // pin the templates branch so new-CLI installs never pick up template
         // changes meant for older CLIs (and vice versa)
         execFileSync('git', ['clone', '--branch', ref, TPL_REPO, TPL_HOME], {
@@ -116,7 +116,7 @@ export async function loadTemplates(ref: string = DEFAULT_TEMPLATES_REF) {
 export async function updateTemplates(ref: string = DEFAULT_TEMPLATES_REF) {
     checkGit();
 
-    console.log('Updating IMQ templates, please wait...');
+    console.log('Updating @imqueue templates, please wait...');
 
     // run in TPL_HOME via cwd (no global chdir to leak on failure); keep the
     // local copy usable if any step fails (e.g. offline)

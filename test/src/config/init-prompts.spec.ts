@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: config init prompt wiring
+ * @imqueue/cli Unit Tests: config init prompt wiring
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

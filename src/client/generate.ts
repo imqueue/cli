@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: client generate
+ * @imqueue/cli command: client generate
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
@@ -31,7 +31,7 @@ import { printError } from '../../lib/index.js';
 
 export const { command, describe, builder, promptOverride, handler } = {
     command: 'generate <name> [path]',
-    describe: 'Generates IMQ-RPC client for a specified service',
+    describe: 'Generates @imqueue/rpc client for a specified service',
 
     builder(yargs: Argv) {
         return yargs

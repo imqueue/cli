@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: service create
+ * @imqueue/cli Unit Tests: service create
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>

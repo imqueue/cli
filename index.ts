@@ -43,7 +43,7 @@ import * as up from './src/up.js';
         // (or whatever argv[1] happens to be when run via `node index.js`)
         .scriptName('imq')
         .usage(
-            'IMQ Command Line Interface' +
+            '@imqueue Command Line Interface' +
                 `\nVersion: ${VERSION}` +
                 '\n\nUsage: $0 <command>',
         )

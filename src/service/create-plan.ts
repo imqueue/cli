@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: service create - plan builder
+ * @imqueue/cli command: service create - plan builder
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>
@@ -736,7 +736,7 @@ export async function buildCreatePlan(
     const className = camelCase(name);
     const version = ensureVersion(argv.serviceVersion ?? argv.V ?? '');
     const description =
-        (argv.description || '').trim() || `${name} - IMQ based service`;
+        (argv.description || '').trim() || `${name} - @imqueue based service`;
     const author = await resolveAuthor(argv, global, service, interactive);
     const email = await resolveEmail(argv, global, service, interactive);
     const homepage = (argv.H || '').trim();

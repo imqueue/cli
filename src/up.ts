@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: up
+ * @imqueue/cli command: up
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>
@@ -111,7 +111,7 @@ export function runUp(opts: UpOptions, deps: UpDeps): void {
     const services = discoverServices(opts.path, opts.services);
 
     if (!services.length) {
-        deps.log('No IMQ services found to update.');
+        deps.log('No @imqueue services found to update.');
 
         return;
     }
@@ -285,7 +285,7 @@ export function defaultDeps(): UpDeps {
 export const { command, describe, builder, handler } = {
     command: 'up',
     describe:
-        'Updates dependencies of IMQ services under a given path and, ' +
+        'Updates dependencies of @imqueue services under a given path and, ' +
         'optionally, version-bumps, commits and pushes them.',
 
     builder(yargs: Argv) {

@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI catalog: apply
+ * @imqueue/cli catalog: apply
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

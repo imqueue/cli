@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: VCS providers (gitlab, bitbucket)
+ * @imqueue/cli Unit Tests: VCS providers (gitlab, bitbucket)
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>

@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI library: license
+ * @imqueue/cli library: license
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>

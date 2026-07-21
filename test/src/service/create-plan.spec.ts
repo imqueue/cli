@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: service create plan builder
+ * @imqueue/cli Unit Tests: service create plan builder
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>
@@ -121,7 +121,7 @@ describe('service create plan', () => {
                 { global: {}, service: {}, interactive: false, dryRun: true },
             );
 
-            assert.equal(plan.description, 'svc2 - IMQ based service');
+            assert.equal(plan.description, 'svc2 - @imqueue based service');
         });
     });
 

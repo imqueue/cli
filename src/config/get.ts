@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: config get
+ * @imqueue/cli command: config get
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
@@ -97,7 +97,7 @@ export const { command, describe, builder, handler } = {
             }
 
             process.stdout.write(
-                styleText(['bold', 'green'], 'IMQ CLI Config:') + '\n',
+                styleText(['bold', 'green'], '@imqueue CLI Config:') + '\n',
             );
 
             for (let option of options) {

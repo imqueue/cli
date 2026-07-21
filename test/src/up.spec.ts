@@ -133,7 +133,7 @@ describe('service up', () => {
 
             up.runUp(opts(), rec.deps);
 
-            assert.ok(rec.logs.some(l => l.includes('No IMQ services')));
+            assert.ok(rec.logs.some(l => l.includes('No @imqueue services')));
             assert.equal(rec.calls.length, 0);
         });
 

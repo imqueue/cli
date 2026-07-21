@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: config init
+ * @imqueue/cli command: config init
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
@@ -174,7 +174,7 @@ export async function versionSystemOptions(
             type: 'confirm',
             name: 'autoCreateRepo',
             message:
-                'Would you like IMQ automatically create git ' +
+                'Would you like @imqueue to automatically create git ' +
                 'repository for new services when generate?',
             default: true,
         },
@@ -643,7 +643,7 @@ export async function serviceQuestions(config: IMQCLIConfig) {
     console.log(
         styleText(
             'green',
-            `Selected "${name}" to be a license for IMQ generated code and services`,
+            `Selected "${name}" to be a license for @imqueue generated code and services`,
         ),
     );
 
@@ -657,7 +657,7 @@ export async function serviceQuestions(config: IMQCLIConfig) {
 
 export const { command, describe, handler } = {
     command: 'init',
-    describe: 'Interactively initializes IMQ CLI configuration file',
+    describe: 'Interactively initializes @imqueue CLI configuration file',
 
     async handler() {
         try {
@@ -705,7 +705,7 @@ export const { command, describe, handler } = {
                     'cyan',
                     wrap(
                         "Let's define global config options " +
-                            'for IMQ command line runs. These options will be used as ' +
+                            'for @imqueue command line runs. These options will be used as ' +
                             'default parameters and will help you shorten your ' +
                             'commands.\n\n',
                     ),
@@ -729,7 +729,7 @@ export const { command, describe, handler } = {
             saveConfig(config);
 
             console.log(
-                styleText('magenta', 'IMQ-CLI successfully configured!'),
+                styleText('magenta', '@imqueue/cli successfully configured!'),
             );
         } catch (err) {
             printError(err as Error);

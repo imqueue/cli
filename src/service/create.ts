@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: service create
+ * @imqueue/cli command: service create
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>

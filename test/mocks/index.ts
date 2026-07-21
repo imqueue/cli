@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Test Mocks Exports
+ * @imqueue/cli Unit Test Mocks Exports
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>

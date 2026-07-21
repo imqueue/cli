@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Tests: completions on
+ * @imqueue/cli Unit Tests: completions on
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>

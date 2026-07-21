@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI Unit Test Mocks: redis
+ * @imqueue/cli Unit Test Mocks: redis
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>

@@ -1,5 +1,5 @@
 /*!
- * IMQ-CLI command: ctl
+ * @imqueue/cli command: ctl
  *
  * I'm Queue Software Project
  * Copyright (C) 2026  imqueue.com <support@imqueue.com>
@@ -40,7 +40,7 @@ import {
     printError,
 } from '../lib/index.js';
 
-/** Log line emitted by a healthy service once its IMQ reader channel is up. */
+/** Log line emitted by a healthy service once its @imqueue reader channel is up. */
 const READY_MARKER = 'reader channel connected';
 /**
  * Log fragments that indicate a service errored during startup. Covers both the
@@ -238,7 +238,7 @@ export async function startServices(
         // a start that finds nothing is a failure, not a silent success: CI
         // must be able to detect a wrong --path
         throw new Error(
-            `No IMQ services found under ${resolve(opts.path)}. A service is ` +
+            `No @imqueue services found under ${resolve(opts.path)}. A service is ` +
                 'a directory whose src/ tree contains a class extending ' +
                 'IMQService or IMQClient (or pass -s <name> explicitly).',
         );
@@ -674,7 +674,7 @@ export function defaultDeps(): CtlDeps {
 export const { command, describe, builder, handler } = {
     command: 'ctl <action>',
     describe:
-        'Controls a set of IMQ services (start, stop, restart or status) ' +
+        'Controls a set of @imqueue services (start, stop, restart or status) ' +
         'located under a given path.',
 
     builder(yargs: Argv) {
