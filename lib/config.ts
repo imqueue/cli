@@ -50,7 +50,17 @@ export function loadConfig(): IMQCLIConfig {
         return {};
     }
 
-    return JSON.parse(configText);
+    try {
+        return JSON.parse(configText);
+    } catch (err) {
+        // a corrupted config file must not crash every command with a raw
+        // SyntaxError - fail with an actionable message instead
+        throw new Error(
+            `Malformed IMQ config at ${CONFIG_PATH}: ` +
+                `${(err as Error).message}. ` +
+                'Fix the JSON or run `imq config init` to recreate it.',
+        );
+    }
 }
 
 /**

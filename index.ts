@@ -53,6 +53,8 @@ import * as up from './src/up.js';
         .command(service as any)
         .command(up as any)
         .demandCommand()
+        .strict()
+        .recommendCommands()
         .wrap(y.terminalWidth())
         .help().argv;
 })();

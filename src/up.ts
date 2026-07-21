@@ -89,10 +89,16 @@ export function normalizeVersionType(type: string): VersionType {
  * Updates dependencies (and optionally version-bumps, commits and pushes) for
  * every selected service under the given path.
  *
+ * Each service is processed independently: a step that fails (a thrown dep,
+ * e.g. a non-zero `git pull`) aborts only that service, is recorded, and the
+ * run continues with the next. If any service failed, a summarizing error is
+ * thrown so the caller can report it and exit non-zero.
+ *
  * @param {UpOptions} opts
  * @param {UpDeps} deps
  * @return {void}
- * @throws {Error} when neither an update nor a commit is requested
+ * @throws {Error} when neither an update nor a commit is requested, when the
+ *                 ncu bootstrap fails, or when one or more services failed
  */
 export function runUp(opts: UpOptions, deps: UpDeps): void {
     if (opts.skipUpdate && !opts.commit) {
@@ -110,43 +116,65 @@ export function runUp(opts: UpOptions, deps: UpDeps): void {
         return;
     }
 
+    // bootstrap ncu once up front; a failure here is fatal (nothing can run)
     if (!opts.skipUpdate && !deps.ncuAvailable()) {
         deps.log('Installing npm-check-updates...');
         deps.installNcu();
     }
 
     const type = normalizeVersionType(opts.npmVersion);
+    const failed: string[] = [];
+    let ok = 0;
 
     for (const svc of services) {
         const dir = join(opts.path, svc);
 
         if (!existsSync(dir)) {
             deps.log(styleText('red', `No such service directory: ${dir}`));
+            failed.push(svc);
 
             continue;
         }
 
         deps.log(styleText('blue', `\nService: ${svc}`));
 
-        if (!opts.skipUpdate) {
-            deps.gitPull(dir);
-            deps.ncuUpgrade(dir);
-            deps.removeArtifacts(dir);
-            deps.npmInstall(dir);
-        }
-
-        if (opts.commit) {
-            if (deps.gitDirty(dir)) {
-                deps.gitCommit(dir, COMMIT_MESSAGE);
-                deps.npmVersion(dir, type);
-                deps.gitPushTags(dir);
-            } else {
-                deps.log('Nothing to commit, working tree clean.');
+        try {
+            if (!opts.skipUpdate) {
+                // ordered so a failure aborts BEFORE anything destructive
+                // (ncu rewrite / node_modules + lockfile removal)
+                deps.gitPull(dir);
+                deps.ncuUpgrade(dir);
+                deps.removeArtifacts(dir);
+                deps.npmInstall(dir);
             }
+
+            if (opts.commit) {
+                if (deps.gitDirty(dir)) {
+                    deps.gitCommit(dir, COMMIT_MESSAGE);
+                    deps.npmVersion(dir, type);
+                    deps.gitPushTags(dir);
+                } else {
+                    deps.log('Nothing to commit, working tree clean.');
+                }
+            }
+
+            ok++;
+        } catch (err) {
+            failed.push(svc);
+            deps.log(
+                styleText('red', `  ${svc} failed: ${(err as Error).message}`),
+            );
         }
     }
 
-    deps.log(styleText('green', '\nDone!'));
+    if (failed.length) {
+        throw new Error(
+            `Updated ${ok}/${services.length} services; ` +
+                `failed: ${failed.join(', ')}.`,
+        );
+    }
+
+    deps.log(styleText('green', `\nDone! Updated ${ok} service(s).`));
 }
 
 /**
@@ -155,12 +183,22 @@ export function runUp(opts: UpOptions, deps: UpDeps): void {
  * @return {UpDeps}
  */
 export function defaultDeps(): UpDeps {
-    const run = (
-        cmd: string,
-        args: string[],
-        cwd?: string,
-    ): ReturnType<typeof spawnSync> =>
-        spawnSync(cmd, args, { cwd, stdio: 'inherit' });
+    // runs a command, throwing a descriptive Error on spawn error or non-zero
+    // exit so the per-service loop in runUp can record the failure and skip
+    // the remaining (potentially destructive) steps for that service
+    const run = (cmd: string, args: string[], cwd?: string): void => {
+        const res = spawnSync(cmd, args, { cwd, stdio: 'inherit' });
+
+        if (res.error) {
+            throw new Error(`${cmd}: ${res.error.message}`);
+        }
+
+        if (res.status !== 0) {
+            throw new Error(
+                `${cmd} ${args.join(' ')} exited with code ${res.status}`,
+            );
+        }
+    };
 
     return {
         ncuAvailable(): boolean {
@@ -185,7 +223,10 @@ export function defaultDeps(): UpDeps {
             run('npm', ['install'], dir);
         },
         gitDirty(dir: string): boolean {
-            const res = spawnSync('git', ['status', '--porcelain'], {
+            // -uno: ignore untracked files so a stray file (editor swap, .env)
+            // never triggers a spurious version bump; only tracked changes
+            // (the ncu/lockfile update) count as "dirty"
+            const res = spawnSync('git', ['status', '--porcelain', '-uno'], {
                 cwd: dir,
                 encoding: 'utf8',
             });
@@ -233,9 +274,8 @@ export const { command, describe, builder, handler } = {
             .option('v', {
                 alias: 'npm-version',
                 default: 'prerelease',
-                describe:
-                    'Version bump to apply on commit ' +
-                    '(major|minor|patch|prerelease).',
+                choices: VERSION_TYPES,
+                describe: 'Version bump to apply on commit.',
                 type: 'string',
             })
             .option('c', {
@@ -273,7 +313,6 @@ export const { command, describe, builder, handler } = {
             );
         } catch (err) {
             printError(err as Error);
-            process.exitCode = 1;
         }
     },
 };
