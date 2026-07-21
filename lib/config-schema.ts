@@ -23,7 +23,7 @@
  */
 import type { IMQCLIConfig } from './config.js';
 
-export const DEFAULT_TEMPLATES_REF = 'v4';
+export const DEFAULT_TEMPLATES_REF = 'master';
 
 export interface VcsConfig {
     provider?: string;
