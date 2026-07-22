@@ -1,0 +1,13 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "@imqueue/cli",
+  "description": "Command line interface for @imqueue — scaffold Redis-RPC microservices, generate typed clients, and manage a local service fleet.",
+  "excludeFolders": ["src", "lib", "bin", "node_modules", "test", "tests", "coverage"],
+  "excludeFiles": ["CHANGELOG.md", "LICENSE"],
+  "rules": [
+    "Install globally with `npm i -g @imqueue/cli`; the binary is `imq`.",
+    "Scaffold a new service project with `imq service create`, and generate a typed client from a running service with `imq client generate <ServiceName>`.",
+    "Manage a local multi-service fleet with `imq ctl` and inspect config/logs with `imq config` and `imq log`.",
+    "@imqueue is GPL-3.0; a commercial license is available for closed-source use (see imqueue.com/license)."
+  ]
+}
