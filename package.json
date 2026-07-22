@@ -42,7 +42,8 @@
   "bugs": {
     "url": "https://github.com/imqueue/cli/issues"
   },
-  "homepage": "https://imqueue.com/",
+  "homepage": "https://imqueue.org/",
+  "funding": "https://imqueue.com/",
   "author": "imqueue.com <support@imqueue.com> (https://imqueue.com)",
   "license": "GPL-3.0-only",
   "dependencies": {
