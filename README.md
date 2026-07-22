@@ -13,7 +13,9 @@ Frees you from writing boilerplate when making @imqueue services.
 This README is a quick reference. The full user manual is published at
 [imqueue.org/cli](https://imqueue.org/cli/) (and mirrored in the
 [project wiki](https://github.com/imqueue/cli/wiki)). Commercial licensing &
-support: [imqueue.com](https://imqueue.com/). Wiki chapters:
+support: [imqueue.com](https://imqueue.com/). Using an AI assistant? Point it at
+[imqueue.org/llms.txt](https://imqueue.org/llms.txt) or see [AGENTS.md](./AGENTS.md).
+Wiki chapters:
 
 - [Installation](https://github.com/imqueue/cli/wiki/Installation)
 - [Configuration](https://github.com/imqueue/cli/wiki/Configuration) — layers, schema, secrets, env vars
