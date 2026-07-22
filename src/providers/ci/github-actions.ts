@@ -30,35 +30,98 @@ import type {
 import { Github } from '../../../lib/index.js';
 import { registryOf, registryShellTokens } from './common.js';
 
-const TEST_JOB = `name: Build
+// Composite action shared by all jobs: pins Node and installs deps once so
+// every job resolves dependencies identically (mirrors the @imqueue service
+// convention of a `./.github/actions/setup` step).
+const SETUP_ACTION = `name: Setup
+description: Install Node and project dependencies.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v5
+      with:
+        node-version: %GHA_NODE_PRIMARY
+        cache: npm
+
+    - name: Install dependencies
+      shell: bash
+      run: npm ci --prefer-offline --no-audit --no-fund
+`;
+
+const TEST_JOB = `name: CI
 on:
   push:
     branches: ['**']
     tags: ['**']
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-\${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
+  lint:
+    name: Lint & format
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: %GHA_NODE_MATRIX
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: npm run lint
+      - run: npm run format:check
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: npm run typecheck
+
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: npm run test:unit
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: npm run build:bundle
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
         with:
-          node-version: \${{ matrix.node-version }}
-      - run: npm ci
-      - run: npm test
+          name: build
+          path: build
+          retention-days: 1
+          if-no-files-found: error
 `;
 
 const DOCKER_JOB = `
   docker:
-    needs: test
+    name: Build & push image
+    needs: [lint, typecheck, test, build]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      # reuse the exact deploy bundle produced (and verified) by the build job;
+      # the Dockerfile COPYs build/ in rather than compiling inside the image
+      - name: Download build output
+        uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: build
+
       - name: Build and push image
         env:
 %GHA_SECRETS_ENV
@@ -81,11 +144,18 @@ export const githubActions: CiProvider = {
     files(ctx: CreateContext): FileFragment[] {
         const content = ctx.dockerize ? TEST_JOB + DOCKER_JOB : TEST_JOB;
 
-        return [{ relPath: '.github/workflows/build.yml', content }];
+        return [
+            { relPath: '.github/workflows/ci.yml', content },
+            {
+                relPath: '.github/actions/setup/action.yml',
+                content: SETUP_ACTION,
+            },
+        ];
     },
 
     tokens(ctx: CreateContext): Record<string, string> {
         const tokens: Record<string, string> = {
+            GHA_NODE_PRIMARY: ctx.nodeTags[0] || 'lts/*',
             GHA_NODE_MATRIX: `[${ctx.nodeTags.map(t => `'${t}'`).join(', ')}]`,
             IMAGE_REF: '',
             REGISTRY_LOGIN: '',

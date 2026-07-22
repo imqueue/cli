@@ -8,12 +8,21 @@
   "packages": {
     "opentelemetry": {
       "group": "tracing",
-      "title": "OpenTelemetry instrumentation",
-      "deps": { "@imqueue/opentelemetry-instrumentation-imqueue": "*" },
-      "snippets": { "preload": "import '@imqueue/opentelemetry-instrumentation-imqueue';" },
-      "env": ["OTEL_EXPORTER_OTLP_ENDPOINT"],
+      "title": "OpenTelemetry instrumentation (+ optional GCP trace export)",
+      "deps": {
+        "@imqueue/opentelemetry-instrumentation-imqueue": "*",
+        "@opentelemetry/api": "*",
+        "@opentelemetry/instrumentation": "*",
+        "@opentelemetry/resources": "*",
+        "@opentelemetry/sdk-trace-node": "*",
+        "@opentelemetry/semantic-conventions": "*",
+        "@google-cloud/opentelemetry-cloud-trace-exporter": "*"
+      },
+      "snippets": { "preload": "import './src/telemetry.js';" },
+      "env": ["OTEL_EXPORTER_OTLP_ENDPOINT", "GOOGLE_APPLICATION_CREDENTIALS"],
       "instructions": [
-        "OpenTelemetry: set OTEL_EXPORTER_OTLP_ENDPOINT to your collector endpoint."
+        "OpenTelemetry: tracing is initialized in src/telemetry.ts (imported first at start-up).",
+        "OpenTelemetry: set GOOGLE_APPLICATION_CREDENTIALS to export traces to Google Cloud Trace."
       ]
     },
     "dd-trace": {
@@ -41,6 +50,32 @@
       "devDeps": { "prisma": "*" },
       "instructions": [
         "Prisma: run `npx prisma init` and define your schema."
+      ]
+    },
+    "pg-prisma": {
+      "group": "orm",
+      "title": "Prisma ORM + @imqueue/pg-prisma toolkit",
+      "deps": {
+        "@imqueue/pg-prisma": "*",
+        "@imqueue/validation": "*",
+        "@prisma/client": "*",
+        "@prisma/adapter-pg": "*",
+        "pg": "*",
+        "zod": "*"
+      },
+      "devDeps": { "prisma": "*", "@types/pg": "*" },
+      "env": ["DATABASE_URL"],
+      "instructions": [
+        "pg-prisma: set DATABASE_URL, then run `npx prisma migrate dev` to create the database.",
+        "pg-prisma: edit prisma/schema.prisma and run `npx prisma generate` to (re)generate models."
+      ]
+    },
+    "validation": {
+      "group": "features",
+      "title": "Input validation (@imqueue/validation)",
+      "deps": { "@imqueue/validation": "*", "zod": "*" },
+      "instructions": [
+        "validation: annotate argument classes with @validatable/@validate and methods with @validated."
       ]
     },
     "pg-cache": {

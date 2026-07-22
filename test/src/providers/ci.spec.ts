@@ -76,9 +76,15 @@ describe('ci providers', () => {
         it('should emit a test-only workflow when not dockerizing', () => {
             const files = githubActions.files(baseCtx(false));
 
-            assert.equal(files[0].relPath, '.github/workflows/build.yml');
-            assert.match(files[0].content, /npm test/);
+            assert.equal(files[0].relPath, '.github/workflows/ci.yml');
+            assert.match(files[0].content, /npm run test:unit/);
             assert.doesNotMatch(files[0].content, /docker build/);
+            // a composite setup action is shipped alongside the workflow
+            assert.equal(
+                files[1].relPath,
+                '.github/actions/setup/action.yml',
+            );
+            assert.match(files[1].content, /using: composite/);
         });
 
         it('should add a docker job when dockerizing', () => {
