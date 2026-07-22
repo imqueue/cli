@@ -53,6 +53,7 @@ import {
     createServiceFile,
     createServiceTestFile,
     ensureTemplate,
+    generateAddons,
     isEsmService,
     loadTemplateManifest,
     overlayFragments,
@@ -332,6 +333,12 @@ export async function runCreate(
 
     // merge addon dependencies into the (now compiled) package.json
     mergeDependencies(plan.path, addons.deps, addons.devDeps);
+
+    // generate addon files that need real (conditional) code rather than inline
+    // catalog snippets: OpenTelemetry setup and the full pg-prisma persistence
+    // layer (schema, config, request-context, extended client), plus the
+    // native-decorator tsconfig / package.json wiring they require
+    generateAddons(plan.path, plan.license.header, plan.config.packages);
 
     // v1 templates lack %ADDON token points, so code snippets can't inject
     if (addons.hasSnippets && !isV2) {

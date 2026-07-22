@@ -448,6 +448,30 @@ export class ${cls} extends IMQService {
         return { name, version, repository: repository?.url };
     }
 
+    /**
+     * Reports this service's metadata, read from package.json: package name,
+     * description, semantic version and source repository URL.
+     *
+     * @return {{
+     *     name: string,
+     *     description: string,
+     *     version: string,
+     *     repository?: string
+     * }} - the service metadata
+     */
+    @logged()
+    @profile()
+    @expose()
+    public info(): {
+        name: string;
+        description: string;
+        version: string;
+        repository?: string;
+    } {
+        const { name, description, version, repository } = pkg;
+        return { name, description, version, repository: repository?.url };
+    }
+
     // Implement your service methods below this line
 }
 `,
@@ -534,6 +558,345 @@ describe('${cls}', () => {
 `;
 
     touch(resolve(path, 'test/src', `${cls}.ts`), content);
+}
+
+/**
+ * tsconfig.json for services that use native (TC39) decorators — required by
+ * `@imqueue/validation` and by the `@imqueue/pg-prisma` generated models
+ * (which declare RPC argument types explicitly, so no `reflect-metadata`).
+ */
+const NATIVE_DECORATOR_TSCONFIG = `{
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": ["es2023", "esnext.decorators"],
+    "moduleDetection": "force",
+
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+
+    "types": ["node"],
+
+    "declaration": true,
+    "sourceMap": true,
+    "inlineSources": true,
+    "removeComments": false,
+    "newLine": "lf",
+
+    "skipLibCheck": true,
+
+    "strict": true,
+    "strictPropertyInitialization": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  }
+}
+`;
+
+/** The basic Prisma schema generated for a pg-prisma service. */
+function prismaSchema(): string {
+    return `generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  runtime             = "nodejs"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+generator codegen {
+  provider    = "node ./node_modules/@imqueue/pg-prisma/src/codegen.js"
+  output      = "../src/generated"
+  softDelete  = "auto"
+  authorship  = "auto"
+  audit       = "auto"
+  accessScope = "user=createdBy"
+  validation  = "auto"
+  scalars     = "DateTime:string"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// @scope(user)
+model Example {
+  /// @scope(user)
+  id        String    @id @default(uuid())
+  /// @validate .min(1).max(255)
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  principal Json?
+  action    String
+  model     String
+  recordId  String
+  changes   Json?
+}
+`;
+}
+
+/**
+ * Generates optional add-on files for a scaffolded service based on the
+ * selected catalog packages: the OpenTelemetry preload, and the full
+ * @imqueue/pg-prisma persistence setup (schema, prisma config, request-context
+ * accessors and the extended client). Also swaps in a native-decorator
+ * tsconfig and patches package.json when pg-prisma/validation are selected.
+ *
+ * @param {string} path - service directory
+ * @param {string} header - resolved license header for generated files
+ * @param {string[]} packages - selected catalog package ids
+ */
+export function generateAddons(
+    path: string,
+    header: string,
+    packages: string[],
+): void {
+    const has = (id: string): boolean => packages.includes(id);
+    const hasPgPrisma = has('pg-prisma');
+    const hasValidation = has('validation');
+
+    if (has('opentelemetry')) {
+        console.log('Generating OpenTelemetry setup...');
+        touch(
+            resolve(path, 'src', 'telemetry.ts'),
+            `${header}
+import '../env-defaults.js';
+import { TraceExporter } from '@google-cloud/opentelemetry-cloud-trace-exporter';
+import {
+    ImqueueInstrumentation,
+    type RpcModule,
+} from '@imqueue/opentelemetry-instrumentation-imqueue';
+import { resourceFromAttributes } from '@opentelemetry/resources';
+import {
+    BatchSpanProcessor,
+    NodeTracerProvider,
+} from '@opentelemetry/sdk-trace-node';
+import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
+import { config } from '../config.js';
+
+try {
+    const provider = new NodeTracerProvider({
+        resource: resourceFromAttributes({
+            [ATTR_SERVICE_NAME]: config.serviceName,
+        }),
+        // GCP Cloud Trace export is enabled when GOOGLE_APPLICATION_CREDENTIALS
+        // is present (see config.gcp.enabled); otherwise no exporter is wired.
+        spanProcessors: config.gcp.enabled
+            ? [new BatchSpanProcessor(new TraceExporter())]
+            : [],
+    });
+
+    provider.register();
+} catch {}
+
+try {
+    const rpc = (await import('@imqueue/rpc')) as unknown as RpcModule;
+
+    new ImqueueInstrumentation().patch(rpc);
+} catch {}
+`,
+        );
+    }
+
+    if (hasPgPrisma) {
+        console.log('Generating @imqueue/pg-prisma setup...');
+
+        touch(resolve(path, 'prisma', 'schema.prisma'), prismaSchema());
+
+        touch(
+            resolve(path, 'prisma.config.ts'),
+            `${header}
+import { defineConfig } from 'prisma/config';
+
+try {
+    process.loadEnvFile('.env');
+} catch {}
+
+export default defineConfig({
+    schema: 'prisma/schema.prisma',
+    datasource: {
+        url: process.env.DATABASE_URL,
+        shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL,
+    },
+});
+`,
+        );
+
+        touch(
+            resolve(path, 'src', 'context.ts'),
+            `${header}
+/**
+ * Request-context accessors used by the Prisma extensions. Wire these to your
+ * real request context (e.g. AsyncLocalStorage populated per RPC call) as the
+ * service grows; the defaults are safe no-ops for a fresh service.
+ */
+export function currentActorId(): string | null {
+    return null;
+}
+
+export function currentPrincipal(): unknown {
+    return null;
+}
+
+export function currentAccessScope(
+    _level: string,
+): string | string[] | null | undefined {
+    return undefined;
+}
+`,
+        );
+
+        touch(
+            resolve(path, 'src', 'prisma.ts'),
+            `${header}
+import {
+    accessScope,
+    audit,
+    authorship,
+    isoDates,
+    isSqlLogSuppressed,
+    prettifySql,
+    softDelete,
+} from '@imqueue/pg-prisma';
+import { PrismaPg } from '@prisma/adapter-pg';
+import {
+    currentAccessScope,
+    currentActorId,
+    currentPrincipal,
+} from './context.js';
+import {
+    ACCESS_SCOPE_MODELS,
+    type AccessScopeResolvers,
+    AUDIT_CONFIG,
+    AUDIT_MODELS,
+    AUTHORSHIP_MODELS,
+    SOFT_DELETE_MODELS,
+} from './generated/index.js';
+import { PrismaClient } from './generated/prisma/client.js';
+
+const databaseUrl = process.env.DATABASE_URL ?? '';
+
+const client = new PrismaClient({
+    adapter: new PrismaPg(databaseUrl),
+    log: [{ level: 'query', emit: 'event' }],
+});
+
+client.$on('query', event => {
+    if (isSqlLogSuppressed()) {
+        return;
+    }
+
+    console.log(
+        prettifySql(event.query) +
+            '\\n-- params: ' +
+            event.params +
+            ' (' +
+            event.duration +
+            'ms)',
+    );
+});
+
+// soft-delete needs an authorship-aware client so deletions are still stamped
+const authored = client.$extends(
+    authorship({ models: AUTHORSHIP_MODELS, getActorId: currentActorId }),
+);
+
+// NOTE: audit is added FIRST so its hook is the OUTERMOST — soft-deletes still
+// reach the audit trail. Keep this ordering when adding extensions.
+export const prisma = client
+    .$extends(
+        audit({
+            client,
+            config: AUDIT_CONFIG,
+            models: AUDIT_MODELS,
+            getPrincipal: currentPrincipal,
+        }),
+    )
+    .$extends(
+        authorship({ models: AUTHORSHIP_MODELS, getActorId: currentActorId }),
+    )
+    .$extends(
+        softDelete({
+            client: authored as unknown as PrismaClient,
+            models: SOFT_DELETE_MODELS,
+        }),
+    )
+    .$extends(
+        accessScope({
+            models: ACCESS_SCOPE_MODELS,
+            resolvers: {
+                user: () => currentAccessScope('user'),
+            } satisfies AccessScopeResolvers,
+        }),
+    )
+    .$extends(isoDates());
+`,
+        );
+
+        patchPackageJsonForPrisma(path);
+    }
+
+    // native decorators are required whenever pg-prisma or validation is used
+    if (hasPgPrisma || hasValidation) {
+        fs.writeFileSync(
+            resolve(path, 'tsconfig.json'),
+            NATIVE_DECORATOR_TSCONFIG,
+            { encoding: 'utf8' },
+        );
+    }
+}
+
+/**
+ * Patches a pg-prisma service's package.json: adds the subpath import aliases
+ * the generated code uses (#generated, #prisma) and makes the build/typecheck
+ * scripts run `prisma generate` first so the generated client is always fresh.
+ *
+ * @param {string} path - service directory
+ */
+function patchPackageJsonForPrisma(path: string): void {
+    const pkgPath = resolve(path, 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, { encoding: 'utf8' }));
+
+    pkg.imports = {
+        ...pkg.imports,
+        '#generated': './src/generated/index.js',
+        '#generated/*': './src/generated/*',
+        '#prisma': './src/prisma.js',
+        '#context': './src/context.js',
+        '#*': './src/*',
+    };
+
+    pkg.scripts = pkg.scripts || {};
+    pkg.scripts['prisma:generate'] = 'prisma generate';
+    pkg.scripts['migrate'] = 'prisma migrate dev';
+    pkg.scripts['migrate:deploy'] = 'prisma migrate deploy';
+
+    const prefixGenerate = (script: string): void => {
+        const cur = pkg.scripts[script];
+
+        if (cur && !cur.includes('prisma generate')) {
+            pkg.scripts[script] = 'prisma generate && ' + cur;
+        }
+    };
+
+    // generated sources must exist before any type-check / compile
+    prefixGenerate('build');
+    prefixGenerate('build:bundle');
+    prefixGenerate('typecheck');
+
+    fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', {
+        encoding: 'utf8',
+    });
 }
 
 /**
