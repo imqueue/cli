@@ -497,7 +497,7 @@ export function createServiceTestFile(
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { ${cls} } from '../../src/index.js';
+import { ${cls} } from '../../src/${cls}.js';
 
 const require = createRequire(import.meta.url);
 
@@ -527,7 +527,7 @@ describe('${cls}', () => {
 `
         : `${tokens.LICENSE_HEADER}
 import { expect } from 'chai';
-import { ${cls} } from '../../src';
+import { ${cls} } from '../../src/${cls}';
 
 
 describe('${cls}', () => {
@@ -557,7 +557,7 @@ describe('${cls}', () => {
 });
 `;
 
-    touch(resolve(path, 'test/src', `${cls}.ts`), content);
+    touch(resolve(path, 'test/src', `${cls}.spec.ts`), content);
 }
 
 /**
@@ -597,7 +597,7 @@ const NATIVE_DECORATOR_TSCONFIG = `{
 /** OpenTelemetry setup without a trace exporter (add one, e.g. the gcp pkg). */
 function telemetryBase(header: string): string {
     return `${header}
-import '../env-defaults.js';
+import './env-defaults.js';
 import {
     ImqueueInstrumentation,
     type RpcModule,
@@ -605,7 +605,7 @@ import {
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
-import { config } from '../config.js';
+import { config } from './config.js';
 
 try {
     const provider = new NodeTracerProvider({
@@ -631,7 +631,7 @@ try {
 /** OpenTelemetry setup with the Google Cloud Trace exporter (gcp package). */
 function telemetryWithGcp(header: string): string {
     return `${header}
-import '../env-defaults.js';
+import './env-defaults.js';
 import { TraceExporter } from '@google-cloud/opentelemetry-cloud-trace-exporter';
 import {
     ImqueueInstrumentation,
@@ -643,7 +643,7 @@ import {
     NodeTracerProvider,
 } from '@opentelemetry/sdk-trace-node';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
-import { config } from '../config.js';
+import { config } from './config.js';
 
 // GCP Cloud Trace export is enabled when GOOGLE_APPLICATION_CREDENTIALS is set.
 const gcpEnabled = Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS);
@@ -920,6 +920,15 @@ function patchPackageJsonForPrisma(path: string): void {
     pkg.scripts['prisma:generate'] = 'prisma generate';
     pkg.scripts['migrate'] = 'prisma migrate dev';
     pkg.scripts['migrate:deploy'] = 'prisma migrate deploy';
+
+    // Prisma has no native "down"; @imqueue/pg-prisma ships one. Load .env so
+    // DATABASE_URL is available, then run (or only generate) the down migration.
+    const migrateDown =
+        'set -a; [ -f .env ] && . ./.env; set +a; ' +
+        'node ./node_modules/@imqueue/pg-prisma/src/migrate-down.js';
+    pkg.scripts['migrate:down'] = `${migrateDown} --database-url "$DATABASE_URL"`;
+    pkg.scripts['migrate:down:gen'] =
+        `${migrateDown} --generate-only --database-url "$DATABASE_URL"`;
 
     const prefixGenerate = (script: string): void => {
         const cur = pkg.scripts[script];

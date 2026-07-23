@@ -17,7 +17,7 @@
         "@opentelemetry/sdk-trace-node": "*",
         "@opentelemetry/semantic-conventions": "*"
       },
-      "snippets": { "preload": "import './src/telemetry.js';" },
+      "snippets": { "preload": "import './telemetry.js';" },
       "env": ["OTEL_EXPORTER_OTLP_ENDPOINT"],
       "instructions": [
         "OpenTelemetry: tracing is initialized in src/telemetry.ts (imported first at start-up).",
