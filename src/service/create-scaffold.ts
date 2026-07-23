@@ -926,7 +926,8 @@ function patchPackageJsonForPrisma(path: string): void {
     const migrateDown =
         'set -a; [ -f .env ] && . ./.env; set +a; ' +
         'node ./node_modules/@imqueue/pg-prisma/src/migrate-down.js';
-    pkg.scripts['migrate:down'] = `${migrateDown} --database-url "$DATABASE_URL"`;
+    pkg.scripts['migrate:down'] =
+        `${migrateDown} --database-url "$DATABASE_URL"`;
     pkg.scripts['migrate:down:gen'] =
         `${migrateDown} --generate-only --database-url "$DATABASE_URL"`;
 

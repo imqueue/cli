@@ -80,10 +80,7 @@ describe('ci providers', () => {
             assert.match(files[0].content, /npm run test:unit/);
             assert.doesNotMatch(files[0].content, /docker build/);
             // a composite setup action is shipped alongside the workflow
-            assert.equal(
-                files[1].relPath,
-                '.github/actions/setup/action.yml',
-            );
+            assert.equal(files[1].relPath, '.github/actions/setup/action.yml');
             assert.match(files[1].content, /using: composite/);
         });
 
