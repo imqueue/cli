@@ -23,6 +23,7 @@
  */
 import * as fs from 'fs';
 import * as p from 'path';
+import { styleText } from 'node:util';
 import {
     CUSTOM_TPL_HOME,
     findLicense,
@@ -594,23 +595,150 @@ const NATIVE_DECORATOR_TSCONFIG = `{
 }
 `;
 
+/**
+ * Applies the native (TC39) decorator tsconfig that `@imqueue/pg-prisma` and
+ * `@imqueue/validation` require.
+ *
+ * v2 templates are built for native decorators, so the canonical config is
+ * authoritative and written verbatim. v1 templates ship their own tsconfig -
+ * build layout, extra strictness, `exclude`/`include`, and frequently classic
+ * `experimentalDecorators` - which must not be silently discarded; there only
+ * the deltas the addons need are merged in and everything else is preserved.
+ * When the template was using classic decorators the switch to native
+ * decorators is a breaking change for existing decorator-based code, so it is
+ * surfaced with a warning rather than applied silently.
+ *
+ * @param {string} path - service directory
+ * @param {boolean} isV2 - whether the target template ships the v2 contract
+ */
+function applyNativeDecoratorTsconfig(path: string, isV2: boolean): void {
+    const tsconfigPath = resolve(path, 'tsconfig.json');
+
+    let existing: {
+        compilerOptions?: Record<string, unknown>;
+        [key: string]: unknown;
+    } | null = null;
+
+    if (!isV2 && fs.existsSync(tsconfigPath)) {
+        try {
+            existing = JSON.parse(
+                fs.readFileSync(tsconfigPath, { encoding: 'utf8' }),
+            );
+        } catch {
+            existing = null;
+        }
+    }
+
+    // v2 template, or no readable template tsconfig: the canonical
+    // native-decorator config is authoritative
+    if (!existing) {
+        fs.writeFileSync(tsconfigPath, NATIVE_DECORATOR_TSCONFIG, {
+            encoding: 'utf8',
+        });
+
+        return;
+    }
+
+    const opts = (existing.compilerOptions ??= {});
+    const usedClassicDecorators = opts.experimentalDecorators === true;
+
+    // switch to native (TC39) decorators: drop the classic-decorator switches
+    // and the field-init override they pair with (native decorators need the
+    // es2024 default), and make sure the decorator lib types are available
+    delete opts.experimentalDecorators;
+    delete opts.emitDecoratorMetadata;
+    delete opts.useDefineForClassFields;
+
+    const lib = Array.isArray(opts.lib) ? [...(opts.lib as string[])] : [];
+
+    if (!lib.some(entry => entry.toLowerCase() === 'esnext.decorators')) {
+        lib.push('esnext.decorators');
+    }
+
+    if (lib.length) {
+        opts.lib = lib;
+    }
+
+    // generated pg-prisma models declare (but don't ctor-initialise) decorated
+    // fields and carry unused imports/params, so relax exactly what the
+    // canonical config also relaxes
+    opts.strictPropertyInitialization = false;
+    opts.noUnusedLocals = false;
+    opts.noUnusedParameters = false;
+
+    fs.writeFileSync(tsconfigPath, JSON.stringify(existing, null, 2) + '\n', {
+        encoding: 'utf8',
+    });
+
+    if (usedClassicDecorators) {
+        console.log(
+            styleText(
+                'yellow',
+                'This template used classic (experimental) decorators, but the ' +
+                    'selected pg-prisma/validation packages require native ' +
+                    '(TC39) decorators - tsconfig.json was switched over. ' +
+                    'Review existing decorator-based code (e.g. @imqueue/rpc ' +
+                    'services relying on emitDecoratorMetadata) as it may need ' +
+                    'adjusting.',
+            ),
+        );
+    }
+}
+
+/**
+ * The generated telemetry.ts couples to two files that only v2 templates ship:
+ * a side-effect `src/env-defaults.ts` preload and a `src/config.ts` exporting
+ * `config.serviceName`. Legacy (v1) templates have neither - and may keep their
+ * config elsewhere under a different shape - so on v1 the generated file must be
+ * self-contained: the env-defaults/config imports are dropped and the service
+ * name is baked in at generation time (with an env override) instead of read
+ * from `config`. This keeps the OpenTelemetry preload compiling against any
+ * template. These helpers assemble the version-specific pieces so the two
+ * snippet builders below stay in sync.
+ */
+function telemetryEnvDefaultsImport(isV2: boolean): string {
+    return isV2 ? "import './env-defaults.js';\n" : '';
+}
+
+function telemetryConfigImport(isV2: boolean): string {
+    return isV2 ? "import { config } from './config.js';\n" : '';
+}
+
+function telemetryServiceName(
+    isV2: boolean,
+    serviceName: string,
+): { decl: string; expr: string } {
+    return isV2
+        ? { decl: '', expr: 'config.serviceName' }
+        : {
+              decl:
+                  `const serviceName = process.env.IMQ_SERVICE_NAME` +
+                  ` || '${serviceName}';\n\n`,
+              expr: 'serviceName',
+          };
+}
+
 /** OpenTelemetry setup without a trace exporter (add one, e.g. the gcp pkg). */
-function telemetryBase(header: string): string {
+function telemetryBase(
+    header: string,
+    isV2: boolean,
+    serviceName: string,
+): string {
+    const name = telemetryServiceName(isV2, serviceName);
+
     return `${header}
-import './env-defaults.js';
-import {
+${telemetryEnvDefaultsImport(isV2)}import {
     ImqueueInstrumentation,
     type RpcModule,
 } from '@imqueue/opentelemetry-instrumentation-imqueue';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
-import { config } from './config.js';
-
-try {
+${telemetryConfigImport(isV2)}
+${name.decl}try {
     const provider = new NodeTracerProvider({
         resource: resourceFromAttributes({
-            [ATTR_SERVICE_NAME]: config.serviceName,
+            [ATTR_SERVICE_NAME]: ${name.expr},
         }),
         // Wire your span exporter(s) here (e.g. add the "gcp" package to export
         // to Google Cloud Trace).
@@ -629,10 +757,15 @@ try {
 }
 
 /** OpenTelemetry setup with the Google Cloud Trace exporter (gcp package). */
-function telemetryWithGcp(header: string): string {
+function telemetryWithGcp(
+    header: string,
+    isV2: boolean,
+    serviceName: string,
+): string {
+    const name = telemetryServiceName(isV2, serviceName);
+
     return `${header}
-import './env-defaults.js';
-import { TraceExporter } from '@google-cloud/opentelemetry-cloud-trace-exporter';
+${telemetryEnvDefaultsImport(isV2)}import { TraceExporter } from '@google-cloud/opentelemetry-cloud-trace-exporter';
 import {
     ImqueueInstrumentation,
     type RpcModule,
@@ -643,15 +776,14 @@ import {
     NodeTracerProvider,
 } from '@opentelemetry/sdk-trace-node';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
-import { config } from './config.js';
-
+${telemetryConfigImport(isV2)}
 // GCP Cloud Trace export is enabled when GOOGLE_APPLICATION_CREDENTIALS is set.
 const gcpEnabled = Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS);
 
-try {
+${name.decl}try {
     const provider = new NodeTracerProvider({
         resource: resourceFromAttributes({
-            [ATTR_SERVICE_NAME]: config.serviceName,
+            [ATTR_SERVICE_NAME]: ${name.expr},
         }),
         spanProcessors: gcpEnabled
             ? [new BatchSpanProcessor(new TraceExporter())]
@@ -730,11 +862,18 @@ model AuditLog {
  * @param {string} path - service directory
  * @param {string} header - resolved license header for generated files
  * @param {string[]} packages - selected catalog package ids
+ * @param {boolean} isV2 - whether the target template ships the v2 contract
+ *  (src/config.ts + src/env-defaults.ts); v1 templates get a self-contained
+ *  telemetry file that does not import them
+ * @param {string} serviceName - service name baked into v1 telemetry as the
+ *  OpenTelemetry resource attribute (v2 reads it from config.serviceName)
  */
 export function generateAddons(
     path: string,
     header: string,
     packages: string[],
+    isV2: boolean,
+    serviceName: string,
 ): void {
     const has = (id: string): boolean => packages.includes(id);
     const hasPgPrisma = has('pg-prisma');
@@ -744,7 +883,9 @@ export function generateAddons(
         console.log('Generating OpenTelemetry setup...');
         touch(
             resolve(path, 'src', 'telemetry.ts'),
-            has('gcp') ? telemetryWithGcp(header) : telemetryBase(header),
+            has('gcp')
+                ? telemetryWithGcp(header, isV2, serviceName)
+                : telemetryBase(header, isV2, serviceName),
         );
     }
 
@@ -888,11 +1029,7 @@ export const prisma = client
 
     // native decorators are required whenever pg-prisma or validation is used
     if (hasPgPrisma || hasValidation) {
-        fs.writeFileSync(
-            resolve(path, 'tsconfig.json'),
-            NATIVE_DECORATOR_TSCONFIG,
-            { encoding: 'utf8' },
-        );
+        applyNativeDecoratorTsconfig(path, isV2);
     }
 }
 

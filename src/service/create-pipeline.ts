@@ -338,7 +338,13 @@ export async function runCreate(
     // catalog snippets: OpenTelemetry setup and the full pg-prisma persistence
     // layer (schema, config, request-context, extended client), plus the
     // native-decorator tsconfig / package.json wiring they require
-    generateAddons(plan.path, plan.license.header, plan.config.packages);
+    generateAddons(
+        plan.path,
+        plan.license.header,
+        plan.config.packages,
+        isV2,
+        plan.name,
+    );
 
     // v1 templates lack %ADDON token points, so code snippets can't inject
     if (addons.hasSnippets && !isV2) {
