@@ -15,8 +15,8 @@
 
 ## Results summary (fill at the end)
 
-- Core offline sections (1–4, 6–8, 11–12): ______ / ______ passed
-- Optional (5, 9, 10): ______ / ______ passed
+- Core offline sections (1–4, 6–8, 11–13): ______ / ______ passed
+- Optional / net (5, 9, 10, T13.7): ______ / ______ passed
 - Blocking problems found: ______________________________________________
 
 ---
@@ -490,15 +490,156 @@ JSON
 
 ---
 
-## 13. Teardown
+## 13. Legacy (v1) template backward-compat — all [offline] except T13.7
+
+> Verifies that **old (v1) templates** — those with **no `imq-template.json`** — still
+> scaffold *and build* under the current CLI when addons that generate code are
+> selected. Two addon generators used to assume the v2 layout and broke v1
+> templates: the **OpenTelemetry** preload imported `./env-defaults.js` +
+> `./config.js` (files only v2 templates ship), and **pg-prisma/validation**
+> overwrote the whole `tsconfig.json` (silently dropping template settings and
+> flipping decorator mode).
+>
+> **Setup for this section** (run from your `@imqueue/cli` checkout):
+> ```bash
+> export IMQ_REPO="$(pwd)"                                   # the cli checkout (run from here)
+> npm run build >/dev/null                                  # compile the CLI + addon generators
+> npm link >/dev/null 2>&1                                   # point `imq` at THIS build (needed by T13.5–T13.7)
+> export V1TPL="${V1TPL:-$HOME/.imq/templates/sequelize}"   # any v1 template (no imq-template.json)
+> command -v imq >/dev/null && echo "imq: $(readlink -f "$(command -v imq)")"
+> test -f "$V1TPL/imq-template.json" && echo "NOT a v1 template (has manifest)" || echo "v1 template OK: $V1TPL"
+> ```
+> T13.1–T13.4 import the freshly-built generators directly, so they verify the fix
+> **regardless of which `imq` is on PATH** (deterministic, no network). T13.5–T13.7
+> instead exercise the real `imq service create`, so they need `imq` linked to this
+> checkout (the `npm link` above) — otherwise you are testing the published CLI, not
+> your changes. T13.5–T13.6 run offline (`--no-install`, no VCS); T13.7 is the
+> original end-to-end repro and needs the network to install OpenTelemetry deps.
+
+- [ ] **T13.1 [offline]** OpenTelemetry preload is **self-contained** on a v1 template (no coupling to `env-defaults`/`config`):
+  ```bash
+  cat > "$SBX/t131.mjs" <<'MJS'
+  import * as fs from "fs";
+  const { generateAddons } = await import(
+      `file://${process.env.IMQ_REPO}/src/service/create-scaffold.js`);
+  const d = fs.mkdtempSync("/tmp/imq-t131-");
+  generateAddons(d, "// HDR", ["opentelemetry", "gcp"], false, "demo");
+  const t = fs.readFileSync(d + "/src/telemetry.ts", "utf8");
+  const bad = t.includes("env-defaults.js") || t.includes("./config.js");
+  console.log(!bad && t.includes("process.env.IMQ_SERVICE_NAME")
+      ? "PASS: v1 telemetry self-contained" : "FAIL:\n" + t);
+MJS
+  node "$SBX/t131.mjs"
+  ```
+  Expect: `PASS`. The generated `telemetry.ts` has **no** `./env-defaults.js` or `./config.js` import and derives the name from `process.env.IMQ_SERVICE_NAME || 'demo'`.
+  ↳ Notes:
+- [ ] **T13.2 [offline]** v2 telemetry output is **unchanged** (still uses the shared config):
+  ```bash
+  cat > "$SBX/t132.mjs" <<'MJS'
+  import * as fs from "fs";
+  const { generateAddons } = await import(
+      `file://${process.env.IMQ_REPO}/src/service/create-scaffold.js`);
+  const d = fs.mkdtempSync("/tmp/imq-t132-");
+  generateAddons(d, "// HDR", ["opentelemetry", "gcp"], true, "demo");
+  const t = fs.readFileSync(d + "/src/telemetry.ts", "utf8");
+  const ok = t.includes("import './env-defaults.js';")
+      && t.includes("import { config } from './config.js';")
+      && t.includes("config.serviceName");
+  console.log(ok ? "PASS: v2 telemetry unchanged" : "FAIL:\n" + t);
+MJS
+  node "$SBX/t132.mjs"
+  ```
+  Expect: `PASS` — the v2 (manifest) path still emits the coupled imports.
+  ↳ Notes:
+- [ ] **T13.3 [offline]** pg-prisma/validation **merges** the v1 `tsconfig.json` instead of clobbering it, and **warns** about the decorator switch:
+  ```bash
+  cat > "$SBX/t133.mjs" <<'MJS'
+  import * as fs from "fs";
+  const { generateAddons } = await import(
+      `file://${process.env.IMQ_REPO}/src/service/create-scaffold.js`);
+  const d = fs.mkdtempSync("/tmp/imq-t133-");
+  fs.writeFileSync(d + "/package.json", JSON.stringify(
+      { name: "demo", type: "module", scripts: { build: "tsc" } }, null, 2));
+  fs.writeFileSync(d + "/tsconfig.json", JSON.stringify({ compilerOptions: {
+      target: "es2024", experimentalDecorators: true, useDefineForClassFields: false,
+      strict: true, noImplicitOverride: true }, exclude: ["**/debug*"] }, null, 2) + "\n");
+  generateAddons(d, "// HDR", ["pg-prisma"], false, "demo");   // prints a yellow warning
+  const c = JSON.parse(fs.readFileSync(d + "/tsconfig.json", "utf8"));
+  const o = c.compilerOptions;
+  const ok = JSON.stringify(c.exclude) === '["**/debug*"]' && o.noImplicitOverride === true
+      && !("experimentalDecorators" in o) && !("useDefineForClassFields" in o)
+      && (o.lib || []).includes("esnext.decorators") && o.strictPropertyInitialization === false;
+  console.log(ok ? "PASS: v1 tsconfig merged (kept exclude/noImplicitOverride, native decorators)"
+      : "FAIL:\n" + JSON.stringify(c, null, 2));
+MJS
+  node "$SBX/t133.mjs"
+  ```
+  Expect: a **yellow warning** ("...require native (TC39) decorators - tsconfig.json was switched over...") **and** `PASS`. Template keys (`exclude`, `noImplicitOverride`) survive; classic-decorator switches are removed; `esnext.decorators` + relaxations are added.
+  ↳ Notes:
+- [ ] **T13.4 [offline]** On a v2 template pg-prisma still writes the **canonical** native-decorator tsconfig verbatim (no merge, no `exclude` leaking in):
+  ```bash
+  cat > "$SBX/t134.mjs" <<'MJS'
+  import * as fs from "fs";
+  const { generateAddons } = await import(
+      `file://${process.env.IMQ_REPO}/src/service/create-scaffold.js`);
+  const d = fs.mkdtempSync("/tmp/imq-t134-");
+  fs.writeFileSync(d + "/package.json", JSON.stringify(
+      { name: "demo", type: "module", scripts: { build: "tsc" } }, null, 2));
+  fs.writeFileSync(d + "/tsconfig.json", JSON.stringify(
+      { compilerOptions: { experimentalDecorators: true }, exclude: ["**/debug*"] }));
+  generateAddons(d, "// HDR", ["pg-prisma"], true, "demo");   // isV2 = true
+  const c = JSON.parse(fs.readFileSync(d + "/tsconfig.json", "utf8"));
+  const ok = !("exclude" in c) && !("experimentalDecorators" in c.compilerOptions)
+      && (c.compilerOptions.lib || []).includes("esnext.decorators");
+  console.log(ok ? "PASS: v2 tsconfig canonical (no template residue)"
+      : "FAIL:\n" + JSON.stringify(c, null, 2));
+MJS
+  node "$SBX/t134.mjs"
+  ```
+  Expect: `PASS`, **no** warning (nothing was merged).
+  ↳ Notes:
+- [ ] **T13.5 [offline]** Real `imq service create` from a v1 template (OpenTelemetry), offline, produces a self-contained `telemetry.ts`:
+  ```bash
+  rm -rf "$SBX/v1otel"
+  imq service create v1otel "$SBX/v1otel" -a J -e j@d.io -t "$V1TPL" \
+    --packages opentelemetry,gcp --no-install < /dev/null; echo "exit=$?"
+  grep -nE "env-defaults\.js|\./config\.js" "$SBX/v1otel/src/telemetry.ts" \
+    && echo "FAIL: coupled import present" || echo "PASS: no coupled imports"
+  grep -n "IMQ_SERVICE_NAME" "$SBX/v1otel/src/telemetry.ts"
+  ```
+  Expect: exit 0; `PASS: no coupled imports`; the `IMQ_SERVICE_NAME` line is present with `v1otel` baked in.
+  ↳ Notes:
+- [ ] **T13.6 [offline]** Real `imq service create` from a v1 template (pg-prisma), offline, warns and merges the tsconfig (template settings preserved):
+  ```bash
+  rm -rf "$SBX/v1prisma"
+  imq service create v1prisma "$SBX/v1prisma" -a J -e j@d.io -t "$V1TPL" \
+    --packages pg-prisma --no-install < /dev/null 2>&1 | tee "$SBX/v1prisma.log" | grep -i "native (TC39) decorators" \
+    && echo "PASS: decorator warning shown" || echo "check log: $SBX/v1prisma.log"
+  node -e 'const c=require("'"$SBX"'/v1prisma/tsconfig.json");console.log("experimentalDecorators present?",("experimentalDecorators" in (c.compilerOptions||{})),"| exclude kept?",JSON.stringify(c.exclude))'
+  ```
+  Expect: the decorator warning is printed during creation; the resulting `tsconfig.json` has **no** `experimentalDecorators` but **keeps** the template's own top-level keys (e.g. `exclude`).
+  ↳ Notes:
+- [ ] **T13.7 [net]** End-to-end repro of the original bug — create from a v1 template with OpenTelemetry and let it **install + build**:
+  ```bash
+  rm -rf "$SBX/v1build"
+  imq service create v1build "$SBX/v1build" -a J -e j@d.io -t "$V1TPL" \
+    --packages opentelemetry,gcp < /dev/null; echo "exit=$?"
+  test -f "$SBX/v1build/src/telemetry.js" && echo "PASS: telemetry compiled" || echo "FAIL: build did not emit telemetry.js"
+  ```
+  Expect: `npm install` (which runs the template's `prepublish`/`build`) exits **0** — no `TS2882`/`TS2307` on `./env-defaults.js` or `./config.js` — and `telemetry.js` is emitted. (This is the exact scenario from the bug report.)
+  ↳ Notes:
+
+---
+
+## 14. Teardown
 
 ```bash
 imq ctl stop -p "$FLEET" 2>/dev/null || true
 rm -rf "$IMQ_CLI_HOME" "$SBX"
-unset IMQ_CLI_HOME IMQ_NO_UPDATE_CHECK SBX FLEET
+unset IMQ_CLI_HOME IMQ_NO_UPDATE_CHECK SBX FLEET V1TPL IMQ_REPO
 ```
 
-- [ ] **T13.1** Sandbox dirs removed; real `~/.imq` never touched (`ls ~/.imq` unchanged from before testing).
+- [ ] **T14.1** Sandbox dirs removed; real `~/.imq` never touched (`ls ~/.imq` unchanged from before testing).
   ↳ Notes:
 
 ---

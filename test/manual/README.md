@@ -40,7 +40,9 @@ Sandbox setup (isolated `~/.imq`) plus every command group: global/branding,
 `service packages`, `service create --dry-run` (axes, precedence, guards, the
 HTTPS/SSH `--git-protocol`), real repo creation (token-authenticated HTTPS push
 and the rollback prompt), `ctl`/`log`/`up` fleet lifecycle, `client generate`,
-`service update-version`, `completions`, and config security / v3 back-compat.
+`service update-version`, `completions`, config security / v3 back-compat, and
+legacy (v1) template back-compat (self-contained OpenTelemetry preload + merged,
+non-clobbering `tsconfig.json` for pg-prisma/validation).
 Sections are tagged **offline** / **net** / **redis** / **tty** so you can run
 the fast offline pass first and skip what needs external services.
 
