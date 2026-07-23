@@ -594,6 +594,81 @@ const NATIVE_DECORATOR_TSCONFIG = `{
 }
 `;
 
+/** OpenTelemetry setup without a trace exporter (add one, e.g. the gcp pkg). */
+function telemetryBase(header: string): string {
+    return `${header}
+import '../env-defaults.js';
+import {
+    ImqueueInstrumentation,
+    type RpcModule,
+} from '@imqueue/opentelemetry-instrumentation-imqueue';
+import { resourceFromAttributes } from '@opentelemetry/resources';
+import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
+import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
+import { config } from '../config.js';
+
+try {
+    const provider = new NodeTracerProvider({
+        resource: resourceFromAttributes({
+            [ATTR_SERVICE_NAME]: config.serviceName,
+        }),
+        // Wire your span exporter(s) here (e.g. add the "gcp" package to export
+        // to Google Cloud Trace).
+        spanProcessors: [],
+    });
+
+    provider.register();
+} catch {}
+
+try {
+    const rpc = (await import('@imqueue/rpc')) as unknown as RpcModule;
+
+    new ImqueueInstrumentation().patch(rpc);
+} catch {}
+`;
+}
+
+/** OpenTelemetry setup with the Google Cloud Trace exporter (gcp package). */
+function telemetryWithGcp(header: string): string {
+    return `${header}
+import '../env-defaults.js';
+import { TraceExporter } from '@google-cloud/opentelemetry-cloud-trace-exporter';
+import {
+    ImqueueInstrumentation,
+    type RpcModule,
+} from '@imqueue/opentelemetry-instrumentation-imqueue';
+import { resourceFromAttributes } from '@opentelemetry/resources';
+import {
+    BatchSpanProcessor,
+    NodeTracerProvider,
+} from '@opentelemetry/sdk-trace-node';
+import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
+import { config } from '../config.js';
+
+// GCP Cloud Trace export is enabled when GOOGLE_APPLICATION_CREDENTIALS is set.
+const gcpEnabled = Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+
+try {
+    const provider = new NodeTracerProvider({
+        resource: resourceFromAttributes({
+            [ATTR_SERVICE_NAME]: config.serviceName,
+        }),
+        spanProcessors: gcpEnabled
+            ? [new BatchSpanProcessor(new TraceExporter())]
+            : [],
+    });
+
+    provider.register();
+} catch {}
+
+try {
+    const rpc = (await import('@imqueue/rpc')) as unknown as RpcModule;
+
+    new ImqueueInstrumentation().patch(rpc);
+} catch {}
+`;
+}
+
 /** The basic Prisma schema generated for a pg-prisma service. */
 function prismaSchema(): string {
     return `generator client {
@@ -669,42 +744,7 @@ export function generateAddons(
         console.log('Generating OpenTelemetry setup...');
         touch(
             resolve(path, 'src', 'telemetry.ts'),
-            `${header}
-import '../env-defaults.js';
-import { TraceExporter } from '@google-cloud/opentelemetry-cloud-trace-exporter';
-import {
-    ImqueueInstrumentation,
-    type RpcModule,
-} from '@imqueue/opentelemetry-instrumentation-imqueue';
-import { resourceFromAttributes } from '@opentelemetry/resources';
-import {
-    BatchSpanProcessor,
-    NodeTracerProvider,
-} from '@opentelemetry/sdk-trace-node';
-import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
-import { config } from '../config.js';
-
-try {
-    const provider = new NodeTracerProvider({
-        resource: resourceFromAttributes({
-            [ATTR_SERVICE_NAME]: config.serviceName,
-        }),
-        // GCP Cloud Trace export is enabled when GOOGLE_APPLICATION_CREDENTIALS
-        // is present (see config.gcp.enabled); otherwise no exporter is wired.
-        spanProcessors: config.gcp.enabled
-            ? [new BatchSpanProcessor(new TraceExporter())]
-            : [],
-    });
-
-    provider.register();
-} catch {}
-
-try {
-    const rpc = (await import('@imqueue/rpc')) as unknown as RpcModule;
-
-    new ImqueueInstrumentation().patch(rpc);
-} catch {}
-`,
+            has('gcp') ? telemetryWithGcp(header) : telemetryBase(header),
         );
     }
 
