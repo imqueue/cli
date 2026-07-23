@@ -822,16 +822,19 @@ export async function buildCreatePlan(
         token = vcs.token;
     }
 
-    // dockerization depends on a pushed repo; disable when git is off
-    const registry = useVcs
-        ? await resolveRegistry(
-              argv,
-              structured,
-              serviceUseDocker,
-              globalUseDocker,
-              interactive,
-          )
-        : EMPTY_REGISTRY;
+    // dockerization is opt-in via -D / config (resolveRegistry returns an empty
+    // registry unless requested), and no longer requires git: the Dockerfile
+    // and local docker:* scripts are useful without a remote, and the CI docker
+    // job stays dormant (it is tag-gated) until a repository exists. Actual
+    // registry-secret provisioning remains git-gated in the pipeline, since it
+    // needs a created repository to attach the secrets to.
+    const registry = await resolveRegistry(
+        argv,
+        structured,
+        serviceUseDocker,
+        globalUseDocker,
+        interactive,
+    );
 
     const dockerize = registry.want;
     // don't prompt for a CI provider when git integration is off - a CI has no
