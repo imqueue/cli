@@ -78,6 +78,14 @@
         "validation: annotate argument classes with @validatable/@validate and methods with @validated."
       ]
     },
+    "core": {
+      "group": "features",
+      "title": "@imqueue/core (direct dependency)",
+      "deps": { "@imqueue/core": "*" },
+      "instructions": [
+        "core: @imqueue/core is otherwise pulled in transitively by @imqueue/rpc; add it directly only if you import from it."
+      ]
+    },
     "pg-cache": {
       "group": "features",
       "title": "PostgreSQL query cache",

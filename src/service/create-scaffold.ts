@@ -567,8 +567,8 @@ describe('${cls}', () => {
  */
 const NATIVE_DECORATOR_TSCONFIG = `{
   "compilerOptions": {
-    "target": "es2023",
-    "lib": ["es2023", "esnext.decorators"],
+    "target": "es2024",
+    "lib": ["es2024", "esnext.decorators"],
     "moduleDetection": "force",
 
     "module": "nodenext",
