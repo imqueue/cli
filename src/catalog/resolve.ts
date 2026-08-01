@@ -138,15 +138,25 @@ export async function promptPackages(
         }
 
         if (group.exclusive) {
+            // The group's own guidance goes above the list, and each choice
+            // carries its short hint. Without them the prompt showed bare
+            // titles, so everything `imq service packages` explains about
+            // choosing was missing at the one moment the choice is made.
             const answer = await inquirer.prompt<{ sel: string }>([
                 {
                     type: 'list',
                     name: 'sel',
-                    message: `Select ${group.title}:`,
+                    message:
+                        `Select ${group.title}:` +
+                        (group.pick ? `\n  ${group.pick}` : ''),
                     choices: [
                         { name: '(none)', value: '' },
                         ...ids.map(id => ({
-                            name: catalog.packages[id].title || id,
+                            name:
+                                (catalog.packages[id].title || id) +
+                                (catalog.packages[id].hint
+                                    ? ` — ${catalog.packages[id].hint}`
+                                    : ''),
                             value: id,
                         })),
                     ],
