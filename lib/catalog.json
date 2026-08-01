@@ -4,12 +4,12 @@
     "tracing": {
       "title": "Tracing / APM",
       "exclusive": true,
-      "pick": "Only if the service is traced. No tracing is a normal choice, and the default."
+      "pick": "Only if the service is traced — none is normal."
     },
     "orm": {
       "title": "ORM / database",
       "exclusive": true,
-      "pick": "Only if the service talks to a database. No ORM is a normal choice, and the default."
+      "pick": "Only if the service uses a database — none is normal."
     },
     "features": { "title": "Service features", "exclusive": false }
   },
@@ -53,7 +53,8 @@
     },
     "sequelize": {
       "group": "orm",
-      "title": "Sequelize ORM",
+      "title": "Sequelize ORM + @imqueue/sequelize toolkit",
+      "hint": "existing Sequelize projects",
       "pick": "Only for a project already built on Sequelize; a new service should take pg-prisma. In an existing Sequelize project use this, and propose migrating to pg-prisma as separate work rather than mid-task.",
       "deps": { "@imqueue/sequelize": "*", "sequelize": "*" },
       "instructions": [
@@ -63,6 +64,7 @@
     "pg-prisma": {
       "group": "orm",
       "title": "Prisma ORM + @imqueue/pg-prisma toolkit",
+      "hint": "new services",
       "pick": "The choice for a NEW service that needs a database. The other is sequelize, for projects already built on it.",
       "deps": {
         "@imqueue/pg-prisma": "*",

@@ -71,6 +71,16 @@ export interface CatalogEntry {
      * anything to do after installing belongs in `instructions`.
      */
     pick?: string;
+    /**
+     * A few words of the same guidance, for the selection prompt.
+     *
+     * `pick` is a sentence or two and belongs in `imq service packages`, where
+     * there is room to read. A prompt renders one line per choice and wraps
+     * badly past the terminal width, which garbles an arrow-key list — so the
+     * prompt gets this instead. Keep it under about 30 characters and phrase it
+     * as the case it suits, e.g. "new services".
+     */
+    hint?: string;
     /** runtime dependencies to merge into the service package.json */
     deps?: Record<string, string>;
     /** dev dependencies to merge into the service package.json */
