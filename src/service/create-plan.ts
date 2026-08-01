@@ -47,6 +47,7 @@ import {
     analyseFleet,
     fleetNote,
     fleetProposal,
+    recommendedFor,
     recordFleetChoices,
 } from '../catalog/fleet.js';
 import {
@@ -256,6 +257,10 @@ async function resolveVcsProvider(
         // a service joining services hosted on GitLab is going on GitLab.
         const proposed = fleetProposal(fleet, 'vcs');
         const note = fleetNote(fleet, 'vcs');
+        // What the fleet runs on, or the project's own preference when the fleet
+        // is silent — never a fixed label, since a fleet on GitLab recommends
+        // GitLab.
+        const advised = recommendedFor(fleet, 'vcs');
 
         if (interactive) {
             const answer = await inquirer.prompt<{ vcs: string }>([
@@ -263,9 +268,12 @@ async function resolveVcsProvider(
                     type: 'list',
                     name: 'vcs',
                     message: 'Select VCS host:' + (note ? `\n  ${note}` : ''),
-                    choices: vcsHosts
-                        .list()
-                        .map(p => ({ name: p.title, value: p.id })),
+                    choices: vcsHosts.list().map(p => ({
+                        name:
+                            p.title +
+                            (advised === p.id ? ' (recommended)' : ''),
+                        value: p.id,
+                    })),
                     default: proposed || DEFAULT_VCS,
                 },
             ] as QuestionCollection);
@@ -432,6 +440,7 @@ async function resolveCi(
                 ? proposed
                 : null;
         const note = fromFleet ? fleetNote(fleet, 'ci') : '';
+        const advisedCi = recommendedFor(fleet, 'ci');
 
         if (interactive && choices.length) {
             const answer = await inquirer.prompt<{ ci: string }>([
@@ -440,7 +449,12 @@ async function resolveCi(
                     name: 'ci',
                     message:
                         'Select CI provider:' + (note ? `\n  ${note}` : ''),
-                    choices,
+                    choices: choices.map(c => ({
+                        ...c,
+                        name:
+                            c.name +
+                            (advisedCi === c.value ? ' (recommended)' : ''),
+                    })),
                     default:
                         fromFleet ||
                         choices.find(c => c.value === DEFAULT_CI)?.value ||

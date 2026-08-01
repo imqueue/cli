@@ -27,6 +27,7 @@ import {
     analyseFleet,
     fleetDefaults,
     fleetNotes,
+    recommendedFor,
     recordFleetChoices,
 } from './fleet.js';
 
@@ -130,12 +131,15 @@ export function parsePackagesFlag(flag: any): string[] | null {
  * @param {Record<string, string>} [notes] - extra line per group id, shown above
  *                                           its list; used to say why something
  *                                           is preselected
+ * @param {Record<string, string>} [recommended] - member id per group id to mark
+ *                                                 as recommended
  * @return {Promise<string[]>}
  */
 export async function promptPackages(
     catalog: Catalog,
     defaults: string[],
     notes: Record<string, string> = {},
+    recommended: Record<string, string> = {},
 ): Promise<string[]> {
     const chosen: string[] = [];
 
@@ -162,12 +166,22 @@ export async function promptPackages(
                         (notes[groupId] ? `\n  ${notes[groupId]}` : ''),
                     choices: [
                         { name: '(none)', value: '' },
+                        // "(recommended)" is appended here rather than stored
+                        // in the catalog because WHICH member is recommended
+                        // depends on the fleet: in a Sequelize fleet, sequelize
+                        // is the recommendation. Only the fallback is fixed.
+                        // One suffix, never both: a title plus a hint plus the
+                        // marker runs past 80 columns, and a wrapped row breaks
+                        // an arrow-key list. Being recommended IS the case this
+                        // option suits, so it supersedes the hint.
                         ...ids.map(id => ({
                             name:
                                 (catalog.packages[id].title || id) +
-                                (catalog.packages[id].hint
-                                    ? ` — ${catalog.packages[id].hint}`
-                                    : ''),
+                                (recommended[groupId] === id
+                                    ? ' (recommended)'
+                                    : catalog.packages[id].hint
+                                      ? ` — ${catalog.packages[id].hint}`
+                                      : ''),
                             value: id,
                         })),
                     ],
@@ -251,10 +265,21 @@ export async function resolvePackages(
 
     if (selection === null) {
         if (interactive) {
+            const advice: Record<string, string> = {};
+
+            for (const group of Object.keys(catalog.groups)) {
+                const pick = recommendedFor(analysis, group);
+
+                if (pick) {
+                    advice[group] = pick;
+                }
+            }
+
             selection = await promptPackages(
                 catalog,
                 analysis ? fleetDefaults(analysis) : [],
                 analysis ? fleetNotes(analysis) : {},
+                advice,
             );
             deliberate = true;
         } else {
