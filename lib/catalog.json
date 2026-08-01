@@ -52,20 +52,10 @@
         "Sequelize: configure your database connection in config.ts."
       ]
     },
-    "prisma": {
-      "group": "orm",
-      "title": "Prisma ORM",
-      "pick": "Plain Prisma with none of the @imqueue toolkit \u2014 take pg-prisma unless you specifically want to do without it.",
-      "deps": { "@prisma/client": "*" },
-      "devDeps": { "prisma": "*" },
-      "instructions": [
-        "Prisma: run `npx prisma init` and define your schema."
-      ]
-    },
     "pg-prisma": {
       "group": "orm",
       "title": "Prisma ORM + @imqueue/pg-prisma toolkit",
-      "pick": "Default for a new service that needs a database.",
+      "pick": "Use this for a new service. It is one of two ORM choices; the other is sequelize, for projects already built on it.",
       "deps": {
         "@imqueue/pg-prisma": "*",
         "@imqueue/validation": "*",

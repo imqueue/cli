@@ -117,10 +117,14 @@ describe('package catalog', () => {
         });
 
         it('should merge prisma dev dependencies', () => {
-            const addons = resolveAddons(['prisma'], catalog);
+            // pg-prisma is the only Prisma entry: a bare `prisma` addon that
+            // installed the client with none of the @imqueue toolkit was a
+            // third member of an exclusive group that should offer two.
+            const addons = resolveAddons(['pg-prisma'], catalog);
 
             assert.equal(addons.devDeps['prisma'], '*');
             assert.equal(addons.deps['@prisma/client'], '*');
+            assert.equal(addons.deps['@imqueue/pg-prisma'], '*');
         });
 
         it('should skip an unknown package id instead of throwing', () => {
