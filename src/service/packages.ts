@@ -76,12 +76,18 @@ export const { command, describe, builder, handler } = {
                 const group = catalog.groups[groupId];
                 const title = group?.title || groupId;
                 const kind = group?.exclusive
-                    ? ' (pick at most one)'
+                    ? ' (pick at most one, or none)'
                     : ' (any number)';
 
                 process.stdout.write(
                     '\n' + styleText(['bold', 'green'], title + kind) + '\n',
                 );
+
+                if (group?.pick) {
+                    process.stdout.write(
+                        '  ' + styleText('dim', group.pick) + '\n',
+                    );
+                }
 
                 for (const entry of entries) {
                     process.stdout.write('  ' + entry + '\n');

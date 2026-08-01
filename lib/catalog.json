@@ -1,8 +1,16 @@
 {
   "version": 1,
   "groups": {
-    "tracing": { "title": "Tracing / APM", "exclusive": true },
-    "orm": { "title": "ORM / database", "exclusive": true },
+    "tracing": {
+      "title": "Tracing / APM",
+      "exclusive": true,
+      "pick": "Only if the service is traced. No tracing is a normal choice, and the default."
+    },
+    "orm": {
+      "title": "ORM / database",
+      "exclusive": true,
+      "pick": "Only if the service talks to a database. No ORM is a normal choice, and the default."
+    },
     "features": { "title": "Service features", "exclusive": false }
   },
   "packages": {
@@ -55,7 +63,7 @@
     "pg-prisma": {
       "group": "orm",
       "title": "Prisma ORM + @imqueue/pg-prisma toolkit",
-      "pick": "Use this for a new service. It is one of two ORM choices; the other is sequelize, for projects already built on it.",
+      "pick": "The choice for a NEW service that needs a database. The other is sequelize, for projects already built on it.",
       "deps": {
         "@imqueue/pg-prisma": "*",
         "@imqueue/validation": "*",
