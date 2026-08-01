@@ -22,6 +22,7 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import * as os from 'os';
+import { dirname } from 'path';
 import * as semver from 'semver';
 import inquirer, { type QuestionCollection } from 'inquirer';
 import {
@@ -862,12 +863,17 @@ export async function buildCreatePlan(
         );
     }
     const nodeTags = await resolveNodeTags(argv, interactive);
+    // The fleet is the new service's SIBLINGS: --path names the service's own
+    // directory, so its parent is the directory the other services live in.
+    // That is the same assumption `imq up` makes about a fleet, and it is what
+    // lets the ORM prompt propose the stack this fleet already runs on.
     const packages = await resolvePackages(
         argv.packages,
         Array.isArray(service.packages) ? service.packages : undefined,
         Array.isArray(global.packages) ? global.packages : undefined,
         loadCatalog(),
         interactive,
+        dirname(resolve(argv.path)),
     );
     const license = resolveLicense(
         await resolveLicenseId(argv, global, service, interactive),
