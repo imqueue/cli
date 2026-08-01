@@ -718,6 +718,31 @@ function telemetryServiceName(
           };
 }
 
+/**
+ * Datadog APM setup.
+ *
+ * @remarks
+ * A separate module rather than an inline statement in the preload slot, and that
+ * is load-bearing. `%ADDON_PRELOAD` sits at the top of the generated
+ * `src/index.ts`, and ESM evaluates every import of a module before any of its
+ * body statements — so an inline `tracer.init()` there would run *after*
+ * `./config.js` and the service class module had already been evaluated, which is
+ * exactly what it needs to precede. The catalog's preload therefore imports this
+ * file, and the `init()` call happens during that import.
+ */
+function tracerModule(header: string): string {
+    return `${header}
+import tracer from '@imqueue/datadog';
+
+// Importing the package installs the tracing hooks; init() is what enables the
+// imq integration and starts reporting. Every client and service constructed
+// after this point is traced, with no change to application code.
+tracer.init();
+
+export default tracer;
+`;
+}
+
 /** OpenTelemetry setup without a trace exporter (add one, e.g. the gcp pkg). */
 function telemetryBase(
     header: string,
@@ -730,7 +755,7 @@ function telemetryBase(
 ${telemetryEnvDefaultsImport(isV2)}import {
     ImqueueInstrumentation,
     type RpcModule,
-} from '@imqueue/opentelemetry-instrumentation-imqueue';
+} from '@imqueue/opentelemetry';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
@@ -769,7 +794,7 @@ ${telemetryEnvDefaultsImport(isV2)}import { TraceExporter } from '@google-cloud/
 import {
     ImqueueInstrumentation,
     type RpcModule,
-} from '@imqueue/opentelemetry-instrumentation-imqueue';
+} from '@imqueue/opentelemetry';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
     BatchSpanProcessor,
@@ -887,6 +912,11 @@ export function generateAddons(
                 ? telemetryWithGcp(header, isV2, serviceName)
                 : telemetryBase(header, isV2, serviceName),
         );
+    }
+
+    if (has('dd-trace')) {
+        console.log('Generating Datadog setup...');
+        touch(resolve(path, 'src', 'tracer.ts'), tracerModule(header));
     }
 
     if (hasPgPrisma) {

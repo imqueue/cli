@@ -158,7 +158,7 @@ new addons can be published without a CLI release. Groups marked *exclusive*
 allow a single choice:
 
 - **tracing** (exclusive): `dd-trace`, `opentelemetry`
-- **orm** (exclusive): `sequelize`, `prisma`
+- **orm** (exclusive): `sequelize`, `pg-prisma`
 - **features**: `pg-cache`, `pg-pubsub`, `tag-cache`, `job`, `net`,
   `http-protect`, `graphql-dependency`, `type-graphql-dependency`
 
