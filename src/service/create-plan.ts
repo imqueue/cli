@@ -43,6 +43,13 @@ import { type ResolvedLicense, resolveLicense } from './create-scaffold.js';
 import { loadCatalog } from '../catalog/load.js';
 import { resolvePackages } from '../catalog/resolve.js';
 import {
+    type FleetAnalysis,
+    analyseFleet,
+    fleetNote,
+    fleetProposal,
+    recordFleetChoices,
+} from '../catalog/fleet.js';
+import {
     ciProviders,
     containerRegistries,
     registerBuiltinProviders,
@@ -238,28 +245,37 @@ async function resolveVcsProvider(
     argv: any,
     structured: StructuredConfig,
     interactive: boolean,
+    fleet: FleetAnalysis | null = null,
 ): Promise<string> {
     registerBuiltinProviders();
 
     let id = (argv.vcs || '').trim() || structured.vcs.provider || '';
 
     if (!id) {
+        // The fleet's own git remotes answer this better than a constant does:
+        // a service joining services hosted on GitLab is going on GitLab.
+        const proposed = fleetProposal(fleet, 'vcs');
+        const note = fleetNote(fleet, 'vcs');
+
         if (interactive) {
             const answer = await inquirer.prompt<{ vcs: string }>([
                 {
                     type: 'list',
                     name: 'vcs',
-                    message: 'Select VCS host:',
+                    message: 'Select VCS host:' + (note ? `\n  ${note}` : ''),
                     choices: vcsHosts
                         .list()
                         .map(p => ({ name: p.title, value: p.id })),
-                    default: DEFAULT_VCS,
+                    default: proposed || DEFAULT_VCS,
                 },
             ] as QuestionCollection);
 
             id = answer.vcs;
         } else {
-            id = DEFAULT_VCS;
+            // Unlike a package, a VCS host is not an added capability: one is
+            // picked either way, so following the fleet beats following a
+            // constant even without a prompt.
+            id = proposed || DEFAULT_VCS;
         }
     }
 
@@ -384,6 +400,7 @@ async function resolveCi(
     structured: StructuredConfig,
     vcsProvider: string,
     interactive: boolean,
+    fleet: FleetAnalysis | null = null,
 ): Promise<string> {
     registerBuiltinProviders();
 
@@ -405,15 +422,27 @@ async function resolveCi(
             .list()
             .filter(p => compatible(p.id))
             .map(p => ({ name: p.title, value: p.id }));
+        // Proposed from the CI config files the fleet's services carry — but
+        // only if it survives the VCS compatibility filter, which is the harder
+        // constraint: Travis with a cloud registry is rejected outright further
+        // down, so proposing an incompatible provider would just move the error.
+        const proposed = fleetProposal(fleet, 'ci');
+        const fromFleet =
+            proposed && choices.some(c => c.value === proposed)
+                ? proposed
+                : null;
+        const note = fromFleet ? fleetNote(fleet, 'ci') : '';
 
         if (interactive && choices.length) {
             const answer = await inquirer.prompt<{ ci: string }>([
                 {
                     type: 'list',
                     name: 'ci',
-                    message: 'Select CI provider:',
+                    message:
+                        'Select CI provider:' + (note ? `\n  ${note}` : ''),
                     choices,
                     default:
+                        fromFleet ||
                         choices.find(c => c.value === DEFAULT_CI)?.value ||
                         choices[0]?.value,
                 },
@@ -421,10 +450,12 @@ async function resolveCi(
 
             ci = answer.ci;
         } else {
-            ci = compatible(DEFAULT_CI)
-                ? DEFAULT_CI
-                : ciProviders.list().find(p => compatible(p.id))?.id ||
-                  DEFAULT_CI;
+            ci =
+                fromFleet ||
+                (compatible(DEFAULT_CI)
+                    ? DEFAULT_CI
+                    : ciProviders.list().find(p => compatible(p.id))?.id ||
+                      DEFAULT_CI);
         }
     }
 
@@ -777,6 +808,24 @@ export async function buildCreatePlan(
         interactive,
     );
 
+    // The fleet is the new service's SIBLINGS: --path names the service's own
+    // directory, so its parent is where the others live. That is the assumption
+    // `imq up` makes about a fleet, and one scan answers every proposal in this
+    // run — the ORM and tracing groups in the packages prompt, the VCS host and
+    // the CI provider in their own.
+    const fleetRoot = dirname(resolve(argv.path));
+    const fleet = analyseFleet(fleetRoot);
+    // Worth remembering against this path only when the user said it HERE: by
+    // flag, or by answering the prompt. A configured value is already a standing
+    // decision, and copying it into a per-fleet override would spread it
+    // silently.
+    const vcsFromFlag = !!(argv.vcs || '').trim();
+    const vcsDeliberate =
+        vcsFromFlag || (interactive && !structured.vcs.provider);
+    const ciFromFlag = !!(argv.ci || '').trim();
+    const ciDeliberate =
+        ciFromFlag || (interactive && useVcs && !structured.ci.provider);
+
     const vcsConfig = {
         provider: '',
         namespace: '',
@@ -790,6 +839,7 @@ export async function buildCreatePlan(
             argv,
             structured,
             interactive,
+            fleet,
         );
 
         // A namespace/token stored in config belong to the host they were
@@ -845,7 +895,16 @@ export async function buildCreatePlan(
         structured,
         vcsConfig.provider,
         interactive && useVcs,
+        fleet,
     );
+
+    // A choice against what the fleet shows is remembered for this path, so the
+    // next run in the same fleet proposes what the user actually wants. Only the
+    // groups they decided here are passed.
+    recordFleetChoices(fleetRoot, [
+        ...(vcsDeliberate ? [vcsConfig.provider] : []),
+        ...(ciDeliberate ? [ciProvider] : []),
+    ]);
 
     // travis only knows how to push to Docker Hub (it hardcodes the dockerhub
     // login/env); fail fast rather than generate a broken .travis.yml for a
@@ -863,17 +922,13 @@ export async function buildCreatePlan(
         );
     }
     const nodeTags = await resolveNodeTags(argv, interactive);
-    // The fleet is the new service's SIBLINGS: --path names the service's own
-    // directory, so its parent is the directory the other services live in.
-    // That is the same assumption `imq up` makes about a fleet, and it is what
-    // lets the ORM prompt propose the stack this fleet already runs on.
     const packages = await resolvePackages(
         argv.packages,
         Array.isArray(service.packages) ? service.packages : undefined,
         Array.isArray(global.packages) ? global.packages : undefined,
         loadCatalog(),
         interactive,
-        dirname(resolve(argv.path)),
+        fleetRoot,
     );
     const license = resolveLicense(
         await resolveLicenseId(argv, global, service, interactive),

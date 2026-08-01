@@ -33,26 +33,49 @@ import { join } from 'path';
 import { VAR_HOME, resolve } from '../../lib/index.js';
 
 /**
- * An exclusive catalog group whose members can be recognised in a service's
- * dependencies, so the fleet can answer the question instead of the user.
+ * How one member of a group can be recognised in an existing service.
  *
- * Add a group here and the prompt starts proposing for it; nothing else needs to
- * change. A group whose members leave no dependency trace — anything the
- * scaffolder only injects code for — cannot be probed this way and belongs
- * absent from this list rather than half-supported.
+ * Any of the three is enough. They exist because the four groups leave three
+ * different kinds of trace: an addon shows up as a dependency, a CI provider as
+ * the config file it reads, and a VCS host only in the git remote.
+ */
+interface ProbeMember {
+    /** Catalog id, provider id — whatever the prompt for this group selects. */
+    id: string;
+    /** A dependency in the service's package.json. */
+    dep?: string;
+    /** A path inside the service, file or directory. */
+    files?: string[];
+    /** A substring of a remote URL in the service's .git/config. */
+    remote?: string;
+}
+
+/**
+ * A one-of-many choice the fleet can answer instead of the user.
+ *
+ * Add a probe and the corresponding prompt starts proposing; nothing else needs
+ * to change. A choice that leaves no trace in an existing service cannot be
+ * probed this way and belongs absent rather than half-supported.
  */
 interface GroupProbe {
-    /** Catalog group id. */
+    /** Group id: a catalog group for `catalog` probes, else a name for the note. */
     group: string;
     /** Human name for the group, for the note. */
     label: string;
-    /** Catalog member id paired with the dependency that gives it away. */
-    members: { id: string; dep: string }[];
+    /**
+     * `catalog` members are catalog package ids and reach the packages prompt
+     * through {@link fleetDefaults}; `setting` members are provider ids chosen by
+     * their own prompt and must NOT be handed to the catalog, which would reject
+     * them as unknown packages.
+     */
+    kind: 'catalog' | 'setting';
+    members: ProbeMember[];
     /**
      * The member to propose when the fleet uses several, when one of them is
      * recommended. Without it a split fleet falls back to its own majority,
      * which is the honest answer where the project has no preference — the two
-     * tracing backends are a vendor choice, not a better and a worse.
+     * tracing backends are a vendor choice, not a better and a worse, and so is
+     * one git host over another.
      */
     recommended?: string;
 }
@@ -61,6 +84,7 @@ const PROBES: GroupProbe[] = [
     {
         group: 'orm',
         label: 'ORM',
+        kind: 'catalog',
         members: [
             { id: 'sequelize', dep: '@imqueue/sequelize' },
             { id: 'pg-prisma', dep: '@imqueue/pg-prisma' },
@@ -70,12 +94,37 @@ const PROBES: GroupProbe[] = [
     {
         group: 'tracing',
         label: 'tracing',
+        kind: 'catalog',
         members: [
             {
                 id: 'opentelemetry',
                 dep: '@imqueue/opentelemetry-instrumentation-imqueue',
             },
             { id: 'dd-trace', dep: '@imqueue/dd-trace' },
+        ],
+    },
+    {
+        group: 'vcs',
+        label: 'VCS host',
+        kind: 'setting',
+        members: [
+            { id: 'github', remote: 'github.com' },
+            // Host rather than domain: GitLab and Bitbucket are both commonly
+            // self-hosted, and `gitlab.example.com` is still GitLab. A host that
+            // names none of them — GitHub Enterprise on a custom domain, say —
+            // leaves no evidence, which is reported as no evidence.
+            { id: 'gitlab', remote: 'gitlab' },
+            { id: 'bitbucket', remote: 'bitbucket' },
+        ],
+    },
+    {
+        group: 'ci',
+        label: 'CI provider',
+        kind: 'setting',
+        members: [
+            { id: 'github-actions', files: ['.github/workflows'] },
+            { id: 'circleci', files: ['.circleci/config.yml'] },
+            { id: 'travis', files: ['.travis.yml', '.travis.yaml'] },
         ],
     },
 ];
@@ -231,6 +280,51 @@ function dependenciesOf(dir: string): Set<string> {
 }
 
 /**
+ * The remote URLs a service's git config names.
+ *
+ * @remarks
+ * Read straight out of `.git/config` rather than by shelling out to git: this
+ * runs once per service before a prompt, and a process per service is exactly
+ * the cost the cache exists to avoid.
+ *
+ * @param {string} dir
+ * @return {string}
+ */
+function gitRemotes(dir: string): string {
+    try {
+        return readFileSync(join(dir, '.git', 'config'), 'utf8');
+    } catch {
+        return '';
+    }
+}
+
+/**
+ * Whether one service shows evidence of a member.
+ *
+ * @param {string} dir - the service directory
+ * @param {Set<string>} deps - its declared dependencies
+ * @param {string} remotes - its .git/config contents
+ * @param {ProbeMember} member
+ * @return {boolean}
+ */
+function usesMember(
+    dir: string,
+    deps: Set<string>,
+    remotes: string,
+    member: ProbeMember,
+): boolean {
+    if (member.dep && deps.has(member.dep)) {
+        return true;
+    }
+
+    if (member.files?.some(file => existsSync(join(dir, file)))) {
+        return true;
+    }
+
+    return !!member.remote && remotes.includes(member.remote);
+}
+
+/**
  * Counts, for every probed group, how many services use each of its members.
  *
  * @param {string} root - directory holding the service directories
@@ -248,7 +342,8 @@ function scan(root: string): FleetRecord {
     }
 
     for (const dir of dirs) {
-        const deps = dependenciesOf(join(root, dir));
+        const path = join(root, dir);
+        const deps = dependenciesOf(path);
 
         if (!deps.has(RPC)) {
             continue;
@@ -256,9 +351,13 @@ function scan(root: string): FleetRecord {
 
         services++;
 
+        // Read once per service, not once per member: three of the four probes
+        // want it and re-reading would make the scan four times the IO.
+        const remotes = gitRemotes(path);
+
         for (const probe of PROBES) {
             for (const member of probe.members) {
-                if (deps.has(member.dep)) {
+                if (usesMember(path, deps, remotes, member)) {
                     groups[probe.group][member.id]++;
                 }
             }
@@ -383,15 +482,37 @@ export function analyseFleet(root: string): FleetAnalysis {
 }
 
 /**
- * The catalog ids to preselect, across every probed group.
+ * The CATALOG ids to preselect.
+ *
+ * @remarks
+ * Catalog groups only. A provider id like `github` would be rejected by
+ * `validateSelection` as an unknown package, and rightly — it is not one.
  *
  * @param {FleetAnalysis} analysis
  * @return {string[]}
  */
 export function fleetDefaults(analysis: FleetAnalysis): string[] {
-    return Object.values(analysis.groups)
-        .map(group => group.propose)
+    return PROBES.filter(probe => probe.kind === 'catalog')
+        .map(probe => analysis.groups[probe.group]?.propose)
         .filter((id): id is string => !!id);
+}
+
+/**
+ * What the fleet proposes for one group, or `null` when it says nothing.
+ *
+ * @remarks
+ * For the choices with their own prompt — the VCS host and the CI provider —
+ * where the caller supplies its own default to fall back on.
+ *
+ * @param {FleetAnalysis | null} analysis
+ * @param {string} group
+ * @return {string | null}
+ */
+export function fleetProposal(
+    analysis: FleetAnalysis | null,
+    group: string,
+): string | null {
+    return analysis?.groups[group]?.propose || null;
 }
 
 /**
@@ -461,6 +582,20 @@ export function fleetNotes(analysis: FleetAnalysis): Record<string, string> {
     }
 
     return notes;
+}
+
+/**
+ * The note for one group, ready to append to a prompt message, or `''`.
+ *
+ * @param {FleetAnalysis | null} analysis
+ * @param {string} group
+ * @return {string}
+ */
+export function fleetNote(
+    analysis: FleetAnalysis | null,
+    group: string,
+): string {
+    return analysis ? fleetNotes(analysis)[group] || '' : '';
 }
 
 /**
