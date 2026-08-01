@@ -15,6 +15,7 @@ imq client generate <name> [path]
 | (positional) `name` | service name to generate a client for (required) |
 | (positional) `path` | directory to place the client file (default: cwd) |
 | `-o, --overwrite` | overwrite an existing client without prompting |
+| `-w, --timeout` | seconds to wait for the service to respond before giving up (default `30`; `0` waits forever) |
 
 ```bash
 # from within a project, service "billing" running locally

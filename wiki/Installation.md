@@ -42,10 +42,10 @@ export IMQ_NO_UPDATE_CHECK=1
 
 ### Upgrading from 3.x
 
-The three standalone shell tools were folded into the `imq` binary. Update any
-scripts or aliases:
+In 4.0 the three standalone shell tools were folded into the `imq` binary.
+Update any scripts or aliases:
 
-| 3.x | 4.x |
+| 3.x | 4.x and later |
 |---|---|
 | `imqctl start …` | `imq ctl start …` |
 | `imqlog …` | `imq log …` |
@@ -63,9 +63,10 @@ imq completions on     # append the completion block to ~/.bashrc or ~/.zshrc
 imq completions off    # remove it
 ```
 
-Then reload your shell or `source ~/.bashrc` (or `~/.zshrc`). The shell is
-detected from your login shell, not from transient `ZSH_*` variables, so it
-behaves correctly inside subshells.
+Then reload your shell or `source ~/.bashrc` (or `~/.zshrc`). zsh is detected
+from `ZSH_VERSION` or a `$SHELL` ending in `zsh` — not from any `ZSH*` variable
+that happens to be set, so the `ZSH`/`ZSH_THEME` pair that oh-my-zsh exports
+into bash subshells no longer misidentifies the shell.
 
 ## Files the CLI creates
 

@@ -34,7 +34,18 @@ service that talks to no database it is the right one.
 |---|---|---|
 | **Tracing / APM** | yes | `opentelemetry`, `dd-trace` |
 | **ORM / database** | yes | `pg-prisma`, `sequelize` |
-| **Service features** | no | `pg-cache`, `pg-pubsub`, `tag-cache`, `job`, `net`, `http-protect`, `graphql-dependency`, `type-graphql-dependency` |
+| **Service features** | no | `pg-cache`, `pg-pubsub`, `tag-cache`, `job`, `net`, `http-protect`, `graphql-dependency`, `type-graphql-dependency`, `validation`, `core`, `gcp` |
+
+Three feature entries are worth a word, since they are not capabilities in the
+same sense as the rest:
+
+- `validation` — `@imqueue/validation` plus `zod`, for `@validatable` /
+  `@validate` argument classes and `@validated` methods.
+- `core` — adds `@imqueue/core` as a **direct** dependency. It arrives
+  transitively through `@imqueue/rpc` anyway; take this only if you import from
+  it directly.
+- `gcp` — the Google Cloud Trace exporter. It needs `opentelemetry` selected as
+  well, and exports traces once `GOOGLE_APPLICATION_CREDENTIALS` is set.
 
 These are catalog **ids** — what `--packages` takes and what a saved config
 holds — not npm package names, and two of them no longer match. `dd-trace`
@@ -55,6 +66,34 @@ For every selected package the scaffolder:
 3. May add **extra files** the addon needs.
 4. **Prints required environment variables** after creation (e.g. tracing
    endpoints, database URLs), so you know exactly what to configure.
+
+Those printed variables are the ones an addon *needs*
+(`OTEL_EXPORTER_OTLP_ENDPOINT`, `DD_AGENT_HOST`, `DATABASE_URL`, …). Beyond them,
+the generated code reads a few of its own — see below.
+
+### The name a traced service reports
+
+Both tracing addons write their bootstrap into a module of their own
+(`src/telemetry.ts` for `opentelemetry`, `src/tracer.ts` for `dd-trace`), which
+the preload token imports before anything else. Where OpenTelemetry gets the
+`service.name` on its spans from depends on the template's contract version:
+
+| [Template](Custom-Templates#template-versions-v1-vs-v2) | Variable | How it resolves |
+|---|---|---|
+| **v2** (the shipped default) | `SERVICE_NAME` | Read through `src/config.ts` as `config.serviceName`. It is zod-validated and **defaults to the service name you scaffolded with**, so it only needs setting to report something else. |
+| **v1** (a template with no `imq-template.json`) | `IMQ_SERVICE_NAME` | The CLI inlines `const serviceName = process.env.IMQ_SERVICE_NAME \|\| '<name>'` straight into the generated `src/telemetry.ts`. |
+
+Check which one applies by looking at the file: a v2 service's `telemetry.ts`
+imports `config`, a v1 service's declares `serviceName` at the top. Neither
+variable is printed after creation, because neither has to be set.
+
+`dd-trace` is not in that table on purpose — its module takes no service name at
+all. Datadog resolves its own, so use `DD_SERVICE` (or the rest of `dd-trace`'s
+configuration) there, exactly as you would outside @imqueue.
+
+Do not confuse either variable with the `%SERVICE_NAME` **template token**, which
+is substituted once, at scaffold time — see
+[Custom Templates](Custom-Templates#token-substitution).
 
 ## Choosing addons interactively
 
