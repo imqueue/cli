@@ -54,8 +54,8 @@
     "sequelize": {
       "group": "orm",
       "title": "Sequelize ORM + @imqueue/sequelize toolkit",
-      "hint": "existing Sequelize projects",
-      "pick": "Only for a project already built on Sequelize; a new service should take pg-prisma. In an existing Sequelize project use this, and propose migrating to pg-prisma as separate work rather than mid-task.",
+      "hint": "match a Sequelize fleet",
+      "pick": "For a service joining a fleet already built on Sequelize, where matching the existing stack is worth more than the default. Migrating the fleet to pg-prisma is worth proposing, as separate work.",
       "deps": { "@imqueue/sequelize": "*", "sequelize": "*" },
       "instructions": [
         "Sequelize: configure your database connection in config.ts."
@@ -64,8 +64,8 @@
     "pg-prisma": {
       "group": "orm",
       "title": "Prisma ORM + @imqueue/pg-prisma toolkit",
-      "hint": "new services (recommended)",
-      "pick": "The choice for a NEW service that needs a database. The other is sequelize, for projects already built on it.",
+      "hint": "recommended",
+      "pick": "Recommended. Take this unless the fleet the service joins is already built on Sequelize.",
       "deps": {
         "@imqueue/pg-prisma": "*",
         "@imqueue/validation": "*",
