@@ -23,6 +23,12 @@
  */
 import inquirer, { type QuestionCollection } from 'inquirer';
 import type { Catalog } from './types.js';
+import {
+    analyseFleet,
+    fleetOrmDefaults,
+    fleetOrmNote,
+    recordOrmChoice,
+} from './fleet.js';
 
 /**
  * Lists the catalog package ids that belong to a group, in catalog order.
@@ -121,11 +127,15 @@ export function parsePackagesFlag(flag: any): string[] | null {
  *
  * @param {Catalog} catalog
  * @param {string[]} defaults - ids to pre-select
+ * @param {Record<string, string>} [notes] - extra line per group id, shown above
+ *                                           its list; used to say why something
+ *                                           is preselected
  * @return {Promise<string[]>}
  */
 export async function promptPackages(
     catalog: Catalog,
     defaults: string[],
+    notes: Record<string, string> = {},
 ): Promise<string[]> {
     const chosen: string[] = [];
 
@@ -148,7 +158,8 @@ export async function promptPackages(
                     name: 'sel',
                     message:
                         `Select ${group.title}:` +
-                        (group.pick ? `\n  ${group.pick}` : ''),
+                        (group.pick ? `\n  ${group.pick}` : '') +
+                        (notes[groupId] ? `\n  ${notes[groupId]}` : ''),
                     choices: [
                         { name: '(none)', value: '' },
                         ...ids.map(id => ({
@@ -193,11 +204,21 @@ export async function promptPackages(
  * flag (--packages/--no-packages) -> per-service -> global -> prompt -> none,
  * then validates it against the catalog.
  *
+ * When a fleet root is given, its ORM is used to preselect one in the prompt —
+ * a service joining a Sequelize fleet gets sequelize, anything else with a
+ * database gets pg-prisma, and a fleet with no ORM preselects nothing.
+ *
+ * That applies to the PROMPT only. A non-interactive run with no flag and no
+ * configured packages still selects nothing: a proposal a user can decline is
+ * one thing, and quietly adding a database dependency to an automated run is
+ * another.
+ *
  * @param {any} flag - raw --packages flag value
  * @param {string[] | undefined} service - per-service packages
  * @param {string[] | undefined} global - global-config packages
  * @param {Catalog} catalog
  * @param {boolean} interactive
+ * @param {string} [fleetRoot] - directory holding the sibling services
  * @return {Promise<string[]>}
  */
 export async function resolvePackages(
@@ -206,8 +227,13 @@ export async function resolvePackages(
     global: string[] | undefined,
     catalog: Catalog,
     interactive: boolean,
+    fleetRoot?: string,
 ): Promise<string[]> {
     let selection = parsePackagesFlag(flag);
+    // Only a choice made HERE — by flag or at the prompt — is worth remembering
+    // against this path. Configured packages are already a standing decision,
+    // and turning one into a per-fleet override would spread it silently.
+    let deliberate = selection !== null;
 
     if (selection === null && Array.isArray(service)) {
         selection = service;
@@ -217,9 +243,32 @@ export async function resolvePackages(
         selection = global;
     }
 
+    // Run whenever a fleet root is known, not only before a prompt: a run that
+    // takes its ORM from --packages still needs the record to exist for
+    // recordOrmChoice() to write an override against. A cache hit costs one
+    // readdir.
+    const analysis = fleetRoot ? analyseFleet(fleetRoot) : null;
+
     if (selection === null) {
-        selection = interactive ? await promptPackages(catalog, []) : [];
+        if (interactive) {
+            const note = analysis ? fleetOrmNote(analysis) : '';
+
+            selection = await promptPackages(
+                catalog,
+                analysis ? fleetOrmDefaults(analysis) : [],
+                note ? { orm: note } : {},
+            );
+            deliberate = true;
+        } else {
+            selection = [];
+        }
     }
 
-    return validateSelection(selection, catalog);
+    const validated = validateSelection(selection, catalog);
+
+    if (fleetRoot && deliberate) {
+        recordOrmChoice(fleetRoot, validated);
+    }
+
+    return validated;
 }
