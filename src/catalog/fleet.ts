@@ -32,19 +32,60 @@ import {
 import { join } from 'path';
 import { VAR_HOME, resolve } from '../../lib/index.js';
 
-/** The ORM a fleet is built on, as far as its services' dependencies show. */
-export type FleetOrm = 'sequelize' | 'pg-prisma' | 'mixed' | 'none';
+/**
+ * An exclusive catalog group whose members can be recognised in a service's
+ * dependencies, so the fleet can answer the question instead of the user.
+ *
+ * Add a group here and the prompt starts proposing for it; nothing else needs to
+ * change. A group whose members leave no dependency trace — anything the
+ * scaffolder only injects code for — cannot be probed this way and belongs
+ * absent from this list rather than half-supported.
+ */
+interface GroupProbe {
+    /** Catalog group id. */
+    group: string;
+    /** Human name for the group, for the note. */
+    label: string;
+    /** Catalog member id paired with the dependency that gives it away. */
+    members: { id: string; dep: string }[];
+    /**
+     * The member to propose when the fleet uses several, when one of them is
+     * recommended. Without it a split fleet falls back to its own majority,
+     * which is the honest answer where the project has no preference — the two
+     * tracing backends are a vendor choice, not a better and a worse.
+     */
+    recommended?: string;
+}
 
-/** What a fleet scan found, and where the answer came from. */
-export interface FleetAnalysis {
-    /** The fleet's ORM: `none` when no service declares one. */
-    orm: FleetOrm;
-    /** Services depending on `@imqueue/sequelize`. */
-    sequelize: number;
-    /** Services depending on `@imqueue/pg-prisma`. */
-    prisma: number;
-    /** Services found in the fleet. */
-    services: number;
+const PROBES: GroupProbe[] = [
+    {
+        group: 'orm',
+        label: 'ORM',
+        members: [
+            { id: 'sequelize', dep: '@imqueue/sequelize' },
+            { id: 'pg-prisma', dep: '@imqueue/pg-prisma' },
+        ],
+        recommended: 'pg-prisma',
+    },
+    {
+        group: 'tracing',
+        label: 'tracing',
+        members: [
+            {
+                id: 'opentelemetry',
+                dep: '@imqueue/opentelemetry-instrumentation-imqueue',
+            },
+            { id: 'dd-trace', dep: '@imqueue/dd-trace' },
+        ],
+    },
+];
+
+/** What the fleet says about one exclusive group. */
+export interface GroupAnalysis {
+    /** Member id to propose, or `null` when the fleet says nothing useful. */
+    propose: string | null;
+    /** Services using each member, by member id. */
+    counts: Record<string, number>;
     /**
      * `scan` when the directories were read, `cache` when a previous scan
      * answered, `override` when the user's own contradicting choice did.
@@ -52,15 +93,22 @@ export interface FleetAnalysis {
     source: 'scan' | 'cache' | 'override';
 }
 
+/** What a fleet scan found. */
+export interface FleetAnalysis {
+    /** Services found in the fleet. */
+    services: number;
+    /** One entry per probed group, keyed by catalog group id. */
+    groups: Record<string, GroupAnalysis>;
+}
+
 interface FleetRecord {
-    orm: FleetOrm;
-    sequelize: number;
-    prisma: number;
+    /** Services using each member, keyed by group id then member id. */
+    groups: Record<string, Record<string, number>>;
     services: number;
     /** Immediate subdirectory names at scan time — the staleness fingerprint. */
     dirs: string[];
-    /** The user's choice, when they picked against the scan. */
-    override?: 'sequelize' | 'pg-prisma';
+    /** Member id the user picked against the scan, by group id. */
+    overrides?: Record<string, string>;
     at: number;
 }
 
@@ -69,12 +117,12 @@ interface FleetCache {
     fleets: Record<string, FleetRecord>;
 }
 
-const CACHE_VERSION = 1;
-const SEQUELIZE = '@imqueue/sequelize';
-const PG_PRISMA = '@imqueue/pg-prisma';
+// 2: per-group counts and overrides, where 1 held only the ORM. An older cache
+// is discarded rather than migrated — it costs one scan to rebuild.
+const CACHE_VERSION = 2;
 // A fleet member is an @imqueue service, and every one of them depends on rpc.
 // This is deliberately NOT lib/discoverServices(), which reads every .ts file
-// under each candidate's src/ looking for a service class: the ORM question is
+// under each candidate's src/ looking for a service class: these questions are
 // answered by dependencies, and this runs before a prompt, so it has to be
 // cheap. One package.json per subdirectory, no source parsing.
 const RPC = '@imqueue/rpc';
@@ -183,16 +231,21 @@ function dependenciesOf(dir: string): Set<string> {
 }
 
 /**
- * Classifies a fleet by reading each service's declared dependencies.
+ * Counts, for every probed group, how many services use each of its members.
  *
  * @param {string} root - directory holding the service directories
  * @return {FleetRecord}
  */
 function scan(root: string): FleetRecord {
     const dirs = subDirs(root);
-    let sequelize = 0;
-    let prisma = 0;
+    const groups: Record<string, Record<string, number>> = {};
     let services = 0;
+
+    for (const probe of PROBES) {
+        groups[probe.group] = Object.fromEntries(
+            probe.members.map(m => [m.id, 0]),
+        );
+    }
 
     for (const dir of dirs) {
         const deps = dependenciesOf(join(root, dir));
@@ -203,75 +256,53 @@ function scan(root: string): FleetRecord {
 
         services++;
 
-        if (deps.has(SEQUELIZE)) {
-            sequelize++;
-        }
-
-        if (deps.has(PG_PRISMA)) {
-            prisma++;
+        for (const probe of PROBES) {
+            for (const member of probe.members) {
+                if (deps.has(member.dep)) {
+                    groups[probe.group][member.id]++;
+                }
+            }
         }
     }
 
-    let orm: FleetOrm = 'none';
-
-    if (sequelize && prisma) {
-        orm = 'mixed';
-    } else if (sequelize) {
-        orm = 'sequelize';
-    } else if (prisma) {
-        orm = 'pg-prisma';
-    }
-
-    return { orm, sequelize, prisma, services, dirs, at: Date.now() };
+    return { groups, services, dirs, at: Date.now() };
 }
 
 /**
- * Works out what ORM the fleet a new service is joining is built on.
+ * Decides what to propose for one group from its counts.
  *
- * @remarks
- * Answers from the cache when it can. The cache is keyed by path and carries the
- * subdirectory names it was built from, so a fleet that has gained or lost a
- * directory is rescanned — one `readdir` to know, rather than a package.json per
- * service. A user's own contradicting choice, recorded by
- * {@link recordOrmChoice}, outranks both: they said it deliberately, and it
- * survives later rescans until a scan agrees with it.
- *
- * @param {string} root - directory holding the service directories
- * @return {FleetAnalysis}
+ * @param {GroupProbe} probe
+ * @param {Record<string, number>} counts
+ * @return {string | null}
  */
-export function analyseFleet(root: string): FleetAnalysis {
-    const abs = resolve(root);
-    const cache = readCache();
-    const cached = cache.fleets[abs];
-    const answer = (record: FleetRecord): FleetAnalysis => ({
-        orm: record.override || record.orm,
-        sequelize: record.sequelize,
-        prisma: record.prisma,
-        services: record.services,
-        source: record.override
-            ? 'override'
-            : record === cached
-              ? 'cache'
-              : 'scan',
-    });
+function proposeFor(
+    probe: GroupProbe,
+    counts: Record<string, number>,
+): string | null {
+    const used = probe.members.filter(m => (counts[m.id] || 0) > 0);
 
-    if (cached && sameDirs(cached.dirs, subDirs(abs))) {
-        return answer(cached);
+    if (!used.length) {
+        // Nothing in the fleet uses this group, and picking for the user here
+        // would add a capability nobody asked for. `(none)` stays.
+        return null;
     }
 
-    const fresh = scan(abs);
-
-    // An override is intent, not measurement, so it outlives a rescan — but
-    // once the fleet itself says what the user said, it has nothing left to
-    // override and would only mask a later change.
-    if (cached?.override && cached.override !== fresh.orm) {
-        fresh.override = cached.override;
+    if (used.length === 1) {
+        return used[0].id;
     }
 
-    cache.fleets[abs] = fresh;
-    writeCache(cache);
+    if (probe.recommended) {
+        return probe.recommended;
+    }
 
-    return answer(fresh);
+    // No recommendation to fall back on, so follow the fleet: the member most
+    // of it uses. A dead heat proposes nothing rather than breaking the tie on
+    // catalog order, which would look like advice and be arbitrary.
+    const [first, second] = [...used].sort(
+        (a, b) => (counts[b.id] || 0) - (counts[a.id] || 0),
+    );
+
+    return counts[first.id] === counts[second.id] ? null : first.id;
 }
 
 /**
@@ -286,89 +317,166 @@ function sameDirs(a: string[], b: string[]): boolean {
 }
 
 /**
- * The ORM to preselect for a fleet, as catalog ids.
+ * Builds the public analysis from a record.
+ *
+ * @param {FleetRecord} record
+ * @param {boolean} fromCache
+ * @return {FleetAnalysis}
+ */
+function toAnalysis(record: FleetRecord, fromCache: boolean): FleetAnalysis {
+    const groups: Record<string, GroupAnalysis> = {};
+
+    for (const probe of PROBES) {
+        const counts = record.groups[probe.group] || {};
+        const override = record.overrides?.[probe.group];
+
+        groups[probe.group] = {
+            propose: override || proposeFor(probe, counts),
+            counts,
+            source: override ? 'override' : fromCache ? 'cache' : 'scan',
+        };
+    }
+
+    return { services: record.services, groups };
+}
+
+/**
+ * Works out what a fleet is built on, for every group the prompt can propose in.
  *
  * @remarks
- * A Sequelize fleet preselects sequelize: a new service joining it belongs on
- * the stack its siblings already run. Anything else with a database preselects
- * pg-prisma. A fleet with no ORM at all preselects NOTHING — a service that
- * talks to no database needs none, and guessing one here would put a database
- * in front of someone who never asked for it.
+ * Answers from the cache when it can. The cache is keyed by path and carries the
+ * subdirectory names it was built from, so a fleet that has gained or lost a
+ * directory is rescanned — one `readdir` to know, rather than a package.json per
+ * service. A user's own contradicting choice, recorded by
+ * {@link recordFleetChoices}, outranks both: they said it deliberately, and it
+ * survives later rescans until a scan agrees with it.
+ *
+ * @param {string} root - directory holding the service directories
+ * @return {FleetAnalysis}
+ */
+export function analyseFleet(root: string): FleetAnalysis {
+    const abs = resolve(root);
+    const cache = readCache();
+    const cached = cache.fleets[abs];
+
+    if (cached && sameDirs(cached.dirs, subDirs(abs))) {
+        return toAnalysis(cached, true);
+    }
+
+    const fresh = scan(abs);
+
+    // An override is intent, not measurement, so it outlives a rescan — but
+    // once the fleet itself says what the user said, it has nothing left to
+    // override and would only mask a later change.
+    for (const [group, choice] of Object.entries(cached?.overrides || {})) {
+        const probe = PROBES.find(p => p.group === group);
+
+        if (probe && proposeFor(probe, fresh.groups[group] || {}) !== choice) {
+            fresh.overrides = { ...fresh.overrides, [group]: choice };
+        }
+    }
+
+    cache.fleets[abs] = fresh;
+    writeCache(cache);
+
+    return toAnalysis(fresh, false);
+}
+
+/**
+ * The catalog ids to preselect, across every probed group.
  *
  * @param {FleetAnalysis} analysis
  * @return {string[]}
  */
-export function fleetOrmDefaults(analysis: FleetAnalysis): string[] {
-    switch (analysis.orm) {
-        case 'sequelize':
-            return ['sequelize'];
-        case 'pg-prisma':
-        case 'mixed':
-            return ['pg-prisma'];
-        default:
-            return [];
-    }
+export function fleetDefaults(analysis: FleetAnalysis): string[] {
+    return Object.values(analysis.groups)
+        .map(group => group.propose)
+        .filter((id): id is string => !!id);
 }
 
 /**
- * One line explaining what the fleet is built on and what follows from it, or
- * nothing when the fleet says nothing.
+ * One line per group explaining what was proposed and why, for the prompt.
+ *
+ * @remarks
+ * Keyed by catalog group id, and a group the fleet says nothing about gets no
+ * entry — silence is the right output when there is nothing to report.
  *
  * @param {FleetAnalysis} analysis
- * @return {string}
+ * @return {Record<string, string>}
  */
-export function fleetOrmNote(analysis: FleetAnalysis): string {
-    const from =
-        analysis.source === 'override'
-            ? 'your earlier choice here'
-            : `${analysis.services} service${
-                  analysis.services === 1 ? '' : 's'
-              } in this fleet`;
+export function fleetNotes(analysis: FleetAnalysis): Record<string, string> {
+    const notes: Record<string, string> = {};
 
-    switch (analysis.orm) {
-        case 'sequelize':
-            return (
-                `Preselected sequelize to match ${from}. ` +
-                'Moving the fleet to pg-prisma is worth considering — as its ' +
-                'own piece of work, not as part of this.'
+    for (const probe of PROBES) {
+        const group = analysis.groups[probe.group];
+
+        if (!group?.propose) {
+            const used = probe.members.filter(
+                m => (group?.counts[m.id] || 0) > 0,
             );
-        case 'mixed':
-            return (
-                `This fleet uses both ORMs (${analysis.sequelize} on ` +
-                `sequelize, ${analysis.prisma} on pg-prisma); preselected the ` +
-                'recommended one.'
-            );
-        case 'pg-prisma':
-            return `Preselected pg-prisma to match ${from}.`;
-        default:
-            return '';
+
+            // A dead heat is worth saying out loud: the fleet is genuinely
+            // divided, and the user is the one to settle it.
+            if (used.length > 1) {
+                notes[probe.group] =
+                    `This fleet is split evenly between ` +
+                    `${used.map(m => m.id).join(' and ')} — your call.`;
+            }
+
+            continue;
+        }
+
+        const from =
+            group.source === 'override'
+                ? 'your earlier choice here'
+                : `${analysis.services} service${
+                      analysis.services === 1 ? '' : 's'
+                  } in this fleet`;
+        const split = probe.members.filter(m => (group.counts[m.id] || 0) > 0);
+        let note: string;
+
+        if (group.source !== 'override' && split.length > 1) {
+            const detail = split
+                .map(m => `${group.counts[m.id]} on ${m.id}`)
+                .join(', ');
+
+            note = probe.recommended
+                ? `This fleet uses more than one ${probe.label} (${detail}); ` +
+                  `preselected the recommended one.`
+                : `This fleet uses more than one ${probe.label} (${detail}); ` +
+                  `preselected the one most of it uses.`;
+        } else {
+            note = `Preselected ${group.propose} to match ${from}.`;
+        }
+
+        // Where the project recommends something else, say so — proposing what
+        // the fleet uses is not the same as endorsing it forever.
+        if (probe.recommended && group.propose !== probe.recommended) {
+            note +=
+                ` Moving the fleet to ${probe.recommended} is worth ` +
+                'considering — as its own piece of work, not as part of this.';
+        }
+
+        notes[probe.group] = note;
     }
+
+    return notes;
 }
 
 /**
- * Records a selection that contradicts the scan, so the next run proposes what
- * the user actually wants.
+ * Records selections that contradict the scan, so the next run proposes what the
+ * user actually wants.
  *
  * @remarks
  * Only a contradiction is written. Agreeing with the scan is not an instruction,
- * and storing it would make an override out of a shrug.
+ * and storing it would make an override out of a shrug. Selecting nothing from a
+ * group is not a contradiction either: it says the service does not need that
+ * capability, not that the fleet is built differently.
  *
  * @param {string} root - directory holding the service directories
  * @param {string[]} selection - the resolved catalog ids
  */
-export function recordOrmChoice(root: string, selection: string[]): void {
-    const chosen = selection.includes('sequelize')
-        ? 'sequelize'
-        : selection.includes('pg-prisma')
-          ? 'pg-prisma'
-          : null;
-
-    if (!chosen) {
-        // Picking no ORM says nothing about what the fleet is built on, so it
-        // is not a contradiction of anything.
-        return;
-    }
-
+export function recordFleetChoices(root: string, selection: string[]): void {
     const abs = resolve(root);
     const cache = readCache();
     const record = cache.fleets[abs];
@@ -377,14 +485,30 @@ export function recordOrmChoice(root: string, selection: string[]): void {
         return;
     }
 
-    const effective = record.override || record.orm;
+    let changed = false;
 
-    if (effective === chosen) {
-        return;
+    for (const probe of PROBES) {
+        const chosen = probe.members.find(m => selection.includes(m.id))?.id;
+
+        if (!chosen) {
+            continue;
+        }
+
+        const effective =
+            record.overrides?.[probe.group] ||
+            proposeFor(probe, record.groups[probe.group] || {});
+
+        if (effective === chosen) {
+            continue;
+        }
+
+        record.overrides = { ...record.overrides, [probe.group]: chosen };
+        changed = true;
     }
 
-    record.override = chosen;
-    record.at = Date.now();
-    cache.fleets[abs] = record;
-    writeCache(cache);
+    if (changed) {
+        record.at = Date.now();
+        cache.fleets[abs] = record;
+        writeCache(cache);
+    }
 }

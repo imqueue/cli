@@ -36,10 +36,14 @@ process.env.IMQ_CLI_HOME = SANDBOX;
 const {
     analyseFleet,
     fleetCachePath,
-    fleetOrmDefaults,
-    fleetOrmNote,
-    recordOrmChoice,
+    fleetDefaults,
+    fleetNotes,
+    recordFleetChoices,
 } = await import('../../../src/catalog/fleet.js');
+
+/** The ORM view of an analysis, which most of these assertions are about. */
+const orm = (a: any) => a.groups.orm;
+const tracing = (a: any) => a.groups.tracing;
 
 /** Writes a service directory with the given dependencies. */
 function service(root: string, name: string, deps: string[]): void {
@@ -54,6 +58,8 @@ function service(root: string, name: string, deps: string[]): void {
 }
 
 const RPC = '@imqueue/rpc';
+const OTEL = '@imqueue/opentelemetry-instrumentation-imqueue';
+const DD = '@imqueue/dd-trace';
 const SEQ = '@imqueue/sequelize';
 const PRISMA = '@imqueue/pg-prisma';
 
@@ -84,15 +90,18 @@ describe('analyseFleet()', () => {
 
         const analysis = analyseFleet(root);
 
-        assert.equal(analysis.orm, 'sequelize');
-        assert.equal(analysis.sequelize, 2);
+        assert.equal(orm(analysis).propose, 'sequelize');
+        assert.equal(orm(analysis).counts.sequelize, 2);
         assert.equal(analysis.services, 3);
-        assert.equal(analysis.source, 'scan');
-        assert.deepEqual(fleetOrmDefaults(analysis), ['sequelize']);
-        assert.match(fleetOrmNote(analysis), /Preselected sequelize/);
+        assert.equal(orm(analysis).source, 'scan');
+        assert.deepEqual(fleetDefaults(analysis), ['sequelize']);
+        assert.match(fleetNotes(analysis).orm, /Preselected sequelize/);
         // the whole point of preselecting sequelize is not to silence the
         // alternative
-        assert.match(fleetOrmNote(analysis), /pg-prisma is worth considering/);
+        assert.match(
+            fleetNotes(analysis).orm,
+            /pg-prisma is worth considering/,
+        );
     });
 
     it('reads a Prisma fleet as pg-prisma', () => {
@@ -102,9 +111,9 @@ describe('analyseFleet()', () => {
 
         const analysis = analyseFleet(root);
 
-        assert.equal(analysis.orm, 'pg-prisma');
-        assert.deepEqual(fleetOrmDefaults(analysis), ['pg-prisma']);
-        assert.match(fleetOrmNote(analysis), /1 service in this fleet/);
+        assert.equal(orm(analysis).propose, 'pg-prisma');
+        assert.deepEqual(fleetDefaults(analysis), ['pg-prisma']);
+        assert.match(fleetNotes(analysis).orm, /1 service in this fleet/);
     });
 
     it('recommends pg-prisma for a mixed fleet', () => {
@@ -115,9 +124,9 @@ describe('analyseFleet()', () => {
 
         const analysis = analyseFleet(root);
 
-        assert.equal(analysis.orm, 'mixed');
-        assert.deepEqual(fleetOrmDefaults(analysis), ['pg-prisma']);
-        assert.match(fleetOrmNote(analysis), /uses both ORMs/);
+        assert.equal(orm(analysis).propose, 'pg-prisma');
+        assert.deepEqual(fleetDefaults(analysis), ['pg-prisma']);
+        assert.match(fleetNotes(analysis).orm, /uses more than one ORM/);
     });
 
     it('preselects nothing when no service uses an ORM', () => {
@@ -127,11 +136,11 @@ describe('analyseFleet()', () => {
 
         const analysis = analyseFleet(root);
 
-        assert.equal(analysis.orm, 'none');
+        assert.equal(orm(analysis).propose, null);
         // Guessing an ORM here would put a database in front of someone who
         // never asked for one.
-        assert.deepEqual(fleetOrmDefaults(analysis), []);
-        assert.equal(fleetOrmNote(analysis), '');
+        assert.deepEqual(fleetDefaults(analysis), []);
+        assert.equal(fleetNotes(analysis).orm, undefined);
     });
 
     it('ignores directories that are not @imqueue services', () => {
@@ -148,28 +157,28 @@ describe('analyseFleet()', () => {
 
         service(root, 'auth', [RPC, SEQ]);
 
-        assert.equal(analyseFleet(root).source, 'scan');
-        assert.equal(analyseFleet(root).source, 'cache');
+        assert.equal(orm(analyseFleet(root)).source, 'scan');
+        assert.equal(orm(analyseFleet(root)).source, 'cache');
     });
 
     it('rescans when the fleet gains a directory', () => {
         const root = fleet();
 
         service(root, 'auth', [RPC, SEQ]);
-        assert.equal(analyseFleet(root).orm, 'sequelize');
+        assert.equal(orm(analyseFleet(root)).propose, 'sequelize');
 
         service(root, 'lead', [RPC, PRISMA]);
 
         // A changed directory listing is one readdir to detect, which is what
         // keeps the cache from going stale behind a new service.
-        const again = analyseFleet(root);
+        const again = orm(analyseFleet(root));
 
         assert.equal(again.source, 'scan');
-        assert.equal(again.orm, 'mixed');
+        assert.equal(again.propose, 'pg-prisma');
     });
 });
 
-describe('recordOrmChoice()', () => {
+describe('recordFleetChoices()', () => {
     const fleets: string[] = [];
 
     function fleet(): string {
@@ -190,16 +199,16 @@ describe('recordOrmChoice()', () => {
         const root = fleet();
 
         service(root, 'auth', [RPC, SEQ]);
-        assert.equal(analyseFleet(root).orm, 'sequelize');
+        assert.equal(orm(analyseFleet(root)).propose, 'sequelize');
 
-        recordOrmChoice(root, ['pg-prisma']);
+        recordFleetChoices(root, ['pg-prisma']);
 
         const after = analyseFleet(root);
 
-        assert.equal(after.orm, 'pg-prisma');
-        assert.equal(after.source, 'override');
-        assert.deepEqual(fleetOrmDefaults(after), ['pg-prisma']);
-        assert.match(fleetOrmNote(after), /your earlier choice here/);
+        assert.equal(orm(after).propose, 'pg-prisma');
+        assert.equal(orm(after).source, 'override');
+        assert.deepEqual(fleetDefaults(after), ['pg-prisma']);
+        assert.match(fleetNotes(after).orm, /your earlier choice here/);
     });
 
     it('keeps the override when the fleet changes but still disagrees', () => {
@@ -207,12 +216,12 @@ describe('recordOrmChoice()', () => {
 
         service(root, 'auth', [RPC, SEQ]);
         analyseFleet(root);
-        recordOrmChoice(root, ['pg-prisma']);
+        recordFleetChoices(root, ['pg-prisma']);
 
         service(root, 'audit', [RPC, SEQ]);
 
         // Intent outlives a rescan: the user said pg-prisma for this path.
-        assert.equal(analyseFleet(root).orm, 'pg-prisma');
+        assert.equal(orm(analyseFleet(root)).propose, 'pg-prisma');
     });
 
     it('drops the override once the fleet agrees with it', () => {
@@ -220,16 +229,16 @@ describe('recordOrmChoice()', () => {
 
         service(root, 'auth', [RPC, SEQ]);
         analyseFleet(root);
-        recordOrmChoice(root, ['pg-prisma']);
+        recordFleetChoices(root, ['pg-prisma']);
 
         // fleet migrated: nothing left to override, so a later change is not
         // masked by a stale intent
         rmSync(join(root, 'auth'), { recursive: true, force: true });
         service(root, 'lead', [RPC, PRISMA]);
 
-        const after = analyseFleet(root);
+        const after = orm(analyseFleet(root));
 
-        assert.equal(after.orm, 'pg-prisma');
+        assert.equal(after.propose, 'pg-prisma');
         assert.equal(after.source, 'scan');
     });
 
@@ -239,10 +248,122 @@ describe('recordOrmChoice()', () => {
         service(root, 'auth', [RPC, SEQ]);
         analyseFleet(root);
 
-        recordOrmChoice(root, ['sequelize']);
-        assert.equal(analyseFleet(root).source, 'cache');
+        recordFleetChoices(root, ['sequelize']);
+        assert.equal(orm(analyseFleet(root)).source, 'cache');
 
-        recordOrmChoice(root, ['pg-cache']);
-        assert.equal(analyseFleet(root).source, 'cache');
+        recordFleetChoices(root, ['pg-cache']);
+        assert.equal(orm(analyseFleet(root)).source, 'cache');
+    });
+});
+
+describe('analyseFleet() tracing', () => {
+    const fleets: string[] = [];
+
+    function fleet(): string {
+        const dir = mkdtempSync(join(tmpdir(), 'imq-fleet-'));
+
+        fleets.push(dir);
+
+        return dir;
+    }
+
+    after(() => {
+        for (const dir of fleets) {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    it('proposes the tracing backend the fleet already uses', () => {
+        const root = fleet();
+
+        service(root, 'auth', [RPC, DD]);
+        service(root, 'billing', [RPC, DD]);
+
+        const analysis = analyseFleet(root);
+
+        assert.equal(tracing(analysis).propose, 'dd-trace');
+        assert.deepEqual(fleetDefaults(analysis), ['dd-trace']);
+        assert.match(fleetNotes(analysis).tracing, /Preselected dd-trace/);
+    });
+
+    it('follows the majority when a fleet uses both', () => {
+        const root = fleet();
+
+        service(root, 'a', [RPC, OTEL]);
+        service(root, 'b', [RPC, OTEL]);
+        service(root, 'c', [RPC, DD]);
+
+        const analysis = analyseFleet(root);
+
+        // Neither backend is "recommended" — it is a vendor choice — so the
+        // fleet's own majority is the only honest basis.
+        assert.equal(tracing(analysis).propose, 'opentelemetry');
+        assert.match(
+            fleetNotes(analysis).tracing,
+            /uses more than one tracing \(2 on opentelemetry, 1 on dd-trace\)/,
+        );
+        // and no "worth considering" nudge, since the project prefers neither
+        assert.equal(
+            /worth considering/.test(fleetNotes(analysis).tracing),
+            false,
+        );
+    });
+
+    it('proposes nothing for an evenly split fleet, and says so', () => {
+        const root = fleet();
+
+        service(root, 'a', [RPC, OTEL]);
+        service(root, 'b', [RPC, DD]);
+
+        const analysis = analyseFleet(root);
+
+        assert.equal(tracing(analysis).propose, null);
+        assert.deepEqual(fleetDefaults(analysis), []);
+        assert.match(fleetNotes(analysis).tracing, /split evenly/);
+    });
+
+    it('proposes nothing when the fleet is not traced', () => {
+        const root = fleet();
+
+        service(root, 'auth', [RPC, SEQ]);
+
+        const analysis = analyseFleet(root);
+
+        assert.equal(tracing(analysis).propose, null);
+        assert.equal(fleetNotes(analysis).tracing, undefined);
+        // the ORM half of the same scan still answers
+        assert.deepEqual(fleetDefaults(analysis), ['sequelize']);
+    });
+
+    it('remembers a tracing choice that contradicts the scan', () => {
+        const root = fleet();
+
+        service(root, 'auth', [RPC, DD]);
+        analyseFleet(root);
+
+        recordFleetChoices(root, ['opentelemetry']);
+
+        const after = analyseFleet(root);
+
+        assert.equal(tracing(after).propose, 'opentelemetry');
+        assert.equal(tracing(after).source, 'override');
+    });
+
+    it('records overrides for both groups from one selection', () => {
+        const root = fleet();
+
+        service(root, 'auth', [RPC, SEQ, DD]);
+        analyseFleet(root);
+
+        recordFleetChoices(root, ['pg-prisma', 'opentelemetry']);
+
+        const after = analyseFleet(root);
+
+        assert.equal(orm(after).propose, 'pg-prisma');
+        assert.equal(tracing(after).propose, 'opentelemetry');
+        assert.deepEqual(fleetDefaults(after).sort(), [
+            'opentelemetry',
+            'pg-prisma',
+        ]);
     });
 });
