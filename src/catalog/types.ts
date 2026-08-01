@@ -78,7 +78,12 @@ export interface CatalogEntry {
      * there is room to read. A prompt renders one line per choice and wraps
      * badly past the terminal width, which garbles an arrow-key list — so the
      * prompt gets this instead. Keep it under about 30 characters and phrase it
-     * as the case it suits, e.g. "new services".
+     * as the case it suits, e.g. "recommended" or "match a Sequelize fleet".
+     *
+     * Beware of a discriminator that does not discriminate: "new services" was
+     * useless here, because `imq service create` only ever creates a new
+     * service. What varies between two callers is the stack the fleet already
+     * runs on, so that is what the guidance has to name.
      */
     hint?: string;
     /** runtime dependencies to merge into the service package.json */
