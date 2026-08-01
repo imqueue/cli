@@ -25,9 +25,9 @@ import inquirer, { type QuestionCollection } from 'inquirer';
 import type { Catalog } from './types.js';
 import {
     analyseFleet,
-    fleetOrmDefaults,
-    fleetOrmNote,
-    recordOrmChoice,
+    fleetDefaults,
+    fleetNotes,
+    recordFleetChoices,
 } from './fleet.js';
 
 /**
@@ -204,9 +204,9 @@ export async function promptPackages(
  * flag (--packages/--no-packages) -> per-service -> global -> prompt -> none,
  * then validates it against the catalog.
  *
- * When a fleet root is given, its ORM is used to preselect one in the prompt —
- * a service joining a Sequelize fleet gets sequelize, anything else with a
- * database gets pg-prisma, and a fleet with no ORM preselects nothing.
+ * When a fleet root is given, every exclusive group the fleet can answer for is
+ * preselected from what its services already use — the ORM and the tracing
+ * backend today. A group nothing in the fleet uses preselects nothing.
  *
  * That applies to the PROMPT only. A non-interactive run with no flag and no
  * configured packages still selects nothing: a proposal a user can decline is
@@ -251,12 +251,10 @@ export async function resolvePackages(
 
     if (selection === null) {
         if (interactive) {
-            const note = analysis ? fleetOrmNote(analysis) : '';
-
             selection = await promptPackages(
                 catalog,
-                analysis ? fleetOrmDefaults(analysis) : [],
-                note ? { orm: note } : {},
+                analysis ? fleetDefaults(analysis) : [],
+                analysis ? fleetNotes(analysis) : {},
             );
             deliberate = true;
         } else {
@@ -267,7 +265,7 @@ export async function resolvePackages(
     const validated = validateSelection(selection, catalog);
 
     if (fleetRoot && deliberate) {
-        recordOrmChoice(fleetRoot, validated);
+        recordFleetChoices(fleetRoot, validated);
     }
 
     return validated;
