@@ -64,7 +64,7 @@
     "pg-prisma": {
       "group": "orm",
       "title": "Prisma ORM + @imqueue/pg-prisma toolkit",
-      "hint": "new services",
+      "hint": "new services (recommended)",
       "pick": "The choice for a NEW service that needs a database. The other is sequelize, for projects already built on it.",
       "deps": {
         "@imqueue/pg-prisma": "*",
