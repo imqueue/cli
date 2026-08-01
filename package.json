@@ -47,7 +47,7 @@
   "author": "imqueue.com <support@imqueue.com> (https://imqueue.com)",
   "license": "GPL-3.0-only",
   "dependencies": {
-    "@imqueue/rpc": "^3.4.4",
+    "@imqueue/rpc": "^3.5.2",
     "inquirer": "^8.2.6",
     "inquirer-autocomplete-prompt": "^1.4.0",
     "libsodium-wrappers": "^0.8.4",
