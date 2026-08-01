@@ -40,6 +40,7 @@ const {
     fleetNote,
     fleetNotes,
     fleetProposal,
+    recommendedFor,
     recordFleetChoices,
 } = await import('../../../src/catalog/fleet.js');
 
@@ -302,43 +303,43 @@ describe('analyseFleet() tracing', () => {
 
         assert.equal(tracing(analysis).propose, 'dd-trace');
         assert.deepEqual(fleetDefaults(analysis), ['dd-trace']);
-        assert.match(fleetNotes(analysis).tracing, /Preselected dd-trace/);
+        assert.match(fleetNotes(analysis).tracing, /^Preselected dd-trace/);
     });
 
-    it('follows the majority when a fleet uses both', () => {
+    it('proposes the recommended backend when a fleet uses both', () => {
         const root = fleet();
 
-        service(root, 'a', [RPC, OTEL]);
-        service(root, 'b', [RPC, OTEL]);
-        service(root, 'c', [RPC, DD]);
+        // Against the majority, even: opentelemetry is what the project
+        // recommends, the same rule the ORM group follows. Majority and
+        // tie-breaking still apply to the groups with no recommendation — the
+        // VCS host and the CI provider, covered below.
+        service(root, 'a', [RPC, DD]);
+        service(root, 'b', [RPC, DD]);
+        service(root, 'c', [RPC, OTEL]);
 
         const analysis = analyseFleet(root);
 
-        // Neither backend is "recommended" — it is a vendor choice — so the
-        // fleet's own majority is the only honest basis.
         assert.equal(tracing(analysis).propose, 'opentelemetry');
         assert.match(
             fleetNotes(analysis).tracing,
-            /uses more than one tracing \(2 on opentelemetry, 1 on dd-trace\)/,
-        );
-        // and no "worth considering" nudge, since the project prefers neither
-        assert.equal(
-            /worth considering/.test(fleetNotes(analysis).tracing),
-            false,
+            /uses more than one tracing \(1 on opentelemetry, 2 on dd-trace\)/,
         );
     });
 
-    it('proposes nothing for an evenly split fleet, and says so', () => {
+    it('tells a Datadog fleet that moving is worth considering', () => {
         const root = fleet();
 
-        service(root, 'a', [RPC, OTEL]);
-        service(root, 'b', [RPC, DD]);
+        service(root, 'auth', [RPC, DD]);
 
         const analysis = analyseFleet(root);
 
-        assert.equal(tracing(analysis).propose, null);
-        assert.deepEqual(fleetDefaults(analysis), []);
-        assert.match(fleetNotes(analysis).tracing, /split evenly/);
+        // Proposing what the fleet uses is not the same as endorsing it: the
+        // fleet's choice is what to pick now, the recommendation is elsewhere.
+        assert.equal(tracing(analysis).propose, 'dd-trace');
+        assert.match(
+            fleetNotes(analysis).tracing,
+            /opentelemetry is worth considering/,
+        );
     });
 
     it('proposes nothing when the fleet is not traced', () => {
@@ -497,5 +498,44 @@ describe('analyseFleet() vcs and ci', () => {
         assert.equal(fleetProposal(after, 'vcs'), 'gitlab');
         assert.equal(fleetProposal(after, 'ci'), 'circleci');
         assert.match(fleetNote(after, 'vcs'), /your earlier choice here/);
+    });
+    it('recommends what the fleet uses, and the baseline when it is silent', () => {
+        const empty = fleet();
+
+        // The edge case: nothing to go on, so the project's own preference —
+        // github, pg-prisma, github-actions, opentelemetry.
+        const none = analyseFleet(empty);
+
+        assert.equal(recommendedFor(none, 'vcs'), 'github');
+        assert.equal(recommendedFor(none, 'orm'), 'pg-prisma');
+        assert.equal(recommendedFor(none, 'ci'), 'github-actions');
+        assert.equal(recommendedFor(none, 'tracing'), 'opentelemetry');
+        // ...and recommending is not preselecting: (none) still opens the list
+        assert.deepEqual(fleetDefaults(none), []);
+
+        const existing = fleet();
+
+        service(existing, 'auth', [RPC, SEQ, DD]);
+        remote(existing, 'auth', 'git@gitlab.acme.io:acme/auth.git');
+        ciConfig(existing, 'auth', '.circleci/config.yml');
+
+        // A fleet IS its own recommendation: matching it is what a new service
+        // joining it should do.
+        const used = analyseFleet(existing);
+
+        assert.equal(recommendedFor(used, 'vcs'), 'gitlab');
+        assert.equal(recommendedFor(used, 'orm'), 'sequelize');
+        assert.equal(recommendedFor(used, 'ci'), 'circleci');
+        assert.equal(recommendedFor(used, 'tracing'), 'dd-trace');
+    });
+
+    it('recommends an override over the baseline', () => {
+        const root = fleet();
+
+        service(root, 'auth', [RPC]);
+        analyseFleet(root);
+        recordFleetChoices(root, ['sequelize']);
+
+        assert.equal(recommendedFor(analyseFleet(root), 'orm'), 'sequelize');
     });
 });

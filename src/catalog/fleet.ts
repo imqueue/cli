@@ -71,13 +71,29 @@ interface GroupProbe {
     kind: 'catalog' | 'setting';
     members: ProbeMember[];
     /**
-     * The member to propose when the fleet uses several, when one of them is
-     * recommended. Without it a split fleet falls back to its own majority,
-     * which is the honest answer where the project has no preference — the two
-     * tracing backends are a vendor choice, not a better and a worse, and so is
-     * one git host over another.
+     * The member to propose when the fleet uses several, where the project
+     * recommends one. It also decides whether a fleet on something else is told
+     * that moving is worth considering.
+     *
+     * Without it a split fleet falls back to its own majority, which is the
+     * honest answer where the project has no preference: one git host or CI
+     * provider is not better than another, so those two probes leave it unset.
      */
     recommended?: string;
+    /**
+     * What to recommend when the fleet says nothing at all.
+     *
+     * The recommendation is DYNAMIC: a fleet that already runs on something is
+     * its own recommendation, because matching it is what a new service joining
+     * it should do. This is the edge case underneath — an empty fleet, or one
+     * that uses nothing from this group — where the project's own preference is
+     * the only thing left to go on.
+     *
+     * Configured settings do not appear in that chain because they never reach a
+     * prompt: a `vcs.provider` or a `packages` list in the config is used
+     * outright, so there is nothing left to recommend.
+     */
+    baseline: string;
 }
 
 const PROBES: GroupProbe[] = [
@@ -90,6 +106,7 @@ const PROBES: GroupProbe[] = [
             { id: 'pg-prisma', dep: '@imqueue/pg-prisma' },
         ],
         recommended: 'pg-prisma',
+        baseline: 'pg-prisma',
     },
     {
         group: 'tracing',
@@ -102,6 +119,8 @@ const PROBES: GroupProbe[] = [
             },
             { id: 'dd-trace', dep: '@imqueue/dd-trace' },
         ],
+        recommended: 'opentelemetry',
+        baseline: 'opentelemetry',
     },
     {
         group: 'vcs',
@@ -116,6 +135,7 @@ const PROBES: GroupProbe[] = [
             { id: 'gitlab', remote: 'gitlab' },
             { id: 'bitbucket', remote: 'bitbucket' },
         ],
+        baseline: 'github',
     },
     {
         group: 'ci',
@@ -126,6 +146,7 @@ const PROBES: GroupProbe[] = [
             { id: 'circleci', files: ['.circleci/config.yml'] },
             { id: 'travis', files: ['.travis.yml', '.travis.yaml'] },
         ],
+        baseline: 'github-actions',
     },
 ];
 
@@ -495,6 +516,36 @@ export function fleetDefaults(analysis: FleetAnalysis): string[] {
     return PROBES.filter(probe => probe.kind === 'catalog')
         .map(probe => analysis.groups[probe.group]?.propose)
         .filter((id): id is string => !!id);
+}
+
+/**
+ * What to mark as recommended for one group.
+ *
+ * @remarks
+ * The fleet first: a fleet already running on something IS the recommendation,
+ * because a new service joining it should match it. Only when the fleet says
+ * nothing does the project's own preference apply — pg-prisma, opentelemetry,
+ * github, github-actions.
+ *
+ * This is a LABEL, not the pre-selection. For the optional groups the cursor
+ * still opens on `(none)` when the fleet is silent: a service that needs no
+ * database is not a service that chose wrongly.
+ *
+ * @param {FleetAnalysis | null} analysis
+ * @param {string} group
+ * @return {string | null}
+ */
+export function recommendedFor(
+    analysis: FleetAnalysis | null,
+    group: string,
+): string | null {
+    const probe = PROBES.find(p => p.group === group);
+
+    if (!probe) {
+        return null;
+    }
+
+    return fleetProposal(analysis, group) || probe.baseline;
 }
 
 /**
