@@ -27,11 +27,13 @@ imq service packages --json   # machine-readable
 
 Packages belong to groups. **Exclusive** groups accept at most one member;
 selecting two members of the same exclusive group is rejected with an error.
+At most one, not exactly one — selecting none is a normal answer, and for a
+service that talks to no database it is the right one.
 
 | Group | Exclusive? | Members |
 |---|---|---|
 | **Tracing / APM** | yes | `opentelemetry`, `dd-trace` |
-| **ORM / database** | yes | `sequelize`, `prisma` |
+| **ORM / database** | yes | `pg-prisma`, `sequelize` |
 | **Service features** | no | `pg-cache`, `pg-pubsub`, `tag-cache`, `job`, `net`, `http-protect`, `graphql-dependency`, `type-graphql-dependency` |
 
 ## What each addon does when selected
@@ -54,6 +56,43 @@ Run `imq config init` or `imq service create` on a TTY without `--packages`
 and you will get a multi-select for the feature group and single-selects for
 the exclusive groups. Non-interactive runs use your config/flags and never
 prompt.
+
+Each exclusive list marks one member **(recommended)**, and `(none)` is always
+the first choice. The recommendation is `pg-prisma` for the ORM and
+`opentelemetry` for tracing — unless the fleet says otherwise.
+
+### Following the fleet
+
+`imq service create` looks at the directory the new service is being created
+into, and treats every sibling directory whose `package.json` depends on
+`@imqueue/rpc` as part of your fleet. If those services already agree on an
+ORM or a tracing backend, that member becomes both the preselected and the
+recommended one, with a line above the list saying why:
+
+```
+? Select ORM / database:
+  Only if the service uses a database — none is normal.
+  Preselected sequelize to match 2 services in this fleet. Moving the fleet to
+  pg-prisma is worth considering — as its own piece of work, not as part of this.
+  (none)
+  Prisma ORM + @imqueue/pg-prisma toolkit
+❯ Sequelize ORM + @imqueue/sequelize toolkit (recommended)
+```
+
+A new service in an established fleet belongs on the fleet's stack: matching
+what is already there beats taking the default.
+
+A fleet that disagrees with itself gets no proposal: with a strict majority the
+majority wins, and on a tie nothing is preselected and only the fallback is
+marked. The same analysis drives the VCS host and CI provider prompts — see
+[Creating Services](Creating-Services).
+
+Scanning is cheap but not free, so the result is cached in
+`~/.imq/var/fleet.json`, keyed by directory (`IMQ_CLI_HOME` relocates it with
+the rest of the CLI's files). The cache is invalidated when the set of sibling
+directories changes. Choosing against the analysis is taken as intent: your
+choice is recorded as an override for that directory and proposed next time,
+until a later scan agrees with it on its own.
 
 ## Extending the catalog
 
