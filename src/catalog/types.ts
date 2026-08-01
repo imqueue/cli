@@ -29,11 +29,30 @@
 export interface CatalogGroup {
     title: string;
     exclusive: boolean;
+    /**
+     * When the group applies at all, for the groups where picking nothing is a
+     * normal answer rather than an omission.
+     *
+     * `exclusive` already means "at most one", and the prompt offers `(none)`
+     * as its default — but a list of options with per-option guidance and no
+     * word about skipping reads as a question you have to answer. A service
+     * with no database wants no ORM; a service nobody traces wants no tracing.
+     * Saying so is what stops a caller — an AI agent especially — picking one
+     * because one appeared to be required.
+     */
+    pick?: string;
 }
 
 /**
  * A single installable addon. Effects are all optional so an entry can be a
  * pure dependency, a code-injecting addon, or anything in between.
+ *
+ * What belongs here is an INTEGRATED option: something the scaffolder wires into
+ * the service. A bare dependency that a user could add with `npm i` and get the
+ * same result does not need an entry, and having one makes a recommended list
+ * read like a menu of equals — a bare `prisma` addon sat next to `pg-prisma`
+ * for exactly that reason and was removed. Bespoke setups are what the
+ * custom-templates mechanism is for; the catalog carries the recommended path.
  */
 export interface CatalogEntry {
     /** group id this entry belongs to */
