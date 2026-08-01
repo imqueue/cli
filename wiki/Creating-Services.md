@@ -15,14 +15,27 @@ If omitted, `name` defaults to the current directory's name and `path` to `.`
 
 Service creation is organized around four independent, pluggable axes, so you
 can mix the tools you actually use. Each resolves via the standard precedence
-(flag → `.imqrc.json` → global config → prompt → default).
+(flag → `.imqrc.json` → global config → fleet → prompt → default).
 
-| Axis | Flag | Choices (default **bold**) |
+| Axis | Flag | Choices (fallback **bold**) |
 |---|---|---|
 | VCS host | `--vcs` | **github**, gitlab, bitbucket |
 | CI provider | `--ci` | **github-actions**, circleci, travis |
 | Container registry | `--registry` | **dockerhub**, google, aws-ecr, azure-acr |
 | Addon packages | `--packages` | (none) — see [Package Catalog](Package-Catalog) |
+
+The bold value is the fallback, not a fixed default. With nothing configured,
+`imq service create` reads the git remotes and CI config of the services that
+already sit alongside the new one and proposes what they use — a service
+joining services hosted on GitLab is going on GitLab. The bold value applies
+when there is no fleet to learn from, or when the fleet does not agree with
+itself. [Package Catalog](Package-Catalog#following-the-fleet) describes the
+analysis and its cache.
+
+A VCS host and a CI provider get picked either way — unlike an addon, choosing
+none is not an option — so this applies to non-interactive runs too. If you
+script `imq service create` inside a fleet and want a specific host or
+provider regardless of its neighbours, pass `--vcs` / `--ci` explicitly.
 
 CI choices are filtered to those compatible with the selected VCS host. See
 [Providers](Providers) for the details and tokens each one needs.
