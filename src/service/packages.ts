@@ -57,9 +57,14 @@ export const { command, describe, builder, handler } = {
             const byGroup = new Map<string, string[]>();
 
             for (const [id, entry] of Object.entries(catalog.packages)) {
+                // `pick` on its own indented line rather than appended: in an
+                // exclusive group it is the deciding information, and a caller
+                // skimming for the id should not have to read past a sentence
+                // to find the next one.
                 const line =
                     styleText('cyan', id) +
-                    (entry.title ? ` - ${entry.title}` : '');
+                    (entry.title ? ` - ${entry.title}` : '') +
+                    (entry.pick ? '\n    ' + styleText('dim', entry.pick) : '');
 
                 const list = byGroup.get(entry.group) || [];
 
