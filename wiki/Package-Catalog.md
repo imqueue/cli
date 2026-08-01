@@ -36,6 +36,12 @@ service that talks to no database it is the right one.
 | **ORM / database** | yes | `pg-prisma`, `sequelize` |
 | **Service features** | no | `pg-cache`, `pg-pubsub`, `tag-cache`, `job`, `net`, `http-protect`, `graphql-dependency`, `type-graphql-dependency` |
 
+These are catalog **ids** — what `--packages` takes and what a saved config
+holds — not npm package names, and two of them no longer match. `dd-trace`
+installs `@imqueue/datadog` and `sequelize` installs `@imqueue/pg-sequelize`,
+both renamed while the ids stayed put so that existing configs and `.imqrc.json`
+files keep working.
+
 ## What each addon does when selected
 
 For every selected package the scaffolder:
@@ -76,7 +82,7 @@ recommended one, with a line above the list saying why:
   pg-prisma is worth considering — as its own piece of work, not as part of this.
   (none)
   Prisma ORM + @imqueue/pg-prisma toolkit
-❯ Sequelize ORM + @imqueue/sequelize toolkit (recommended)
+❯ Sequelize ORM + @imqueue/pg-sequelize toolkit (recommended)
 ```
 
 A new service in an established fleet belongs on the fleet's stack: matching

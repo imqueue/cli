@@ -101,9 +101,12 @@ describe('package catalog', () => {
         it('should aggregate deps, snippets, env and instructions', () => {
             const addons = resolveAddons(['dd-trace', 'pg-cache'], catalog);
 
-            assert.equal(addons.deps['@imqueue/dd-trace'], '*');
+            assert.equal(addons.deps['@imqueue/datadog'], '*');
             assert.equal(addons.deps['@imqueue/pg-cache'], '*');
-            assert.match(addons.preload, /@imqueue\/dd-trace/);
+            // The preload imports the generated ./tracer.js rather than the
+            // package: a bare `import '@imqueue/datadog'` installs the hooks but
+            // never calls tracer.init(), so nothing is reported.
+            assert.match(addons.preload, /\.\/tracer\.js/);
             assert.ok(addons.hasSnippets);
             assert.ok(addons.env.includes('DD_AGENT_HOST'));
             assert.ok(addons.instructions.length > 0);

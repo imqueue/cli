@@ -19,7 +19,7 @@
       "title": "OpenTelemetry instrumentation",
       "pick": "Recommended: vendor-neutral, so the backend can change without touching service code.",
       "deps": {
-        "@imqueue/opentelemetry-instrumentation-imqueue": "*",
+        "@imqueue/opentelemetry": "*",
         "@opentelemetry/api": "*",
         "@opentelemetry/instrumentation": "*",
         "@opentelemetry/resources": "*",
@@ -44,22 +44,23 @@
     },
     "dd-trace": {
       "group": "tracing",
-      "title": "Datadog APM (dd-trace)",
+      "title": "Datadog APM",
       "hint": "already on Datadog",
       "pick": "For a fleet already standing on Datadog\u2019s own agent; otherwise take opentelemetry.",
-      "deps": { "@imqueue/dd-trace": "*" },
-      "snippets": { "preload": "import '@imqueue/dd-trace';" },
+      "deps": { "@imqueue/datadog": "*" },
+      "snippets": { "preload": "import './tracer.js';" },
       "env": ["DD_AGENT_HOST", "DD_TRACE_ENABLED"],
       "instructions": [
+        "Datadog: tracing is initialized in src/tracer.ts (imported first at start-up).",
         "Datadog: ensure a Datadog agent is reachable via DD_AGENT_HOST."
       ]
     },
     "sequelize": {
       "group": "orm",
-      "title": "Sequelize ORM + @imqueue/sequelize toolkit",
+      "title": "Sequelize ORM + @imqueue/pg-sequelize toolkit",
       "hint": "match a Sequelize fleet",
       "pick": "For a service joining a fleet already built on Sequelize, where matching the existing stack is worth more than the default. Migrating the fleet to pg-prisma is worth proposing, as separate work.",
-      "deps": { "@imqueue/sequelize": "*", "sequelize": "*" },
+      "deps": { "@imqueue/pg-sequelize": "*", "sequelize": "*" },
       "instructions": [
         "Sequelize: configure your database connection in config.ts."
       ]

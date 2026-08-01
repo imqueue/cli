@@ -42,8 +42,16 @@ import { VAR_HOME, resolve } from '../../lib/index.js';
 interface ProbeMember {
     /** Catalog id, provider id — whatever the prompt for this group selects. */
     id: string;
-    /** A dependency in the service's package.json. */
-    dep?: string;
+    /**
+     * A dependency in the service's package.json, or several.
+     *
+     * A list is how a renamed package stays detectable: every name the package
+     * has shipped under counts as evidence. Without that, the rename of an addon
+     * would make every service that has not migrated yet invisible to the probe,
+     * and the group would report nothing detected — no error, just a
+     * recommendation that steers a fleet off its own stack.
+     */
+    dep?: string | string[];
     /** A path inside the service, file or directory. */
     files?: string[];
     /** A substring of a remote URL in the service's .git/config. */
@@ -102,7 +110,10 @@ const PROBES: GroupProbe[] = [
         label: 'ORM',
         kind: 'catalog',
         members: [
-            { id: 'sequelize', dep: '@imqueue/sequelize' },
+            {
+                id: 'sequelize',
+                dep: ['@imqueue/pg-sequelize', '@imqueue/sequelize'],
+            },
             { id: 'pg-prisma', dep: '@imqueue/pg-prisma' },
         ],
         recommended: 'pg-prisma',
@@ -115,9 +126,15 @@ const PROBES: GroupProbe[] = [
         members: [
             {
                 id: 'opentelemetry',
-                dep: '@imqueue/opentelemetry-instrumentation-imqueue',
+                dep: [
+                    '@imqueue/opentelemetry',
+                    '@imqueue/opentelemetry-instrumentation-imqueue',
+                ],
             },
-            { id: 'dd-trace', dep: '@imqueue/dd-trace' },
+            {
+                id: 'dd-trace',
+                dep: ['@imqueue/datadog', '@imqueue/dd-trace'],
+            },
         ],
         recommended: 'opentelemetry',
         baseline: 'opentelemetry',
@@ -334,8 +351,12 @@ function usesMember(
     remotes: string,
     member: ProbeMember,
 ): boolean {
-    if (member.dep && deps.has(member.dep)) {
-        return true;
+    if (member.dep) {
+        const names = Array.isArray(member.dep) ? member.dep : [member.dep];
+
+        if (names.some(name => deps.has(name))) {
+            return true;
+        }
     }
 
     if (member.files?.some(file => existsSync(join(dir, file)))) {

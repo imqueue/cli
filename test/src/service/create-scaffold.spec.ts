@@ -38,6 +38,7 @@ import {
     buildServiceTokens,
     compileTemplate,
     ensureTemplate,
+    generateAddons,
     isEsmService,
     loadTemplateManifest,
     overlayFragments,
@@ -225,6 +226,45 @@ describe('service create scaffolding', () => {
                 readFileSync(join(sub, 'node_modules', 'x.txt'), 'utf8'),
                 '%SERVICE_NAME',
             );
+        });
+    });
+
+    describe('generateAddons()', () => {
+        function addons(id: string): string {
+            const sub = join(dir, `addons-${id}`);
+
+            mkdirSync(join(sub, 'src'), { recursive: true });
+            generateAddons(sub, '// header', [id], true, 'svc');
+
+            return sub;
+        }
+
+        it('should write a telemetry module for opentelemetry', () => {
+            const sub = addons('opentelemetry');
+            const src = readFileSync(join(sub, 'src', 'telemetry.ts'), 'utf8');
+
+            // the import specifier is generated source: tsc cannot check it,
+            // and a stale one only fails at the user's npm install
+            assert.match(src, /from '@imqueue\/opentelemetry'/);
+            assert.doesNotMatch(src, /opentelemetry-instrumentation-imqueue/);
+        });
+
+        it('should write a tracer module for dd-trace that calls init()', () => {
+            const sub = addons('dd-trace');
+            const src = readFileSync(join(sub, 'src', 'tracer.ts'), 'utf8');
+
+            assert.match(src, /from '@imqueue\/datadog'/);
+            // init() is the whole point of the file. Importing the package alone
+            // installs the hooks but reports nothing, which is what the previous
+            // bare-import preload did.
+            assert.match(src, /tracer\.init\(\);/);
+        });
+
+        it('should write nothing for a deps-only addon', () => {
+            const sub = addons('pg-cache');
+
+            assert.ok(!existsSync(join(sub, 'src', 'telemetry.ts')));
+            assert.ok(!existsSync(join(sub, 'src', 'tracer.ts')));
         });
     });
 });

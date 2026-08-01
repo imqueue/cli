@@ -78,10 +78,19 @@ function service(root: string, name: string, deps: string[]): void {
 }
 
 const RPC = '@imqueue/rpc';
-const OTEL = '@imqueue/opentelemetry-instrumentation-imqueue';
-const DD = '@imqueue/dd-trace';
-const SEQ = '@imqueue/sequelize';
+const OTEL = '@imqueue/opentelemetry';
+const DD = '@imqueue/datadog';
+const SEQ = '@imqueue/pg-sequelize';
 const PRISMA = '@imqueue/pg-prisma';
+
+// The names these three shipped under before the rename. Existing services still
+// declare them — deprecating a package does not uninstall it — so the probes must
+// keep recognising them. Without these cases a rename that missed the old names
+// would leave every unmigrated fleet reading as "nothing detected", and the suite
+// would stay green because the assertions elsewhere are all about catalog ids.
+const OTEL_OLD = '@imqueue/opentelemetry-instrumentation-imqueue';
+const DD_OLD = '@imqueue/dd-trace';
+const SEQ_OLD = '@imqueue/sequelize';
 
 describe('analyseFleet()', () => {
     const fleets: string[] = [];
@@ -122,6 +131,30 @@ describe('analyseFleet()', () => {
             fleetNotes(analysis).orm,
             /pg-prisma is worth considering/,
         );
+    });
+
+    it('still reads a fleet on the pre-rename ORM name as sequelize', () => {
+        const root = fleet();
+
+        service(root, 'auth', [RPC, SEQ_OLD]);
+        service(root, 'billing', [RPC, SEQ_OLD]);
+
+        const analysis = analyseFleet(root);
+
+        assert.equal(orm(analysis).propose, 'sequelize');
+        assert.equal(orm(analysis).counts.sequelize, 2);
+    });
+
+    it('counts old and new ORM names as the same member', () => {
+        const root = fleet();
+
+        service(root, 'auth', [RPC, SEQ]);
+        service(root, 'billing', [RPC, SEQ_OLD]);
+
+        const analysis = analyseFleet(root);
+
+        assert.equal(orm(analysis).propose, 'sequelize');
+        assert.equal(orm(analysis).counts.sequelize, 2);
     });
 
     it('reads a Prisma fleet as pg-prisma', () => {
@@ -304,6 +337,30 @@ describe('analyseFleet() tracing', () => {
         assert.equal(tracing(analysis).propose, 'dd-trace');
         assert.deepEqual(fleetDefaults(analysis), ['dd-trace']);
         assert.match(fleetNotes(analysis).tracing, /^Preselected dd-trace/);
+    });
+
+    it('still reads a fleet on the pre-rename tracing names', () => {
+        const root = fleet();
+
+        service(root, 'auth', [RPC, DD_OLD]);
+        service(root, 'billing', [RPC, DD_OLD]);
+
+        const analysis = analyseFleet(root);
+
+        assert.equal(tracing(analysis).propose, 'dd-trace');
+        assert.equal(tracing(analysis).counts['dd-trace'], 2);
+    });
+
+    it('counts old and new OpenTelemetry names as the same member', () => {
+        const root = fleet();
+
+        service(root, 'auth', [RPC, OTEL]);
+        service(root, 'billing', [RPC, OTEL_OLD]);
+
+        const analysis = analyseFleet(root);
+
+        assert.equal(tracing(analysis).propose, 'opentelemetry');
+        assert.equal(tracing(analysis).counts.opentelemetry, 2);
     });
 
     it('proposes the recommended backend when a fleet uses both', () => {
