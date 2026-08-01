@@ -40,6 +40,18 @@ export interface CatalogEntry {
     group: string;
     /** human title (defaults to the entry id when absent) */
     title?: string;
+    /**
+     * When to pick this one over the others in its group.
+     *
+     * Exists for exclusive groups, where the title alone leaves a caller — an
+     * AI agent especially — to guess between two entries that both sound
+     * right. `imq service create` is by definition a NEW service, so a group
+     * with a default should say so here rather than leave it implied.
+     *
+     * One sentence, imperative, and about the CHOICE rather than about setup:
+     * anything to do after installing belongs in `instructions`.
+     */
+    pick?: string;
     /** runtime dependencies to merge into the service package.json */
     deps?: Record<string, string>;
     /** dev dependencies to merge into the service package.json */
