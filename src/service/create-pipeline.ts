@@ -23,7 +23,7 @@
  */
 import { styleText } from 'node:util';
 import { execFileSync } from 'child_process';
-import { rmSync } from 'fs';
+import { readFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import {
     DEFAULT_TEMPLATES_REF,
@@ -244,16 +244,95 @@ export async function applyCi(
 }
 
 /**
- * Installs the service dependencies exactly as declared by the template's
- * package.json.
+ * Every package.json dependency section npm can persist to, paired with the
+ * `npm install --save-*` flag that targets it. A custom template may declare
+ * any subset of these, so all are handled uniformly rather than just prod/dev.
+ *
+ * (`bundleDependencies` is intentionally absent: it is a bare array of names
+ * already listed in `dependencies`, carries no version to resolve, and has no
+ * standalone `--save-*` install target - `--save-bundle` only augments another
+ * save.)
+ */
+const DEP_SECTIONS: ReadonlyArray<{
+    field: string;
+    flag: string;
+    label: string;
+}> = [
+    { field: 'dependencies', flag: '--save-prod', label: 'dependencies' },
+    { field: 'devDependencies', flag: '--save-dev', label: 'dev dependencies' },
+    {
+        field: 'optionalDependencies',
+        flag: '--save-optional',
+        label: 'optional dependencies',
+    },
+    {
+        field: 'peerDependencies',
+        flag: '--save-peer',
+        label: 'peer dependencies',
+    },
+];
+
+/**
+ * Installs the service dependencies declared by the template's package.json
+ * (plus any merged from the addon catalog).
+ *
+ * The template and catalog declare every dependency with a `"*"` placeholder
+ * version - resolving those into real, pinned versions is precisely what this
+ * step is for. A plain `npm install` would honor the `"*"` and leave it written
+ * back verbatim, so we install by name with the matching `--save-*` flag
+ * (exactly as `npm i --save ...` does), which resolves each package to its
+ * current release and rewrites package.json with a concrete caret range. A
+ * concrete range that a template author pinned deliberately is preserved as-is.
+ *
+ * Each npm dependency section (`dependencies`, `devDependencies`,
+ * `optionalDependencies`, `peerDependencies`) is installed with its own
+ * `--save-*` flag, so a custom template using any of them is fully supported.
  */
 function installPackages(plan: CreatePlan): void {
     if (!commandExists('npm')) {
         throw new Error('npm command is not installed!');
     }
 
-    console.log('Installing dependencies...');
-    execFileSync('npm', ['install'], { cwd: plan.path, stdio: 'inherit' });
+    const pkg = JSON.parse(
+        readFileSync(join(plan.path, 'package.json'), 'utf8'),
+    );
+    // "*" / "x" / "latest" (and an empty value) mean "resolve the current
+    // version" -> install by bare name so npm pins it; a real range is kept.
+    const toSpecs = (deps: unknown): string[] =>
+        deps && typeof deps === 'object'
+            ? Object.entries(deps as Record<string, string>).map(
+                  ([name, range]) =>
+                      !range ||
+                      range === '*' ||
+                      range === 'x' ||
+                      range === 'latest'
+                          ? name
+                          : `${name}@${range}`,
+              )
+            : [];
+
+    const npm = (args: string[]): void => {
+        execFileSync('npm', args, { cwd: plan.path, stdio: 'inherit' });
+    };
+
+    let installedAny = false;
+
+    for (const { field, flag, label } of DEP_SECTIONS) {
+        const specs = toSpecs(pkg[field]);
+
+        if (specs.length) {
+            console.log(`Installing ${label}...`);
+            npm(['install', flag, ...specs]);
+            installedAny = true;
+        }
+    }
+
+    // no declared dependencies at all (unusual) - still materialize
+    // node_modules and a lockfile so the service is runnable.
+    if (!installedAny) {
+        console.log('Installing dependencies...');
+        npm(['install']);
+    }
 }
 
 /**
