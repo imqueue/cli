@@ -1,6 +1,6 @@
 {
   "name": "@imqueue/cli",
-  "version": "5.1.1",
+  "version": "5.1.2",
   "description": "Command line interface for @imqueue - scaffold Redis-RPC microservices, generate typed clients, and manage a local service fleet",
   "keywords": [
     "command-line-tool",
