@@ -68,8 +68,9 @@ imq ctl start -u -c
 # watch combined, colour-prefixed logs
 imq log
 
-# generate a client for one of them while it runs (in another terminal)
-imq client generate billing ./billing/src/clients -o
+# generate a client for one of them while it runs (in another terminal).
+# note the queue/class name here, not the directory name used with -s
+imq client generate BillingService ./billing/src/clients -o
 
 # restart a couple after code changes
 imq ctl restart -s billing,orders
