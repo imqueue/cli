@@ -12,21 +12,29 @@ imq client generate <name> [path]
 
 | Flag | Meaning |
 |---|---|
-| (positional) `name` | service name to generate a client for (required) |
+| (positional) `name` | the service's **queue** name (required) — see below |
 | (positional) `path` | directory to place the client file (default: cwd) |
 | `-o, --overwrite` | overwrite an existing client without prompting |
 | `-w, --timeout` | seconds to wait for the service to respond before giving up (default `30`; `0` waits forever) |
 
+The name is the queue the service listens on, which `IMQService` defaults to its
+own class name (`this.name = name || this.constructor.name`), and the CLI passes
+it straight to `IMQClient.create()`. So it is `BillingService`, not `billing` —
+and in particular it is **not** the project directory name that `imq ctl -s`
+takes. Get it wrong and generation waits for a queue nobody is listening on, then
+times out.
+
 ```bash
-# from within a project, service "billing" running locally
-imq client generate billing ./src/clients -o
+# from within a project, with the BillingService class running locally
+imq client generate BillingService ./src/clients -o
 ```
 
-Typical flow during development:
+Typical flow during development. The two names in it are different things: `-s`
+selects the local service by directory, while `generate` takes the queue name:
 
 ```bash
 imq ctl start -s billing -c     # bring the service up and wait for readiness
-imq client generate billing ./src/clients
+imq client generate BillingService ./src/clients
 imq ctl stop -s billing
 ```
 
