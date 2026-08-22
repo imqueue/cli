@@ -1,7 +1,7 @@
 # I Message Queue CLI (@imqueue/cli)
 
-[![Build](https://github.com/imqueue/cli/actions/workflows/build.yml/badge.svg)](https://github.com/imqueue/cli/actions/workflows/build.yml)
-[![codebeat badge](https://codebeat.co/badges/0824c9af-d6fa-47ac-bc44-eb51d7b37eba)](https://codebeat.co/projects/github-com-imqueue-cli-master)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/imqueue/cli/build.yml)](https://github.com/imqueue/cli/actions/workflows/build.yml)
+[![npm version](https://img.shields.io/npm/v/@imqueue/cli)](https://www.npmjs.com/package/@imqueue/cli)
 [![License](https://img.shields.io/badge/license-GPL-blue.svg)](https://github.com/imqueue/cli/blob/master/LICENSE)
 
 ## Why?
@@ -15,6 +15,8 @@ This README is a quick reference. The full user manual is published at
 [project wiki](https://github.com/imqueue/cli/wiki)). Commercial licensing &
 support: [imqueue.com](https://imqueue.com/). Using an AI assistant? Point it at
 [imqueue.org/llms.txt](https://imqueue.org/llms.txt) or see [AGENTS.md](./AGENTS.md).
+Current version, licence and Node floor for every package:
+[imqueue.org/status.json](https://imqueue.org/status.json).
 Wiki chapters:
 
 - [Installation](https://github.com/imqueue/cli/wiki/Installation)
