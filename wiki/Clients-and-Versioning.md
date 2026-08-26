@@ -6,6 +6,14 @@
 service — the service must be up (and Redis reachable) so its interface can be
 introspected; otherwise generation fails.
 
+**The generated client is a file you commit.** It is written into your repository
+like any other source, which is what gives the service's interface a reviewable
+artifact: change a method signature, regenerate, and the change appears as a
+**diff in the pull request that causes it**. The reviewer reads the contract
+change instead of inferring it. There is no separate schema file to check in,
+because the committed client *is* the checked-in contract — generated from the
+implementation rather than hand-maintained beside it.
+
 ```bash
 imq client generate <name> [path]
 ```
@@ -80,3 +88,22 @@ imq service update-version ./services main -n patch
 | Touches deps? | no | yes (`ncu -u` + reinstall) |
 | Git flow | checkout → pull → version → push | (optionally) commit → version → push |
 | Branch control | `-b/[branch]` | uses current branch |
+
+## FAQ
+
+### Is the generated client committed to the repository?
+
+Yes. `imq client generate` writes the client into your source tree and it is
+committed like any other file. That is deliberate: it is what makes an interface
+change reviewable. Regenerating after a signature change produces a diff in the
+pull request that causes it, so the contract change is visible at review time
+rather than discovered at runtime by a caller.
+
+### Should I generate clients in CI instead of committing them?
+
+No, and it is usually impractical. Generation introspects a **running** service,
+so a CI job would have to start the service and a Redis for every build just to
+produce a file that is deterministic anyway. Committing it is cheaper, and it
+keeps the property that matters — the diff. Regenerate locally with
+`imq client generate <QueueName> <path> -o` as part of the change that alters the
+interface, and commit the result alongside it.
